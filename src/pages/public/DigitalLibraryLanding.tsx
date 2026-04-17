@@ -85,33 +85,33 @@ export default function DigitalLibraryPublic() {
       <Header />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-indigo-500/5 pt-24 pb-20">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/50 pt-24 pb-20">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
         </div>
         <div className="container relative z-10 text-center max-w-3xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm mb-6">
-              <BookOpen className="h-4 w-4" />
+              <Library className="h-4 w-4" />
               Digital Library
             </div>
-            <h1 className="font-heading text-5xl md:text-6xl font-bold leading-tight tracking-tight mb-6">
-              Explore the Digital Library
+            <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">
+              A Unified Gateway to Knowledge
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
-              Search, discover, save, and access publications and library items through a structured, user-friendly digital knowledge environment.
+            <p className="text-xl text-muted-foreground leading-relaxed mb-8 font-light">
+              Search, discover, and access a growing ecosystem of scholarly publications, technical frameworks, and professional insights through our structured digital environment.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/library/search">
-                <Button size="lg" className="h-14 px-8 rounded-full font-bold text-lg group">
-                  Search the Library
+                <Button size="lg" className="h-16 px-10 rounded-full font-bold text-lg group shadow-xl shadow-primary/20">
+                  Enter Library
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
               <Link to="/membership">
-                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg">
-                  Become a Member
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-primary/20 hover:bg-primary/5 text-primary">
+                  View Access Plans
                 </Button>
               </Link>
             </div>
@@ -122,31 +122,35 @@ export default function DigitalLibraryPublic() {
       {/* Intro */}
       <section className="container py-24">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
-            <h2 className="font-heading text-4xl font-bold tracking-tight">A Smarter Way to Access Content</h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+          <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-8">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight">Structured Discovery at Scale</h2>
+            <p className="text-xl text-muted-foreground leading-relaxed font-light">
               The Digital Library is built to help users quickly find the content that matters to them. Search by title, author, topic, year, venue, or access type. Review abstracts and metadata before opening a resource. Save items, export citations, and access downloads according to your membership or purchase entitlements.
             </p>
           </motion.div>
-          <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-3xl bg-primary/5 border border-primary/10 p-10">
-            <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg mb-6">
-              <Sparkles className="h-7 w-7" />
+          <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[3rem] bg-primary/5 border border-primary/10 p-12 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Search className="h-32 w-32" />
             </div>
-            <h3 className="font-heading text-xl font-bold mb-3">Built for Discovery</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Whether you are looking for a specific paper, browsing new material, or building a personal list of useful resources, the Digital Library is designed to make the process efficient and rewarding.
+            <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg mb-8">
+              <Sparkles className="h-8 w-8" />
+            </div>
+            <h3 className="font-heading text-2xl font-bold mb-4">Built for Discovery</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Whether you are looking for a specific paper, browsing new material, or building a personal library of useful resources, our platform is designed to make the process efficient and rewarding.
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="bg-secondary/30 py-24">
+      <section className="bg-secondary/50 py-24">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">What You Can Do in the Digital Library</h2>
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">Library Capabilities</h2>
+            <p className="text-lg text-muted-foreground font-light">Advanced tools designed to enhance your research and content exploration experience.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {features.map((feature, i) => (
               <motion.div
                 key={i}
@@ -154,13 +158,13 @@ export default function DigitalLibraryPublic() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group rounded-3xl border bg-card p-6 hover:shadow-lg transition-all hover:border-primary/20"
+                className="group rounded-[2rem] border bg-card p-8 hover:shadow-2xl transition-all hover:border-primary/20"
               >
-                <div className={`h-12 w-12 rounded-2xl ${feature.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                <div className={`h-14 w-14 rounded-2xl ${feature.color} flex items-center justify-center mb-6 transition-transform group-hover:scale-110`}>
                   {feature.icon}
                 </div>
-                <h3 className="font-heading font-bold text-base mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                <h3 className="font-heading font-bold text-xl mb-3 group-hover:text-primary transition-colors">{feature.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -169,13 +173,13 @@ export default function DigitalLibraryPublic() {
 
       {/* Access Model */}
       <section className="container py-24">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">Access Options</h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            The library supports multiple access routes so users can engage with content in the way that best fits their needs.
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">Flexible Access Options</h2>
+          <p className="text-xl text-muted-foreground leading-relaxed font-light">
+            Supporting multiple access routes so you can engage with content in the way that best fits your needs.
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {accessOptions.map((option, i) => (
             <motion.div
               key={i}
@@ -183,25 +187,25 @@ export default function DigitalLibraryPublic() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="group rounded-3xl border bg-card p-8 text-center hover:shadow-lg transition-all hover:border-primary/20"
+              className="group rounded-[2.5rem] border bg-card p-10 text-center hover:shadow-2xl transition-all hover:border-primary/20"
             >
-              <div className={`h-14 w-14 rounded-2xl ${option.color} flex items-center justify-center mb-6 mx-auto transition-transform group-hover:scale-110`}>
+              <div className={`h-16 w-16 rounded-2xl ${option.color} flex items-center justify-center mb-8 mx-auto transition-transform group-hover:scale-110`}>
                 {option.icon}
               </div>
-              <h3 className="font-heading font-bold text-lg mb-3 group-hover:text-primary transition-colors">{option.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{option.description}</p>
+              <h3 className="font-heading font-bold text-2xl mb-4 group-hover:text-primary transition-colors">{option.title}</h3>
+              <p className="text-muted-foreground leading-relaxed font-light">{option.description}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* Search Filters */}
-      <section className="bg-secondary/30 py-24">
-        <div className="container max-w-3xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">Filter by What Matters</h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              Users can refine library results through a set of practical filters.
+      <section className="bg-secondary/50 py-24">
+        <div className="container max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">Refined Search Parameters</h2>
+            <p className="text-lg text-muted-foreground font-light">
+              Narrow down millions of documents with precision using our integrated filter system.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -212,10 +216,12 @@ export default function DigitalLibraryPublic() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.06 }}
                 viewport={{ once: true }}
-                className="flex items-center gap-3 rounded-2xl border bg-card p-4"
+                className="flex items-center gap-4 rounded-2xl border bg-card p-5 hover:border-primary/30 transition-all hover:translate-y-[-2px] group"
               >
-                <Filter className="h-4 w-4 text-primary shrink-0" />
-                <span className="text-sm font-medium">{filter}</span>
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                    <Filter className="h-4 w-4" />
+                </div>
+                <span className="text-base font-medium">{filter}</span>
               </motion.div>
             ))}
           </div>
@@ -224,27 +230,27 @@ export default function DigitalLibraryPublic() {
 
       {/* CTA */}
       <section className="container py-24">
-        <div className="relative rounded-[3rem] bg-primary overflow-hidden p-12 md:p-20 text-center">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white rounded-full blur-[80px]" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200 rounded-full blur-[80px]" />
+        <div className="relative rounded-[4rem] bg-primary overflow-hidden p-12 md:p-24 text-center">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-white rounded-full blur-[100px]" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-black rounded-full blur-[100px]" />
           </div>
-          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-            <h2 className="font-heading text-4xl md:text-5xl font-bold text-white leading-tight">
-              Start Exploring
+          <div className="relative z-10 max-w-3xl mx-auto space-y-8">
+            <h2 className="font-heading text-4xl md:text-6xl font-bold text-white leading-tight">
+              Ready to Explore?
             </h2>
             <p className="text-xl text-primary-foreground/80 leading-relaxed font-light">
-              Whether you are looking for a specific paper, browsing new material, or building a personal list of useful resources, the Digital Library is designed to make the process efficient and rewarding.
+              Millions of documents, thousands of expert contributors, and one seamless search experience. Start your journey into the Digital Library today.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 pt-4">
+            <div className="flex flex-wrap justify-center gap-6 pt-6">
               <Link to="/library">
-                <Button size="lg" variant="secondary" className="h-14 px-8 rounded-full font-bold text-lg">
-                  Browse Library <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" variant="secondary" className="h-16 px-10 rounded-full font-bold text-lg shadow-2xl hover:scale-105 transition-transform">
+                  Enter Library Now
                 </Button>
               </Link>
               <Link to="/membership">
-                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10">
-                  Become a Member
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
+                  View Access Plans
                 </Button>
               </Link>
             </div>

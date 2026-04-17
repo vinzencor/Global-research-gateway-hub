@@ -95,29 +95,31 @@ export default function MembershipPage() {
       <Header />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-indigo-500/5 pt-24 pb-20">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/50 pt-24 pb-20">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
         </div>
         <div className="container relative z-10 text-center max-w-3xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm mb-6">
               <CreditCard className="h-4 w-4" />
-              Membership
+              Professional Membership
             </div>
-            <h1 className="font-heading text-5xl md:text-6xl font-bold leading-tight tracking-tight mb-6">
-              Membership That Gives You More Access
+            <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">
+              Unlock the Full Power of Content & Community
             </h1>
-            <p className="text-xl text-muted-foreground leading-relaxed mb-8">
-              Choose a membership plan that fits your needs and unlock premium access, billing support, invoices, and a richer platform experience.
+            <p className="text-xl text-muted-foreground leading-relaxed mb-8 font-light">
+              Choose a membership plan that fits your career goals. Gain premium library access, streamlined billing, and professional recognition within our global ecosystem.
             </p>
-            <Link to="/register">
-              <Button size="lg" className="h-14 px-8 rounded-full font-bold text-lg group">
-                Become a Member
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/register">
+                <Button size="lg" className="h-16 px-10 rounded-full font-bold text-lg group shadow-xl shadow-primary/20">
+                  Become a Member
+                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -126,17 +128,20 @@ export default function MembershipPage() {
       <section className="container py-24">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
-            <h2 className="font-heading text-4xl font-bold tracking-tight">Why Membership Matters</h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight">Access, Recognition, and Professional Growth</h2>
+            <p className="text-xl text-muted-foreground leading-relaxed font-light">
               Membership is designed for users who want deeper access, better continuity, and a more valuable experience on the platform. Depending on your plan, membership can unlock access to digital library content, simplify purchases, centralize invoices, and provide a stronger long-term relationship with the platform.
             </p>
           </motion.div>
-          <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-3xl bg-primary/5 border border-primary/10 p-10">
-            <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg mb-6">
-              <Lock className="h-7 w-7" />
+          <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[3rem] bg-primary/5 border border-primary/10 p-12 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+                <ShieldCheck className="h-32 w-32" />
             </div>
-            <h3 className="font-heading text-xl font-bold mb-3">Secure, Structured Access</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed">
+            <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg mb-8">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h3 className="font-heading text-2xl font-bold mb-4">Secure, Structured Access</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
               Every plan provides transparent access rights, clear billing records, and a member experience tailored to your level of engagement with the platform.
             </p>
           </motion.div>
@@ -144,12 +149,13 @@ export default function MembershipPage() {
       </section>
 
       {/* Membership Benefits */}
-      <section className="bg-secondary/30 py-24">
+      <section className="bg-secondary/50 py-24">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">Membership Benefits</h2>
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">The Membership Advantage</h2>
+            <p className="text-lg text-muted-foreground">Comprehensive benefits designed for every stage of your research and professional journey.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {benefits.map((benefit, i) => (
               <motion.div
                 key={i}
@@ -157,13 +163,13 @@ export default function MembershipPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group rounded-3xl border bg-card p-6 hover:shadow-lg transition-all hover:border-primary/20"
+                className="group rounded-[2rem] border bg-card p-8 hover:shadow-2xl transition-all hover:border-primary/20"
               >
-                <div className={`h-12 w-12 rounded-2xl ${benefit.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                <div className={`h-14 w-14 rounded-2xl ${benefit.color} flex items-center justify-center mb-6 transition-transform group-hover:scale-110`}>
                   {benefit.icon}
                 </div>
-                <h3 className="font-heading font-bold text-base mb-2 group-hover:text-primary transition-colors">{benefit.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{benefit.description}</p>
+                <h3 className="font-heading font-bold text-xl mb-3 group-hover:text-primary transition-colors">{benefit.title}</h3>
+                <p className="text-muted-foreground leading-relaxed">{benefit.description}</p>
               </motion.div>
             ))}
           </div>
@@ -172,10 +178,11 @@ export default function MembershipPage() {
 
       {/* Membership Plans */}
       <section className="container py-24">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">Choose Your Plan</h2>
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">Choose Your Plan</h2>
+          <p className="text-lg text-muted-foreground">Select the level of access that aligns with your goals.</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, i) => (
             <motion.div
               key={i}
@@ -183,28 +190,28 @@ export default function MembershipPage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               viewport={{ once: true }}
-              className={`relative rounded-3xl border p-8 flex flex-col transition-all ${plan.highlight ? "bg-primary text-white border-primary shadow-2xl scale-105" : "bg-card hover:border-primary/30 hover:shadow-lg"}`}
+              className={`relative rounded-[2.5rem] border p-10 flex flex-col transition-all ${plan.highlight ? "bg-primary text-white border-primary shadow-2xl scale-105" : "bg-card hover:border-primary/30 hover:shadow-xl"}`}
             >
               {plan.highlight && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-white text-primary text-xs font-bold shadow">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 rounded-full bg-white text-primary text-xs font-bold shadow-lg uppercase tracking-widest">
                   Most Popular
                 </div>
               )}
-              <div className="mb-6">
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${plan.highlight ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`}>
+              <div className="mb-8">
+                <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${plan.highlight ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`}>
                   {plan.badge}
                 </span>
               </div>
-              <h3 className={`font-heading text-2xl font-bold mb-4 ${plan.highlight ? "text-white" : ""}`}>{plan.title}</h3>
-              <p className={`text-sm leading-relaxed flex-1 ${plan.highlight ? "text-white/80" : "text-muted-foreground"}`}>{plan.description}</p>
-              <div className="mt-8">
+              <h3 className={`font-heading text-3xl font-bold mb-6 ${plan.highlight ? "text-white" : ""}`}>{plan.title}</h3>
+              <p className={`text-lg leading-relaxed flex-1 ${plan.highlight ? "text-white/80" : "text-muted-foreground"}`}>{plan.description}</p>
+              <div className="mt-10">
                 <Link to="/register">
                   <Button
-                    className={`w-full rounded-full font-bold ${plan.highlight ? "bg-white text-primary hover:bg-white/90" : ""}`}
+                    className={`w-full h-14 rounded-full font-bold text-lg ${plan.highlight ? "bg-white text-primary hover:bg-white/90" : ""}`}
                     variant={plan.highlight ? "secondary" : "outline"}
                     size="lg"
                   >
-                    Select Your Membership
+                    Select Plan
                   </Button>
                 </Link>
               </div>
@@ -214,22 +221,22 @@ export default function MembershipPage() {
       </section>
 
       {/* Purchase / Renewal Section */}
-      <section className="bg-secondary/30 py-24">
-        <div className="container max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="font-heading text-4xl font-bold tracking-tight">Simple Purchase and Renewal Process</h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            Purchasing or renewing your membership is designed to be straightforward. Select your preferred plan, complete checkout securely, and receive immediate confirmation of activation where applicable. Your invoice and membership details will be available in your account for easy reference.
+      <section className="bg-secondary/50 py-24">
+        <div className="container max-w-4xl mx-auto text-center space-y-8">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight">Structured Purchase & Renewal</h2>
+          <p className="text-xl text-muted-foreground leading-relaxed font-light">
+            Purchasing or renewing your membership is designed to be straightforward. Select your preferred plan, complete checkout securely, and receive immediate confirmation of activation. Your invoice and membership details will be available in your account for easy reference.
           </p>
         </div>
       </section>
 
       {/* FAQ Section */}
       <section className="container py-24">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">Membership Questions</h2>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">Membership FAQs</h2>
           </div>
-          <div className="space-y-4">
+          <div className="grid gap-4">
             {faqs.map((faq, i) => (
               <motion.div
                 key={i}
@@ -237,13 +244,15 @@ export default function MembershipPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
                 viewport={{ once: true }}
-                className="rounded-2xl border bg-card p-6"
+                className="rounded-3xl border bg-card p-8 hover:border-primary/20 transition-all"
               >
-                <div className="flex items-start gap-4">
-                  <HelpCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                <div className="flex items-start gap-6">
+                  <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <HelpCircle className="h-6 w-6" />
+                  </div>
                   <div>
-                    <p className="font-heading font-bold mb-2">{faq.q}</p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
+                    <h4 className="font-heading font-bold text-xl mb-3">{faq.q}</h4>
+                    <p className="text-muted-foreground leading-relaxed">{faq.a}</p>
                   </div>
                 </div>
               </motion.div>
@@ -254,26 +263,26 @@ export default function MembershipPage() {
 
       {/* Closing CTA */}
       <section className="container py-24">
-        <div className="relative rounded-[3rem] bg-primary overflow-hidden p-12 md:p-20 text-center">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white rounded-full blur-[80px]" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200 rounded-full blur-[80px]" />
+        <div className="relative rounded-[4rem] bg-primary overflow-hidden p-12 md:p-24 text-center">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-white rounded-full blur-[100px]" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-black rounded-full blur-[100px]" />
           </div>
-          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
-            <h2 className="font-heading text-4xl md:text-5xl font-bold text-white leading-tight">
-              Unlock More from the Platform
+          <div className="relative z-10 max-w-3xl mx-auto space-y-8">
+            <h2 className="font-heading text-4xl md:text-6xl font-bold text-white leading-tight">
+              Ready to Advance Your Standing?
             </h2>
             <p className="text-xl text-primary-foreground/80 leading-relaxed font-light">
-              Join as a member to access more content, manage your billing in one place, and enjoy a more complete digital experience.
+              Join our global network of researchers and practitioners today. Experience a more unified, high-value ecosystem designed for knowledge discovery and trust.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 pt-4">
+            <div className="flex flex-wrap justify-center gap-6 pt-6">
               <Link to="/register">
-                <Button size="lg" variant="secondary" className="h-14 px-8 rounded-full font-bold text-lg">
-                  Join Now <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" variant="secondary" className="h-16 px-10 rounded-full font-bold text-lg shadow-2xl hover:scale-105 transition-transform">
+                  Create Account Now
                 </Button>
               </Link>
               <Link to="/support">
-                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
                   Contact Support
                 </Button>
               </Link>

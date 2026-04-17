@@ -36,125 +36,162 @@ export default function PublicationsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <style>{`
+        :root { --primary: 349 56% 46%; }
+        .bg-primary { background-color: #ba3850; }
+        .text-primary { color: #ba3850; }
+        .border-primary { border-color: #ba3850; }
+        .hover\\:border-primary\\/40:hover { border-color: rgba(186, 56, 80, 0.4); }
+        .hover\\:text-primary:hover { color: #ba3850; }
+        .shadow-primary\\/20 { box-shadow: 0 4px 20px rgba(186, 56, 80, 0.2); }
+      `}</style>
       <Header />
       <main className="flex-1">
 
         {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-indigo-500/5 pt-24 pb-16">
+        <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/50 pt-24 pb-16">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
+          </div>
           <div className="container relative z-10 text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm mb-6">
-              <FileText className="h-4 w-4" />
-              Publications
-            </div>
-            <h1 className="font-heading text-5xl md:text-6xl font-bold leading-tight tracking-tight mb-6">Publications</h1>
-            <p className="text-xl text-muted-foreground leading-relaxed">
-              Browse featured and recent publications with clear attribution, structured review indicators, and easy access to full details.
-            </p>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm mb-6">
+                <FileText className="h-4 w-4" />
+                Knowledge Publications
+              </div>
+              <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">Advance Your Discovery</h1>
+              <p className="text-xl text-muted-foreground leading-relaxed font-light">
+                Explore a curated collection of research papers, technical frameworks, and expert analyses—built on a foundation of quality and expert-led review.
+              </p>
+            </motion.div>
           </div>
         </section>
 
         {/* Intro */}
-        <section className="container py-12 max-w-3xl mx-auto text-center">
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            Our Publications section highlights valuable work published through the platform. Each publication page is structured to improve readability, showcase contributor details, and support trust through author and reviewer visibility where enabled.
+        <section className="container py-16 max-w-4xl mx-auto text-center">
+          <p className="text-2xl text-foreground/80 font-light leading-relaxed">
+            Our publications span across critical domains including primary research, comprehensive literature reviews, and industry-standard frameworks. Each piece is structured to ensure maximum readability and impact.
           </p>
         </section>
 
         {/* Listing Header */}
-        <div className="max-w-6xl mx-auto px-4 mb-6">
-          <h2 className="font-heading text-2xl font-bold mb-2">Discover Published Work</h2>
-          <p className="text-muted-foreground text-sm max-w-xl">
-            Browse publications by category, tag, year, or featured status. Each listing is designed to help readers quickly identify what is relevant and worth exploring further.
-          </p>
+        <div className="max-w-6xl mx-auto px-4 mb-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h2 className="font-heading text-3xl md:text-4xl font-bold mb-3 tracking-tight">Recent Published Work</h2>
+              <p className="text-muted-foreground text-lg max-w-xl font-light">
+                Browse our growing repository of peer-reviewed and editorial content.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 pb-16">
+        <div className="max-w-6xl mx-auto px-4 pb-24">
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8 max-w-2xl mx-auto">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search publications..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="flex flex-col sm:flex-row gap-4 mb-12 max-w-3xl">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              placeholder="Search by title, author, or keyword..." 
+              className="pl-12 h-14 rounded-2xl bg-secondary/50 border-0 focus:bg-background transition-all" 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+            />
           </div>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-40"><SelectValue placeholder="Type" /></SelectTrigger>
-            <SelectContent>
-              {types.map(t => <SelectItem key={t} value={t} className="capitalize">{t === "all" ? "All Types" : t}</SelectItem>)}
+            <SelectTrigger className="w-48 h-14 rounded-2xl border-0 bg-secondary/50 font-medium">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl p-2">
+              {types.map(t => <SelectItem key={t} value={t} className="capitalize rounded-lg h-10">{t === "all" ? "All Categories" : t}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <div className="flex justify-center py-24">
+            <div className="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin shadow-lg shadow-primary/20" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p>No publications found.</p>
+          <div className="text-center py-24 text-muted-foreground bg-secondary/20 rounded-[3rem] border border-dashed">
+            <FileText className="h-16 w-16 mx-auto mb-6 opacity-20" />
+            <p className="text-xl font-light">No publications matched your criteria.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map(item => (
-              <Link key={item.id} to={`/publications/${item.slug}`} className="rounded-xl border bg-card card-shadow hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden">
-                {item.cover_image_url ? (
-                  <img src={item.cover_image_url} alt={item.title} className="w-full h-40 object-cover" />
-                ) : (
-                  <div className="w-full h-40 bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
-                    <FileText className="h-12 w-12 text-primary/30" />
-                  </div>
-                )}
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="capitalize text-xs">{item.type}</Badge>
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {(item.access_mode || "open_access").replace(/_/g, " ")}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <h3 className="font-heading font-bold text-sm leading-snug group-hover:text-primary transition-colors line-clamp-2">{item.title}</h3>
-                  {item.summary && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{item.summary}</p>}
-                  {!user && item.access_mode && item.access_mode !== "open_access" && (
-                    <p className="text-xs text-muted-foreground mt-2 inline-flex items-center gap-1">
-                      <Lock className="h-3 w-3" /> Login required for full access
-                    </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filtered.map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <Link 
+                  to={`/publications/${item.slug}`} 
+                  className="flex flex-col h-full rounded-[2rem] border bg-card hover:border-primary/40 hover:shadow-2xl transition-all group overflow-hidden"
+                >
+                  {item.cover_image_url ? (
+                    <div className="relative aspect-video overflow-hidden">
+                      <img src={item.cover_image_url} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-video bg-gradient-to-br from-primary/10 to-secondary/30 flex items-center justify-center">
+                      <FileText className="h-12 w-12 text-primary/20" />
+                    </div>
                   )}
-                  {item.access_mode === "pay_per_view" && (
-                    <p className="text-xs text-primary mt-1 font-medium">
-                      Pay-per-view: ${Number(item.ppv_price || 9.99).toFixed(2)}
-                    </p>
-                  )}
-                </div>
-              </Link>
+                  <div className="p-8 flex flex-col flex-1">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Badge variant="secondary" className="capitalize text-[10px] font-bold tracking-widest rounded-full px-3 py-1">{item.type}</Badge>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                      </span>
+                    </div>
+                    <h3 className="font-heading font-bold text-xl leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-4">{item.title}</h3>
+                    {item.summary && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{item.summary}</p>}
+                    
+                    <div className="mt-8 pt-6 border-t flex items-center justify-between">
+                      <span className="text-primary font-bold text-sm tracking-wide">Read Publication →</span>
+                      {item.access_mode === "pay_per_view" && (
+                        <span className="text-xs font-bold bg-primary text-white px-2 py-1 rounded">
+                          ${Number(item.ppv_price || 9.99).toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
             ))}
           </div>
         )}
         </div>
 
         {/* Supporting Text */}
-        <section className="bg-secondary/30 py-16">
-          <div className="container max-w-3xl mx-auto text-center space-y-4">
-            <h2 className="font-heading text-3xl font-bold">Built for Clarity and Credibility</h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Publication pages are structured to present content clearly while also highlighting the people behind the work. Where enabled, readers can see the author and reviewer information directly on the page, helping reinforce quality and transparency.
+        <section className="bg-primary py-24 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white rounded-full blur-[80px]" />
+          </div>
+          <div className="container max-w-4xl mx-auto text-center space-y-8 relative z-10">
+            <h2 className="font-heading text-4xl md:text-5xl font-bold text-white tracking-tight">Built for Clarity and Credibility</h2>
+            <p className="text-xl text-primary-foreground/80 leading-relaxed font-light">
+              Each publication page is structured to improve readability, showcase contributor details, and support trust through author and reviewer visibility. Explore the people and process behind every published work.
             </p>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="container py-16 text-center">
-          <div className="flex flex-wrap justify-center gap-4">
+        <section className="container py-24 text-center">
+          <div className="flex flex-wrap justify-center gap-6">
             <Link to="/library">
-              <Button size="lg" className="rounded-full px-8 font-bold">
-                Explore Digital Library <ArrowRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="h-16 px-10 rounded-full font-bold text-lg group shadow-xl shadow-primary/20">
+                Explore Digital Library
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
             <Link to="/authors">
-              <Button size="lg" variant="outline" className="rounded-full px-8 font-bold">
-                Meet the Authors
+              <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-primary/20 hover:bg-primary/5 text-primary">
+                Meet the Contributors
               </Button>
             </Link>
           </div>

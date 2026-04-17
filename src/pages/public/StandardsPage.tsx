@@ -126,34 +126,38 @@ export default function StandardsPage() {
       <Header />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-indigo-500/5 pt-24 pb-20">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/50 pt-24 pb-20">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
         </div>
         <div className="container relative z-10 text-center max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm mb-6">
-            <Shield className="h-4 w-4" />
-            Governance Framework
-          </div>
-          <h1 className="font-heading text-5xl md:text-6xl font-bold leading-tight tracking-tight mb-6">
-            Standards & Governance Framework
-          </h1>
-          <p className="text-xl text-muted-foreground leading-relaxed">
-            A comprehensive set of publishing, review, ethical, and operational standards designed to ensure quality, credibility, and accountability across all content and participants.
-          </p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm mb-6">
+              <Shield className="h-4 w-4" />
+              Platform Governance
+            </div>
+            <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">
+              Standards & Governance Hub
+            </h1>
+            <p className="text-xl text-muted-foreground leading-relaxed font-light">
+              Ensuring quality, credibility, and accountability through a comprehensive architecture of enforceable publishing and professional standards.
+            </p>
+          </motion.div>
         </div>
       </section>
 
-      {/* Intro */}
+      {/* Warning/Intro Section */}
       <section className="container py-16 max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-amber-500/20 bg-amber-500/5 p-8 space-y-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+        <div className="rounded-[2.5rem] border border-primary/10 bg-primary/5 p-10 space-y-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+              <AlertTriangle className="h-24 w-24 text-primary" />
+          </div>
+          <div className="flex items-start gap-4 relative z-10">
+            <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
               <p>This platform operates under a structured and enforceable standards framework governing authors, reviewers, editors, publications, and members. These standards are designed to ensure that all published content meets defined expectations of quality, integrity, clarity, and relevance.</p>
-              <p>Unlike open publishing environments, this platform enforces multi-layer validation, role-based accountability, and traceable review workflows to maintain consistency and trust.</p>
-              <p className="font-medium text-foreground">All participants—whether authors, reviewers, editors, or members—are expected to adhere to these standards. Non-compliance may result in rejection, removal of content, suspension of privileges, or permanent restriction from the platform.</p>
+              <p className="font-medium text-foreground">Unlike open publishing environments, this platform enforces multi-layer validation, role-based accountability, and traceable review workflows to maintain consistency and trust.</p>
+              <p className="text-primary font-bold">All participants—whether authors, reviewers, editors, or members—are expected to adhere to these standards. Non-compliance results in immediate enforcement actions.</p>
             </div>
           </div>
         </div>
@@ -169,34 +173,34 @@ export default function StandardsPage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
               viewport={{ once: true }}
-              className="rounded-3xl border bg-card p-8 space-y-6"
+              className="rounded-[2rem] border bg-card p-10 space-y-8 hover:border-primary/20 transition-all"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-primary/60 uppercase tracking-widest">{section.number}</span>
-                <div className="h-px flex-1 bg-border" />
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">{section.number}</span>
+                <div className="h-px flex-1 bg-border/60" />
               </div>
-              <h2 className="font-heading text-2xl font-bold">{section.title}</h2>
+              <h2 className="font-heading text-3xl font-bold tracking-tight">{section.title}</h2>
               
               {section.points && (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {section.points.map((point, pi) => (
-                    <div key={pi} className="rounded-2xl border bg-secondary/30 p-4">
-                      <p className="font-bold text-sm mb-1">{point.title}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{point.desc}</p>
+                    <div key={pi} className="rounded-2xl border bg-secondary/30 p-5 group hover:bg-background transition-colors">
+                      <p className="font-bold text-base mb-2 group-hover:text-primary transition-colors">{point.title}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{point.desc}</p>
                     </div>
                   ))}
                 </div>
               )}
 
               {section.subsections && (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {section.subsections.map((sub, si2) => (
-                    <div key={si2}>
-                      <h3 className="font-heading font-bold text-base mb-3 text-primary/80">{sub.title}</h3>
-                      <ul className="space-y-2">
+                    <div key={si2} className="space-y-4">
+                      <h3 className="font-heading font-bold text-xl text-primary/80">{sub.title}</h3>
+                      <ul className="grid sm:grid-cols-2 gap-y-2 gap-x-8">
                         {sub.points.map((point, pi) => (
-                          <li key={pi} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0" />
+                          <li key={pi} className="flex items-start gap-3 text-base text-muted-foreground">
+                            <span className="h-2 w-2 rounded-full bg-primary mt-2 shrink-0" />
                             {point}
                           </li>
                         ))}
@@ -207,123 +211,83 @@ export default function StandardsPage() {
               )}
             </motion.div>
           ))}
-
-          {/* Why Standards Matter */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="rounded-3xl border border-primary/20 bg-primary/5 p-8 space-y-4"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-primary/60 uppercase tracking-widest">Section 11</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-            <h2 className="font-heading text-2xl font-bold">Why These Standards Exist</h2>
-            <p className="text-muted-foreground leading-relaxed text-sm">
-              Without strong standards, publishing platforms degrade into content repositories with no quality assurance. These standards ensure that:
-            </p>
-            <ul className="space-y-2">
-              {[
-                "Readers trust what they read",
-                "Authors are held to meaningful expectations",
-                "Reviewers contribute value, not just formality",
-                "Editors maintain consistency",
-                "The platform builds long-term credibility",
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm font-medium">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <p className="text-sm text-muted-foreground font-medium mt-2">
-              These are not optional guidelines—they are enforced rules designed to maintain a high-quality ecosystem.
-            </p>
-          </motion.div>
         </div>
       </section>
 
       {/* Policy Documents Section */}
-      <section className="container pb-24">
-        <div className="max-w-5xl mx-auto">
+      <section className="bg-secondary/50 py-24">
+        <div className="container max-w-6xl mx-auto">
           {/* Section divider header */}
-          <div className="flex items-center gap-4 mb-10">
-            <div className="h-px flex-1 bg-border" />
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full border bg-card shadow-sm">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border bg-card shadow-sm mb-6">
               <FileText className="h-4 w-4 text-primary" />
-              <span className="text-xs font-bold text-primary uppercase tracking-widest">Downloadable Policy Documents</span>
+              <span className="text-xs font-bold text-primary uppercase tracking-widest">Downloadable Governance Handbooks</span>
             </div>
-            <div className="h-px flex-1 bg-border" />
+            <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight">Core Handbooks & Frameworks</h2>
+            <p className="text-xl text-muted-foreground mt-4 font-light">Mandatory documentation for authors, reviewers, and platform contributors.</p>
           </div>
 
-          {/* Two-column grid — expands to full-width stacked on mobile */}
-          <div className="space-y-8">
-            {/* Card 1 — Peer Review Policy */}
+          {/* Six-item grid */}
+          <div className="grid md:grid-cols-2 gap-8 lg:px-12">
+            {/* Card 1 — Standards Handbook */}
             <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} viewport={{ once: true }}>
-              <PeerReviewPolicyCard />
+              <CompactPolicyCard policy={standardsFrameworkPolicy} accentColor="from-gray-700 to-black" />
             </motion.div>
 
-            {/* Card 2 — Standards & Frameworks */}
+            {/* Card 2 — Author Guidelines */}
             <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} viewport={{ once: true }}>
-              <CompactPolicyCard policy={standardsFrameworkPolicy} accentColor="from-violet-600 to-indigo-700" />
+              <CompactPolicyCard policy={authorGuidelinesPolicy} accentColor="from-primary to-primary/80" />
             </motion.div>
 
-            {/* Card 3 — Publishing Policy & Ethics Charter */}
+            {/* Card 3 — Reviewer Handbook */}
             <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} viewport={{ once: true }}>
-              <CompactPolicyCard policy={publishingEthicsPolicy} accentColor="from-emerald-600 to-teal-700" />
+              <CompactPolicyCard policy={reviewerHandbookPolicy} accentColor="from-primary/90 to-primary/60" />
             </motion.div>
 
-            {/* Card 4 — Editorial & Decision Framework */}
+            {/* Card 4 — Submission Checklist Page */}
             <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} viewport={{ once: true }}>
-              <CompactPolicyCard policy={editorialDecisionPolicy} accentColor="from-orange-500 to-amber-600" />
+              <CompactPolicyCard policy={submissionChecklistPolicy} accentColor="from-gray-800 to-gray-600" />
             </motion.div>
 
-            {/* Card 5 — Submission Checklist */}
+            {/* Card 5 — Editorial & Decision Framework */}
             <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} viewport={{ once: true }}>
-              <CompactPolicyCard policy={submissionChecklistPolicy} accentColor="from-slate-700 to-slate-900" />
+              <CompactPolicyCard policy={editorialDecisionPolicy} accentColor="from-primary/80 to-black" />
             </motion.div>
 
-            {/* Card 6 — Reviewer Handbook */}
+            {/* Card 6 — Publishing Policy & Ethics Charter */}
             <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} viewport={{ once: true }}>
-              <CompactPolicyCard policy={reviewerHandbookPolicy} accentColor="from-cyan-600 to-sky-700" />
-            </motion.div>
-
-            {/* Card 7 — Author Guidelines */}
-            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} viewport={{ once: true }}>
-              <CompactPolicyCard policy={authorGuidelinesPolicy} accentColor="from-rose-600 to-pink-700" />
+              <CompactPolicyCard policy={publishingEthicsPolicy} accentColor="from-primary/70 to-primary/90" />
             </motion.div>
           </div>
 
-          <p className="text-xs text-muted-foreground/50 text-center mt-8">
-            More policy documents will be added here as they are published.
+          <p className="text-sm text-muted-foreground text-center mt-12 font-medium">
+            All documents are available for on-screen viewing and PDF download.
           </p>
         </div>
       </section>
 
       {/* Closing CTA */}
-      <section className="container py-8 pb-24">
-        <div className="relative rounded-[3rem] bg-primary overflow-hidden p-12 md:p-16 text-center max-w-4xl mx-auto">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white rounded-full blur-[80px]" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200 rounded-full blur-[80px]" />
+      <section className="container py-24 pb-32">
+        <div className="relative rounded-[4rem] bg-primary overflow-hidden p-12 md:p-24 text-center max-w-5xl mx-auto">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-white rounded-full blur-[100px]" />
           </div>
-          <div className="relative z-10 space-y-6">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold text-white leading-tight">
-              Work Within a Structured and Credible Publishing Ecosystem
+          <div className="relative z-10 space-y-8">
+            <h2 className="font-heading text-4xl md:text-6xl font-bold text-white leading-tight tracking-tight">
+              Upholding Excellence Through Structure
             </h2>
-            <p className="text-primary-foreground/80 leading-relaxed max-w-2xl mx-auto">
-              Whether you are an author, reviewer, editor, or member, these standards define how the platform operates and how quality is maintained. By participating, you agree to uphold these principles and contribute to a system built on integrity and accountability.
+            <p className="text-xl text-primary-foreground/80 leading-relaxed max-w-2xl mx-auto font-light">
+              By participating in this platform, you agree to uphold these principles and contribute to a system built on integrity, transparency, and accountability.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 pt-2">
+            <div className="flex flex-wrap justify-center gap-6 pt-4">
               <Link to="/publications">
-                <Button size="lg" variant="secondary" className="h-14 px-8 rounded-full font-bold text-lg">
-                  Explore Related Publications <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" variant="secondary" className="h-16 px-10 rounded-full font-bold text-lg shadow-2xl hover:scale-105 transition-transform">
+                  Explore Publications
                 </Button>
               </Link>
               <Link to="/support">
-                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-black hover:bg-white/10">
-                  Contact Us for Clarifications
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
+                  Governance Support
                 </Button>
               </Link>
             </div>

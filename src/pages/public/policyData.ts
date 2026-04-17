@@ -1,9 +1,9 @@
 import type { PolicyDoc } from "./CompactPolicyCard";
 
 export const standardsFrameworkPolicy: PolicyDoc = {
-  title: "Standards & Frameworks",
-  subtitle: "Platform governance, enforcement layers, and compliance architecture.",
-  badge: "Governance Policy Document",
+  title: "Standards Handbook",
+  subtitle: "Core governance statement and framework architecture (PDF).",
+  badge: "Platform Standards",
   lastUpdated: "January 2025",
   filename: "Standards-and-Frameworks-Policy",
   sections: [
@@ -194,8 +194,8 @@ export const standardsFrameworkPolicy: PolicyDoc = {
 // ─────────────────────────────────────────────────────────────────────────────
 export const publishingEthicsPolicy: PolicyDoc = {
   title: "Publishing Policy & Ethics Charter",
-  subtitle: "Principles, responsibilities, and enforceable standards for all published content.",
-  badge: "Ethics Charter Document",
+  subtitle: "Ethical principles and responsibilities for authors, reviewers, and editors.",
+  badge: "Ethics & Compliance Charter",
   lastUpdated: "January 2025",
   filename: "Publishing-Policy-and-Ethics-Charter",
   sections: [
@@ -336,8 +336,8 @@ export const publishingEthicsPolicy: PolicyDoc = {
 // EDITORIAL & DECISION FRAMEWORK
 // ─────────────────────────────────────────────────────────────────────────────
 export const editorialDecisionPolicy: PolicyDoc = {
-  title: "Editorial & Decision Framework",
-  subtitle: "Governing how submissions are evaluated, reviewed, decided, and approved for publication.",
+  title: "Editorial and Decision Framework",
+  subtitle: "Decision logic, reviewer weighting, and conflict resolution rules.",
   badge: "Editorial Framework Document",
   lastUpdated: "January 2025",
   filename: "Editorial-and-Decision-Framework",
@@ -519,8 +519,8 @@ export const editorialDecisionPolicy: PolicyDoc = {
 // SUBMISSION CHECKLIST
 // ─────────────────────────────────────────────────────────────────────────────
 export const submissionChecklistPolicy: PolicyDoc = {
-  title: "Submission Checklist",
-  subtitle: "Mandatory pre-submission validation framework all authors must complete before submitting content.",
+  title: "Submission Checklist Page",
+  subtitle: "Mandatory pre-submission verification steps for authors.",
   badge: "Author Submission Guide",
   lastUpdated: "January 2025",
   filename: "Submission-Checklist",

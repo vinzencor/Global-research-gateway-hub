@@ -318,47 +318,40 @@ export default function Index() {
       {/* Platform Intro Section */}
       <section className="container py-24">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm">
               <Sparkles className="h-4 w-4" />
-              Our Platform
+              Intro Section
             </div>
-            <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight tracking-tight">
-              A Platform Built for Knowledge, Credibility, and Access
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-2xl text-foreground font-light leading-relaxed">
               We bring together editorial publishing, expert review, digital library access, and professional membership within one seamless platform. Whether you are here to read, publish, review, or grow your professional standing, our platform is designed to make high-value content easier to discover, trust, and use.
             </p>
-            <p className="text-muted-foreground leading-relaxed">
-              Our ecosystem supports a modern knowledge journey across every stage — from creation and validation to discovery and access.
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Our ecosystem supports a modern knowledge journey: publish meaningful work, review and validate content, access premium resources, and highlight expert contributors.
             </p>
             <div className="flex flex-wrap gap-3 pt-2">
               <Link to="/about">
-                <Button variant="outline" className="rounded-full px-6 font-bold">
-                  Learn More About Us <ArrowRight className="ml-2 h-4 w-4" />
+                <Button variant="outline" className="rounded-full h-12 px-8 font-bold text-base border-primary/20 hover:bg-primary/5 text-primary">
+                  Learn More About Our Vision <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
-            {platformFeatures.map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="group rounded-3xl border bg-card p-6 hover:shadow-lg transition-all hover:border-primary/20"
-              >
-                <div className={`h-12 w-12 rounded-2xl ${feature.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
-                  {feature.icon}
-                </div>
-                <h3 className="font-heading font-bold text-base mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border"
+          >
+            <img 
+              src="main2.webp" 
+              alt="Knowledge Innovation" 
+              className="w-full h-full object-cover aspect-[4/3] transition-transform duration-700 hover:scale-105" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+          </motion.div>
         </div>
       </section>
 
@@ -368,11 +361,114 @@ export default function Index() {
         <Separator className="opacity-10" />
       </div>
 
-      <Section1 />
+      <div className="container px-4">
+        <Separator className="opacity-10" />
+      </div>
+
+      {/* Section Six — Publication Types */}
+      <section className="container py-24">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-6">Diverse Publication Types</h2>
+          <p className="text-xl text-muted-foreground leading-relaxed">
+            Our platform supports a wide range of content, ensuring that every piece of research, analysis, and framework finds its appropriate place and audience.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            { title: "Research Papers", desc: "Original research with structured methodology and analysis. Must demonstrate novelty and measurable contribution.", icon: <FileText className="h-6 w-6" />, color: "bg-primary/10 text-primary" },
+            { title: "Review Papers", desc: "Comprehensive synthesis of existing literature. Must provide critical insights, not just summaries.", icon: <BookOpen className="h-6 w-6" />, color: "bg-emerald-500/10 text-emerald-600" },
+            { title: "Technical Frameworks", desc: "Industry-focused, implementation-oriented documents including architecture, models, or frameworks.", icon: <Zap className="h-6 w-6" />, color: "bg-amber-500/10 text-amber-600" },
+            { title: "Analytical Articles", desc: "Insight-driven pieces with structured reasoning and depth beyond mere opinion.", icon: <TrendingUp className="h-6 w-6" />, color: "bg-indigo-500/10 text-indigo-600" }
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              viewport={{ once: true }}
+              className="group p-8 rounded-[2rem] border bg-card hover:border-primary/30 hover:shadow-2xl transition-all"
+            >
+              <div className={`h-14 w-14 rounded-2xl ${item.color} flex items-center justify-center mb-6 transition-transform group-hover:scale-110`}>
+                {item.icon}
+              </div>
+              <h3 className="font-heading font-bold text-xl mb-3">{item.title}</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">{item.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
       <ChairmanVoice />
 
-      <Section2 />
+      {/* Section Seven — Professional Membership */}
+      <section className="bg-secondary/50 py-24 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+          <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-primary rounded-full blur-[150px]" />
+        </div>
+        
+        <div className="container relative z-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative rounded-[3rem] overflow-hidden shadow-2xl h-[400px]"
+            >
+              <img src="membership_promo.png" alt="Collaborative Community" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
+            </motion.div>
+
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm">
+                <Users className="h-4 w-4" />
+                Expert Community
+              </div>
+              <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight tracking-tight">Join a Global Network of Knowledge Leaders</h2>
+              <p className="text-xl text-muted-foreground leading-relaxed">
+                Membership is your key to a professional community of researchers, practitioners, and reviewers. Unlock exclusive benefits, expanded library access, and professional recognition.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Link to="/membership">
+                  <Button size="lg" className="h-14 px-8 rounded-full font-bold text-lg group">
+                    Explore Membership Benefits
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Digital Library Promo */}
+      <section className="container py-24">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-8 lg:order-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm">
+              <BookOpen className="h-4 w-4" />
+              Digital Discovery
+            </div>
+            <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight tracking-tight">Unparalleled Access to Digital Knowledge</h2>
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Our Digital Library is a state-of-the-art gateway to millions of documents. Search with precision, discover new insights, and build your personal repository of high-value resources.
+            </p>
+            <Link to="/library">
+              <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-primary/20 hover:bg-primary/5 text-primary group">
+                Enter Digital Library <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          </div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="lg:order-1 relative rounded-[3rem] overflow-hidden shadow-2xl h-[500px]"
+          >
+            <img src="library_feature.png" alt="Digital Library Interface" className="w-full h-full object-cover" />
+          </motion.div>
+        </div>
+      </section>
 
       {/* Dynamic Recent Publications */}
       <section className="bg-secondary/30 relative overflow-hidden">
