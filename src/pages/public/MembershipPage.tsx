@@ -14,6 +14,7 @@ import {
   Bell,
   Zap,
   Lock,
+  Shield,
 } from "lucide-react";
 
 const benefits = [
@@ -135,7 +136,7 @@ export default function MembershipPage() {
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[3rem] bg-primary/5 border border-primary/10 p-12 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10">
-                <ShieldCheck className="h-32 w-32" />
+                <Shield className="h-32 w-32" />
             </div>
             <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg mb-8">
               <Lock className="h-8 w-8" />

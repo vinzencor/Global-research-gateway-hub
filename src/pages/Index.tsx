@@ -13,7 +13,7 @@ import {
   FileText,
   Sparkles,
   Zap,
-  ShieldCheck,
+  Shield,
   TrendingUp,
   ChevronLeft,
   ChevronRight,
@@ -262,7 +262,7 @@ export default function Index() {
                         <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Growth</div>
                       </div>
                       <div className="p-4 rounded-2xl bg-secondary/50 border border-border/50">
-                        <ShieldCheck className="h-5 w-5 text-emerald-500 mb-2" />
+                        <Shield className="h-5 w-5 text-emerald-500 mb-2" />
                         <div className="text-xl font-bold">Zero</div>
                         <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Fraud Rate</div>
                       </div>
