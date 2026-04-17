@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, AlertTriangle, FileText } from "lucide-react";
 import CompactPolicyCard from "./CompactPolicyCard";
-import { standardsFrameworkPolicy } from "./policyData";
+import { standardsFrameworkPolicy, publishingEthicsPolicy, editorialDecisionPolicy, submissionChecklistPolicy, reviewerHandbookPolicy, authorGuidelinesPolicy } from "./policyData";
 import PeerReviewPolicyCard from "./PeerReviewPolicyCard";
 
 const sections = [
@@ -258,30 +258,40 @@ export default function StandardsPage() {
           </div>
 
           {/* Two-column grid — expands to full-width stacked on mobile */}
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Card 1 — Peer Review Policy (existing large card, wrapped in compact shell) */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              viewport={{ once: true }}
-              className="lg:col-span-2"
-            >
+          <div className="space-y-8">
+            {/* Card 1 — Peer Review Policy */}
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }} viewport={{ once: true }}>
               <PeerReviewPolicyCard />
             </motion.div>
 
             {/* Card 2 — Standards & Frameworks */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              viewport={{ once: true }}
-              className="lg:col-span-2"
-            >
-              <CompactPolicyCard
-                policy={standardsFrameworkPolicy}
-                accentColor="from-violet-600 to-indigo-700"
-              />
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} viewport={{ once: true }}>
+              <CompactPolicyCard policy={standardsFrameworkPolicy} accentColor="from-violet-600 to-indigo-700" />
+            </motion.div>
+
+            {/* Card 3 — Publishing Policy & Ethics Charter */}
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} viewport={{ once: true }}>
+              <CompactPolicyCard policy={publishingEthicsPolicy} accentColor="from-emerald-600 to-teal-700" />
+            </motion.div>
+
+            {/* Card 4 — Editorial & Decision Framework */}
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} viewport={{ once: true }}>
+              <CompactPolicyCard policy={editorialDecisionPolicy} accentColor="from-orange-500 to-amber-600" />
+            </motion.div>
+
+            {/* Card 5 — Submission Checklist */}
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} viewport={{ once: true }}>
+              <CompactPolicyCard policy={submissionChecklistPolicy} accentColor="from-slate-700 to-slate-900" />
+            </motion.div>
+
+            {/* Card 6 — Reviewer Handbook */}
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} viewport={{ once: true }}>
+              <CompactPolicyCard policy={reviewerHandbookPolicy} accentColor="from-cyan-600 to-sky-700" />
+            </motion.div>
+
+            {/* Card 7 — Author Guidelines */}
+            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} viewport={{ once: true }}>
+              <CompactPolicyCard policy={authorGuidelinesPolicy} accentColor="from-rose-600 to-pink-700" />
             </motion.div>
           </div>
 
@@ -312,7 +322,7 @@ export default function StandardsPage() {
                 </Button>
               </Link>
               <Link to="/support">
-                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-black hover:bg-white/10">
                   Contact Us for Clarifications
                 </Button>
               </Link>

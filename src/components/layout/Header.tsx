@@ -45,56 +45,46 @@ export function Header() {
     : "/login";
 
   return (
-    <header 
-        className={`sticky top-0 z-50 transition-all duration-300 ${
-            scrolled 
-            ? "py-3 bg-background/80 backdrop-blur-xl border-b shadow-sm" 
-            : "py-5 bg-transparent"
-        }`}
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 bg-background/95 backdrop-blur-xl border-b ${
+        scrolled ? "shadow-md border-border/60 py-3" : "shadow-sm border-border/30 py-4"
+      }`}
     >
       <div className="container flex h-12 items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-3 shrink-0 group">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
             <Sparkles className="h-6 w-6 text-primary-foreground" />
           </div>
-          <span className={`hidden sm:inline font-heading text-xl font-bold tracking-tight transition-colors ${scrolled ? "text-foreground" : "text-foreground md:text-white"}`}>
-            ResearchJournal
+          <span className="hidden sm:inline font-heading text-xl font-bold tracking-tight text-foreground">
+            KnowledgeHub
           </span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-2">
+        <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => (
-            <Link 
-                key={link.label} 
-                to={link.to} 
-                className={`px-4 py-2 text-sm font-semibold transition-all rounded-full hover:bg-primary/10 ${
-                    scrolled 
-                    ? "text-muted-foreground hover:text-primary" 
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
+            <Link
+              key={link.label}
+              to={link.to}
+              className="px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-primary hover:bg-primary/8 transition-all rounded-full"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex relative w-64 group">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${scrolled ? "text-muted-foreground" : "text-white/60 group-focus-within:text-white"}`} />
-            <Input 
-                placeholder="Search research..." 
-                className={`pl-10 h-10 text-sm rounded-full border-0 transition-all ${
-                    scrolled 
-                    ? "bg-secondary text-foreground" 
-                    : "bg-white/10 text-white placeholder:text-white/40 focus:bg-white/20"
-                }`} 
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex relative w-56 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input
+              placeholder="Search..."
+              className="pl-10 h-9 text-sm rounded-full bg-secondary border-0 text-foreground placeholder:text-muted-foreground/60 focus:bg-secondary/80"
             />
           </div>
 
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className={`h-10 px-2 rounded-full hover:bg-white/10 ${scrolled ? "text-foreground" : "text-white"}`}>
+                <Button variant="ghost" className="h-10 px-2 rounded-full hover:bg-primary/10 text-foreground">
                   <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold border-2 border-background shadow-md">
                     {user.profile?.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || "U"}
                   </div>
@@ -118,20 +108,20 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <Link to="/login">
-                <Button 
-                    variant={scrolled ? "default" : "secondary"} 
-                    size="sm" 
-                    className="h-10 px-6 rounded-full font-bold shadow-lg"
+                <Button
+                    variant="default"
+                    size="sm"
+                    className="h-9 px-5 rounded-full font-bold shadow-sm"
                 >
                     Login
                 </Button>
             </Link>
           )}
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`lg:hidden rounded-full ${scrolled ? "text-foreground" : "text-white"}`} 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden rounded-full text-foreground hover:bg-primary/10"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
