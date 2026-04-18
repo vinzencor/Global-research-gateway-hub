@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = "https://sdnyrvlnbbybhmnysvqzw.supabase.co";
+const supabaseUrl = "https://sdnyrvlnbbybhmnysvqz.supabase.co";
 const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkbnlydmxuYmJ5YmhtbnlzdnF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MjA4ODcsImV4cCI6MjA5MTE5Njg4N30.OFqQyxsYhtiGXSYAXDiKO7AL44UBOx_LOqMBe57oPxI";
 
@@ -34,6 +34,7 @@ export interface UserWithRoles {
   email: string | undefined;
   profile: UserProfile | null;
   roles: UserRole[];
+  membershipStatus: string | null;
 }
 
 export function isAdmin(roles: UserRole[]): boolean {

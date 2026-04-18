@@ -55,7 +55,7 @@ export function Header() {
           <img 
             src="/Logo.png" 
             alt="KnowledgeHub Logo" 
-            className="h-10 w-auto object-contain transition-transform group-hover:scale-105" 
+            className="h-14 w-auto object-contain transition-transform group-hover:scale-105" 
           />
         </Link>
 

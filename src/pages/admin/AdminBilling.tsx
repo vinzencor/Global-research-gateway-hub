@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { ensureUserRole, reconcileMembershipStatuses, removeUserRoles } from "@/lib/membership";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, DollarSign, Users, CreditCard, Search, XCircle, RotateCw } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, Users, CreditCard, Search, XCircle, RotateCw, CheckCircle2, AlertCircle, Eye } from "lucide-react";
 
 const defaultPlan = { name: "", description: "", price: 0, billing_period: "yearly", features: [""], is_active: true };
 
@@ -27,7 +27,7 @@ export default function AdminBilling() {
   const [saving, setSaving] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState<"plans" | "members" | "invoices">("plans");
+  const [activeTab, setActiveTab] = useState<"plans" | "members" | "invoices" | "verifications">("plans");
 
   useEffect(() => { loadData(); }, []);
 
@@ -51,17 +51,38 @@ export default function AdminBilling() {
 
   async function loadData() {
     await reconcileMembershipStatuses();
-    const [p, m, i, profiles] = await Promise.all([
+    const [p, m, i, profiles, pending] = await Promise.all([
       supabase.from("membership_plans").select("*").order("price"),
-      supabase.from("memberships").select("*, membership_plans(name), profiles(full_name, institution)").order("created_at", { ascending: false }).limit(50),
+      supabase.from("memberships").select("*, membership_plans(name), user_id").eq("status", "active").order("created_at", { ascending: false }).limit(50),
       supabase.from("invoices").select("*, profiles(full_name)").order("created_at", { ascending: false }).limit(50),
-      supabase.from("profiles").select("id, full_name").order("full_name"),
+      supabase.from("profiles").select("id, full_name, institution").order("full_name"),
+      supabase.from("memberships").select("*, membership_plans(name, price, billing_period), user_id").eq("status", "pending_verification").order("created_at", { ascending: false }),
     ]);
+
+    const profileMap: Record<string, { full_name?: string; institution?: string }> = {};
+    (profiles.data || []).forEach((pr: any) => {
+      profileMap[pr.id] = { full_name: pr.full_name, institution: pr.institution };
+    });
+
+    const activeRows = (m.data || []).map((row: any) => ({
+      ...row,
+      profiles: row.profiles || profileMap[row.user_id] || null,
+    }));
+
+    const pendingRows = (pending.data || []).map((row: any) => ({
+      ...row,
+      profiles: row.profiles || profileMap[row.user_id] || null,
+    }));
+
     setPlans(p.data || []);
-    setMemberships(m.data || []);
+    setMemberships(activeRows);
     setInvoices(i.data || []);
     setProfileOptions(profiles.data || []);
+    setPendingVerifications(pendingRows);
   }
+
+  const [pendingVerifications, setPendingVerifications] = useState<any[]>([]);
+  const [showScreenshot, setShowScreenshot] = useState<any>(null);
 
   function openCreate() { setForm({ ...defaultPlan }); setEditPlan(null); setShowPlanForm(true); }
   function openEdit(plan: any) {
@@ -145,6 +166,54 @@ export default function AdminBilling() {
     loadData();
   }
 
+  async function handleApprovePayment(member: any) {
+    const next = new Date();
+    if (member.membership_plans?.billing_period === "monthly") next.setMonth(next.getMonth() + 1);
+    else next.setFullYear(next.getFullYear() + 1);
+
+    await supabase
+      .from("memberships")
+      .update({ status: "cancelled", ends_at: new Date().toISOString() } as any)
+      .eq("user_id", member.user_id)
+      .in("status", ["active", "renewal_due"])
+      .neq("id", member.id);
+
+    const { error } = await supabase
+      .from("memberships")
+      .update({ 
+        status: "active", 
+        starts_at: new Date().toISOString(),
+        ends_at: next.toISOString() 
+      })
+      .eq("id", member.id);
+
+    if (error) {
+      toast.error("Approval failed: " + error.message);
+      return;
+    }
+
+    await ensureUserRole(member.user_id, "member");
+    
+    // Create a matching paid invoice
+    await supabase.from("invoices").insert({
+      user_id: member.user_id,
+      amount: member.membership_plans?.price || 0,
+      currency: "USD",
+      status: "paid",
+      paid_at: new Date().toISOString(),
+    } as any);
+
+    await logAdminAction({
+      targetUserId: member.user_id,
+      membershipId: member.id,
+      actionType: "membership_approved",
+      actionNote: `Manually approved ${member.membership_plans?.name} via screenshot verification`,
+    });
+
+    toast.success("Payment verified and membership activated!");
+    loadData();
+  }
+
   async function handleInvoiceStatus(inv: any, status: string) {
     const { error } = await supabase.from("invoices").update({ status }).eq("id", inv.id);
     if (error) {
@@ -205,6 +274,7 @@ export default function AdminBilling() {
   const tabs = [
     { key: "plans", label: "Plans", icon: <CreditCard className="h-4 w-4" /> },
     { key: "members", label: "Active Members", icon: <Users className="h-4 w-4" /> },
+    { key: "verifications", label: "Pending Verifications", icon: <CheckCircle2 className="h-4 w-4" /> },
     { key: "invoices", label: "Invoices", icon: <DollarSign className="h-4 w-4" /> },
   ];
 
@@ -264,6 +334,48 @@ export default function AdminBilling() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === "verifications" && (
+        <div className="rounded-xl border bg-card card-shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b bg-muted/50">
+                <th className="text-left p-4 font-medium text-muted-foreground">User</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Plan</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Amount</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Submitted</th>
+                <th className="p-4 font-medium text-muted-foreground text-center">Screenshot</th>
+                <th className="p-4 font-medium text-muted-foreground text-right">Actions</th>
+              </tr></thead>
+              <tbody>
+                {pendingVerifications.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No pending verifications</td></tr>
+                  : pendingVerifications.map(v => (
+                    <tr key={v.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="p-4">
+                        <div className="font-bold text-foreground">{v.profiles?.full_name}</div>
+                        <div className="text-xs text-muted-foreground">{v.profiles?.institution}</div>
+                      </td>
+                      <td className="p-4 font-medium">{v.membership_plans?.name}</td>
+                      <td className="p-4 font-medium">${Number(v.membership_plans?.price || 0).toFixed(2)}</td>
+                      <td className="p-4 text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</td>
+                      <td className="p-4 text-center">
+                        <Button variant="ghost" size="sm" onClick={() => setShowScreenshot(v)} className="gap-2">
+                          <Eye className="h-4 w-4" /> View proof
+                        </Button>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => handleApprovePayment(v)}>Approve</Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleMembershipStatus(v, "cancelled")}>Reject</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -430,6 +542,40 @@ export default function AdminBilling() {
             <Button variant="outline" onClick={() => setShowInvoiceForm(false)}>Cancel</Button>
             <Button onClick={handleCreateManualInvoice} disabled={saving}>{saving ? "Saving..." : "Create Invoice"}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!showScreenshot} onOpenChange={(open) => !open && setShowScreenshot(null)}>
+        <DialogContent className="max-w-3xl border-0 p-0 overflow-hidden bg-black/90">
+          <div className="relative aspect-video w-full flex items-center justify-center p-4">
+            {showScreenshot && (
+              <img 
+                src={supabase.storage.from("payment-proofs").getPublicUrl(showScreenshot.screenshot_url).data.publicUrl} 
+                alt="Payment Proof" 
+                className="max-h-full max-w-full object-contain shadow-2xl"
+              />
+            )}
+            <Button 
+              variant="outline" 
+              className="absolute top-4 right-4 bg-white/10 border-white/20 text-white hover:bg-white/20 rounded-full h-10 w-10 p-0"
+              onClick={() => setShowScreenshot(null)}
+            >
+              <XCircle className="h-6 w-6" />
+            </Button>
+          </div>
+          <div className="bg-background p-6 border-t">
+            <h3 className="font-heading font-bold text-lg mb-1">{showScreenshot?.profiles?.full_name}</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Plan: {showScreenshot?.membership_plans?.name} • Submitted: {showScreenshot && new Date(showScreenshot.created_at).toLocaleString()}
+            </p>
+            <div className="flex gap-3">
+              <Button className="flex-1 bg-success hover:bg-success/90 h-11" onClick={() => { handleApprovePayment(showScreenshot); setShowScreenshot(null); }}>
+                Approve Payment
+              </Button>
+              <Button variant="destructive" className="flex-1 h-11" onClick={() => { handleMembershipStatus(showScreenshot, "cancelled"); setShowScreenshot(null); }}>
+                Reject
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

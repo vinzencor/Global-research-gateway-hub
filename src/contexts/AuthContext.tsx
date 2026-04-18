@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string, institution?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName: string, institution?: string) => Promise<{ data: any; error: Error | null }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -18,6 +18,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserWithRoles | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  async function resolveMembershipStatus(userId: string, roles: UserRole[]): Promise<string | null> {
+    const approvedStatuses = ["active", "renewal_due", "approved"];
+
+    const { data: approvedMembership } = await supabase
+      .from("memberships")
+      .select("status")
+      .eq("user_id", userId)
+      .in("status", approvedStatuses)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (approvedMembership?.status) {
+      return approvedMembership.status;
+    }
+
+    const { data: memberships } = await supabase
+      .from("memberships")
+      .select("status, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const latestStatus = ((memberships || []) as Array<{ status?: string | null }>)[0]?.status || null;
+
+    // If a paid membership invoice exists, treat the account as approved to avoid stale pending loops.
+    if (latestStatus === "pending_verification" || latestStatus === "pending") {
+      const { data: paidMembershipInvoice } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("status", "paid")
+        .not("membership_id", "is", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (paidMembershipInvoice?.id) {
+        return "active";
+      }
+    }
+
+    if (roles.includes("member") || roles.includes("subscriber")) {
+      return "active";
+    }
+
+    return latestStatus;
+  }
 
   async function fetchUserData(supabaseUser: User): Promise<UserWithRoles> {
     // Fetch profile and roles independently so one failure doesn't block the other
@@ -33,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile = (profileResult.data as UserProfile) || null;
     } catch { /* profile stays null */ }
 
+    let membershipStatus: string | null = null;
+
     try {
       const rolesResult = await supabase
         .from("user_roles")
@@ -43,11 +93,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .filter(Boolean);
     } catch { /* roles stays [] */ }
 
+    try {
+      membershipStatus = await resolveMembershipStatus(supabaseUser.id, roles);
+    } catch { /* status stays null */ }
+
     return {
       id: supabaseUser.id,
       email: supabaseUser.email,
       profile,
       roles,
+      membershipStatus,
     };
   }
 
@@ -95,14 +150,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string, fullName: string, institution?: string) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName, institution },
       },
     });
-    return { error: error as Error | null };
+    return { data, error: error as Error | null };
   }
 
   async function signOut() {

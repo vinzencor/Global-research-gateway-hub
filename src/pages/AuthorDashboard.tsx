@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, Send, User, CreditCard, BookOpen, PenSquare } from "lucide-react";
+import { LayoutDashboard, FileText, User, CreditCard, BookOpen, PenSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -57,85 +57,124 @@ export default function AuthorDashboard() {
   const displayStatus = (s: any) => s.workflow_status || s.status || "draft";
 
   return (
-    <DashboardLayout navItems={navItems} title="Author Dashboard">
-      {/* Welcome */}
-      <div className="rounded-xl border bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-6">
-        <h2 className="font-heading text-xl font-bold">Welcome, {user?.profile?.full_name?.split(" ")[0] || "Author"}!</h2>
-        <p className="text-sm text-muted-foreground mt-1">{user?.email} {user?.profile?.institution ? `· ${user.profile.institution}` : ""}</p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border bg-card p-5 card-shadow">
-            <p className="text-sm text-muted-foreground mb-1">{s.label}</p>
-            <p className="text-3xl font-bold">{s.value}</p>
+    <DashboardLayout navItems={navItems} title="My Submissions">
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Page Header */}
+          <div>
+            <h2 className="text-2xl font-bold font-heading">My Submissions</h2>
+            <p className="text-muted-foreground text-sm mt-1">Manage and track your journal submissions throughout the peer-review process.</p>
           </div>
-        ))}
-      </div>
 
-      {/* Changes Requested alert */}
-      {submissions.some(s => s.workflow_status === "changes_requested") && (
-        <div className="rounded-xl border border-orange-300 bg-orange-50 dark:bg-orange-950/20 p-4 mb-4">
-          <p className="text-sm font-medium text-orange-700 dark:text-orange-400">
-            ⚠️ Some of your submissions need revisions. Please review the feedback and resubmit.
-          </p>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="rounded-xl border bg-card card-shadow overflow-hidden">
-        <div className="p-5 border-b flex items-center justify-between">
-          <h2 className="font-heading font-bold">My Submissions</h2>
-          <Link to="/submit-paper"><Button size="sm">+ Submit Journal</Button></Link>
-        </div>
-        {loading ? (
-          <div className="flex justify-center py-10"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>
-        ) : submissions.length === 0 ? (
-          <div className="py-12 text-center text-muted-foreground">
-            <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No submissions yet</p>
-            <p className="text-sm">Submit your first journal to get started</p>
-            <Link to="/submit-paper"><Button size="sm" className="mt-3">Submit Journal</Button></Link>
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((s) => (
+              <div key={s.label} className="rounded-xl border bg-card p-5 card-shadow">
+                <p className="text-sm text-muted-foreground mb-1">{s.label}</p>
+                <p className="text-3xl font-bold">{s.value}</p>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-4 font-medium text-muted-foreground">Paper Title</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Submitted</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((s) => {
-                  const ds = displayStatus(s);
-                  const needsEdit = ds === "changes_requested";
-                  return (
-                    <tr key={s.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${needsEdit ? "bg-orange-50/50 dark:bg-orange-950/10" : ""}`}>
-                      <td className="p-4 font-medium max-w-[200px]"><p className="truncate">{s.title}</p></td>
-                      <td className="p-4 text-muted-foreground hidden sm:table-cell">{new Date(s.created_at).toLocaleDateString()}</td>
-                      <td className="p-4">
-                        <Badge variant="outline" className={STATUS_COLORS[ds]}>{ds.replace("_", " ")}</Badge>
-                      </td>
-                      <td className="p-4">
-                        {needsEdit ? (
-                          <Button size="sm" variant="outline" className="border-orange-400 text-orange-600" onClick={() => navigate(`/submit-paper?edit=${s.id}`)}>
-                            ✏️ Edit & Resubmit
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm">View</Button>
-                        )}
-                      </td>
+
+          {/* Changes Requested alert */}
+          {submissions.some(s => s.workflow_status === "changes_requested") && (
+            <div className="rounded-xl border border-orange-300 bg-orange-50 dark:bg-orange-950/20 p-4">
+              <p className="text-sm font-medium text-orange-700 dark:text-orange-400">
+                ⚠️ Some of your submissions need revisions. Please review the feedback and resubmit.
+              </p>
+            </div>
+          )}
+
+          {/* Table */}
+          <div className="rounded-xl border bg-card card-shadow overflow-hidden">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h2 className="font-heading font-bold">Submission List</h2>
+              <Link to="/submit-paper"><Button size="sm">+ Submit Journal</Button></Link>
+            </div>
+            {loading ? (
+              <div className="flex justify-center py-10"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>
+            ) : submissions.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No submissions yet</p>
+                <p className="text-sm">Submit your first journal to get started</p>
+                <Link to="/submit-paper"><Button size="sm" className="mt-3">Submit Journal</Button></Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-4 font-medium text-muted-foreground">Paper Title</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Submitted</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {submissions.map((s) => {
+                      const ds = displayStatus(s);
+                      const needsEdit = ds === "changes_requested";
+                      return (
+                        <tr key={s.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${needsEdit ? "bg-orange-50/50 dark:bg-orange-950/10" : ""}`}>
+                          <td className="p-4 font-medium max-w-[200px]"><p className="truncate">{s.title}</p></td>
+                          <td className="p-4 text-muted-foreground hidden sm:table-cell">{new Date(s.created_at).toLocaleDateString()}</td>
+                          <td className="p-4">
+                            <Badge variant="outline" className={STATUS_COLORS[ds]}>{ds.replace(/_/g, " ")}</Badge>
+                          </td>
+                          <td className="p-4">
+                            {needsEdit ? (
+                              <Button size="sm" variant="outline" className="border-orange-400 text-orange-600" onClick={() => navigate(`/submit-paper?edit=${s.id}`)}>
+                                ✏️ Edit & Resubmit
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="sm">View</Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <div className="rounded-xl border bg-card p-5 card-shadow">
+            <h3 className="font-heading font-bold text-sm mb-4 border-b pb-2">Submission Guidelines</h3>
+            <ul className="text-xs space-y-3 text-muted-foreground">
+              <li className="flex gap-2">
+                <span className="text-primary font-bold">1.</span>
+                <span>Ensure your abstract is under 300 words.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary font-bold">2.</span>
+                <span>Maintain anonymity for double-blind peer review.</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary font-bold">3.</span>
+                <span>Use clear, high-resolution figures.</span>
+              </li>
+            </ul>
+            <Button variant="link" className="px-0 text-xs mt-4 h-auto" asChild>
+              <Link to="/standards">View full guidelines →</Link>
+            </Button>
+          </div>
+
+          <div className="rounded-xl border bg-primary/5 p-5">
+            <h3 className="font-heading font-bold text-sm mb-2">Need Help?</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              If you have questions about your submission or the review status, please contact our editorial support.
+            </p>
+            <Button variant="outline" size="sm" className="w-full text-xs" asChild>
+              <Link to="/support">Contact Editorial</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

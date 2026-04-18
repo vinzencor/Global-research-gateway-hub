@@ -19,6 +19,7 @@ export default function AdminLibrary() {
   const [items, setItems] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filterAccess, setFilterAccess] = useState("all");
+  const [supportsTags, setSupportsTags] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState({ ...defaultForm });
@@ -61,12 +62,31 @@ export default function AdminLibrary() {
   }
   function removeTag(tag: string) { setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) })); }
 
+  function makeSlug(title: string): string {
+    const base = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    if (base) return base;
+    return `library-item-${Date.now()}`;
+  }
+
+  function getMissingColumn(error: any): string | null {
+    const message = String(error?.message || "");
+    const col = message.match(/Could not find the '([^']+)' column/i)?.[1];
+    return col || null;
+  }
+
   async function upsertLibraryItem(payload: Record<string, any>, itemId?: string): Promise<{ error: any }> {
     if (itemId) {
       const res = await supabase.from("library_items").update(payload).eq("id", itemId);
       if (!res.error) return res;
 
-      const missingCol = String(res.error.message || "").match(/Could not find the '([^']+)' column/i)?.[1];
+      const missingCol = getMissingColumn(res.error);
+      if (missingCol === "tags") setSupportsTags(false);
       if (missingCol && Object.prototype.hasOwnProperty.call(payload, missingCol)) {
         const nextPayload = { ...payload };
         delete nextPayload[missingCol];
@@ -78,7 +98,8 @@ export default function AdminLibrary() {
     const res = await supabase.from("library_items").insert(payload);
     if (!res.error) return res;
 
-    const missingCol = String(res.error.message || "").match(/Could not find the '([^']+)' column/i)?.[1];
+    const missingCol = getMissingColumn(res.error);
+    if (missingCol === "tags") setSupportsTags(false);
     if (missingCol && Object.prototype.hasOwnProperty.call(payload, missingCol)) {
       const nextPayload = { ...payload };
       delete nextPayload[missingCol];
@@ -107,10 +128,18 @@ export default function AdminLibrary() {
   async function handleSave() {
     if (!form.title) { toast.error("Title is required"); return; }
     setSaving(true);
-    const payload = { ...form, authors_json: form.authors_json.filter(a => a.name.trim()) };
+    const payload: Record<string, any> = {
+      ...form,
+      slug: editItem?.slug || makeSlug(form.title),
+      authors_json: form.authors_json.filter(a => a.name.trim()),
+    };
+    if (!supportsTags) delete payload.tags;
     const { error } = await upsertLibraryItem(payload, editItem?.id);
     setSaving(false);
     if (error) { toast.error("Failed: " + error.message); return; }
+    if (!supportsTags) {
+      toast.info("Saved without tags because this database schema has no tags column.");
+    }
     toast.success(editItem ? "Item updated!" : "Item added!"); setShowForm(false); loadItems();
   }
 
@@ -225,9 +254,10 @@ export default function AdminLibrary() {
             <div className="space-y-2">
               <Label>Tags</Label>
               <div className="flex gap-2">
-                <Input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} placeholder="Add tag and press Enter" />
-                <Button type="button" variant="outline" onClick={addTag}>Add</Button>
+                <Input value={tagInput} disabled={!supportsTags} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} placeholder={supportsTags ? "Add tag and press Enter" : "Tags unavailable in current DB schema"} />
+                <Button type="button" variant="outline" onClick={addTag} disabled={!supportsTags}>Add</Button>
               </div>
+              {!supportsTags && <p className="text-xs text-muted-foreground">Your current Supabase table does not have a tags column yet.</p>}
               {form.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {form.tags.map(t => <Badge key={t} variant="secondary" className="cursor-pointer" onClick={() => removeTag(t)}>{t} ×</Badge>)}

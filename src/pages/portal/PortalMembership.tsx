@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, User, CreditCard, BookOpen, Check, Receipt, PenSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { ensureUserRole, reconcileMembershipStatuses, removeUserRoles } from "@/lib/membership";
@@ -27,22 +28,64 @@ export default function PortalMembership() {
   const returnTo = searchParams.get("returnTo") || "/publications";
   const [plans, setPlans] = useState<any[]>([]);
   const [currentMembership, setCurrentMembership] = useState<any>(null);
+  const [pendingMembership, setPendingMembership] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [ppvPurchasing, setPpvPurchasing] = useState(false);
   const [ppvContent, setPpvContent] = useState<any>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [paymentFile, setPaymentFile] = useState<File | null>(null);
+  const approvedStatuses = ["active", "renewal_due", "approved"];
+  const pendingStatuses = ["pending_verification", "pending"];
+
+  function resolveDisplayMembership(approved: any, pending: any, invoiceRows: any[]) {
+    if (approved) {
+      return { current: approved, pending: null };
+    }
+
+    const paidMembershipInvoiceIds = new Set(
+      (invoiceRows || [])
+        .filter((inv: any) => inv?.status === "paid" && !!inv?.membership_id)
+        .map((inv: any) => inv.membership_id)
+    );
+
+    if (pending?.id && paidMembershipInvoiceIds.has(pending.id)) {
+      return { current: { ...pending, status: "approved" }, pending: null };
+    }
+
+    return { current: null, pending: pending || null };
+  }
 
   useEffect(() => {
     if (!user) return;
     reconcileMembershipStatuses(user.id).then(() => Promise.all([
       supabase.from("membership_plans").select("*").eq("is_active", true).order("price"),
-      supabase.from("memberships").select("*, membership_plans(name, price, billing_period)").eq("user_id", user.id).in("status", ["active", "renewal_due"]).maybeSingle(),
+      supabase
+        .from("memberships")
+        .select("*, membership_plans(name, price, billing_period)")
+        .eq("user_id", user.id)
+        .in("status", approvedStatuses)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("memberships")
+        .select("*, membership_plans(name, price, billing_period)")
+        .eq("user_id", user.id)
+        .in("status", pendingStatuses)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
-    ])).then(([p, m, i]) => {
+    ])).then(([p, m, pending, i]) => {
       setPlans(p.data || []);
-      setCurrentMembership(m.data);
-      setInvoices(i.data || []);
+      const approvedMembership = m.data || null;
+      const pendingMembershipRow = pending.data || null;
+      const invoiceRows = i.data || [];
+      const resolved = resolveDisplayMembership(approvedMembership, pendingMembershipRow, invoiceRows);
+      setCurrentMembership(resolved.current);
+      setPendingMembership(resolved.pending);
+      setInvoices(invoiceRows);
     });
   }, [user]);
 
@@ -58,33 +101,101 @@ export default function PortalMembership() {
 
   async function handlePurchase(plan: any) {
     if (!user) return;
-    setPurchasing(plan.id);
-    const startsAt = new Date();
-    const endsAt = new Date();
-    endsAt.setFullYear(endsAt.getFullYear() + (plan.billing_period === "yearly" ? 1 : 0));
-    endsAt.setMonth(endsAt.getMonth() + (plan.billing_period === "monthly" ? 1 : 0));
+    if (!paymentFile) {
+      toast.error("Please upload your payment screenshot first.");
+      return;
+    }
 
-    const { data: mem, error: memError } = await supabase.from("memberships").insert({
-      user_id: user.id, plan_id: plan.id, status: "active",
-      starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
+    const currentPrice = Number(currentMembership?.membership_plans?.price || 0);
+    const targetPrice = Number(plan.price || 0);
+    const isInstitutionalCurrent = String(currentMembership?.membership_plans?.name || "").toLowerCase().includes("institutional");
+
+    if (isInstitutionalCurrent && currentMembership?.plan_id !== plan.id) {
+      toast.error("Institutional plan is the highest tier. Upgrade is not available.");
+      return;
+    }
+
+    if (currentMembership && currentMembership.plan_id !== plan.id && targetPrice <= currentPrice) {
+      toast.error("Please choose a higher-value plan for upgrade.");
+      return;
+    }
+
+    setPurchasing(plan.id);
+    const fileExt = paymentFile.name.split(".").pop() || "png";
+    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+    const filePath = `verifications/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("payment-proofs")
+      .upload(filePath, paymentFile);
+
+    if (uploadError) {
+      setPurchasing(null);
+      toast.error("Screenshot upload failed: " + uploadError.message);
+      return;
+    }
+
+    await supabase
+      .from("memberships")
+      .delete()
+      .eq("user_id", user.id)
+      .in("status", pendingStatuses);
+
+    const membershipPayloadBase = {
+      user_id: user.id,
+      plan_id: plan.id,
+      screenshot_url: filePath,
+      starts_at: new Date().toISOString(),
+    };
+
+    const firstTry = await supabase.from("memberships").insert({
+      ...membershipPayloadBase,
+      status: "pending_verification",
     }).select().single();
 
-    if (memError) { toast.error("Purchase failed"); setPurchasing(null); return; }
+    let memError = firstTry.error;
+    if (memError && String(memError.code || "") === "23514") {
+      const secondTry = await supabase.from("memberships").insert({
+        ...membershipPayloadBase,
+        status: "pending",
+      }).select().single();
+      memError = secondTry.error;
+    }
 
-    await ensureUserRole(user.id, "member");
+    if (memError) { toast.error("Submission failed: " + memError.message); setPurchasing(null); return; }
 
-    await supabase.from("invoices").insert({
-      user_id: user.id, membership_id: mem.id, amount: plan.price, currency: "USD", status: "paid", paid_at: new Date().toISOString(),
-    });
-
-    toast.success(`${plan.name} membership activated!`);
+    toast.success(`${plan.name} request submitted. Admin approval is required.`);
     setPurchasing(null);
+    setPaymentFile(null);
+
     // Refresh
-    const [m2, i2] = await Promise.all([
-      supabase.from("memberships").select("*, membership_plans(name, price, billing_period)").eq("user_id", user.id).in("status", ["active", "renewal_due"]).maybeSingle(),
+    const [m2, p2, i2] = await Promise.all([
+      supabase
+        .from("memberships")
+        .select("*, membership_plans(name, price, billing_period)")
+        .eq("user_id", user.id)
+        .in("status", approvedStatuses)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("memberships")
+        .select("*, membership_plans(name, price, billing_period)")
+        .eq("user_id", user.id)
+        .in("status", pendingStatuses)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
     ]);
-    setCurrentMembership(m2.data); setInvoices(i2.data || []);
+    const approvedMembership = m2.data || null;
+    const pendingMembershipRow = p2.data || null;
+    const invoiceRows = i2.data || [];
+    const resolved = resolveDisplayMembership(approvedMembership, pendingMembershipRow, invoiceRows);
+    setCurrentMembership(resolved.current);
+    setPendingMembership(resolved.pending);
+    setInvoices(invoiceRows);
+    navigate("/portal/pending", { replace: true });
   }
 
   async function handleCancelMembership() {
@@ -219,12 +330,54 @@ export default function PortalMembership() {
           )}
         </div>
 
+        {pendingMembership && !currentMembership && (
+          <div className="rounded-xl border border-warning/40 bg-warning/5 p-6 card-shadow">
+            <h3 className="font-heading font-bold mb-2">Approval Pending</h3>
+            <p className="text-sm text-muted-foreground">
+              Your request for <span className="font-semibold text-foreground">{pendingMembership.membership_plans?.name}</span>
+              {" "}(${Number(pendingMembership.membership_plans?.price || 0).toFixed(2)}) is awaiting admin approval.
+            </p>
+          </div>
+        )}
+
+        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-3">
+          <p className="text-xs font-bold text-primary uppercase tracking-widest">Bank Transfer Instructions</p>
+          <p className="text-sm text-foreground/80 leading-relaxed">
+            Transfer the amount for your selected plan, then upload the payment screenshot and submit for admin approval.
+          </p>
+          <div className="text-xs space-y-1 font-medium bg-white/50 p-2 rounded-lg border">
+            <p>Bank: National Research Bank</p>
+            <p>Account: 9784 2210 5543 1109</p>
+            <p>IFSC: NRBK0002714</p>
+            <p>UPI: researchhub@upi</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="membership-proof">Payment Screenshot *</Label>
+            <input
+              id="membership-proof"
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-medium file:text-primary"
+            />
+            {paymentFile && <p className="text-xs text-muted-foreground">Selected: {paymentFile.name}</p>}
+          </div>
+        </div>
+
         {/* Plans */}
         <div>
           <h3 className="font-heading font-bold mb-4">Available Plans</h3>
+          {String(currentMembership?.membership_plans?.name || "").toLowerCase().includes("institutional") && (
+            <p className="text-sm text-muted-foreground mb-4">You are currently on the Institutional plan. Upgrade is not available.</p>
+          )}
           <div className="grid md:grid-cols-3 gap-4">
             {plans.map((plan) => {
               const isCurrent = currentMembership?.plan_id === plan.id;
+              const currentPrice = Number(currentMembership?.membership_plans?.price || 0);
+              const planPrice = Number(plan.price || 0);
+              const isInstitutionalCurrent = String(currentMembership?.membership_plans?.name || "").toLowerCase().includes("institutional");
+              const upgradeBlocked = isInstitutionalCurrent && !isCurrent;
+              const notHigherTier = !!currentMembership && !isCurrent && planPrice <= currentPrice;
               return (
                 <div key={plan.id} className={`rounded-xl border p-6 card-shadow ${isCurrent ? "border-primary ring-2 ring-primary/20" : ""}`}>
                   {isCurrent && <Badge className="mb-3 bg-primary/10 text-primary border-primary/20">Current Plan</Badge>}
@@ -235,9 +388,17 @@ export default function PortalMembership() {
                       <li key={i} className="flex items-center gap-2 text-sm"><Check className="h-4 w-4 text-success shrink-0" />{f}</li>
                     ))}
                   </ul>
-                  <Button className="w-full" disabled={isCurrent || purchasing === plan.id} onClick={() => handlePurchase(plan)}>
-                    {isCurrent ? "Active" : purchasing === plan.id ? "Processing..." : "Subscribe"}
+                  <Button className="w-full" disabled={isCurrent || upgradeBlocked || notHigherTier || purchasing === plan.id} onClick={() => handlePurchase(plan)}>
+                    {isCurrent
+                      ? "Active"
+                      : purchasing === plan.id
+                        ? "Submitting..."
+                        : currentMembership
+                          ? "Request Upgrade"
+                          : "Submit For Approval"}
                   </Button>
+                  {notHigherTier && <p className="text-xs text-muted-foreground mt-2">Choose a higher-value plan to upgrade.</p>}
+                  {upgradeBlocked && <p className="text-xs text-muted-foreground mt-2">Upgrade unavailable from Institutional plan.</p>}
                 </div>
               );
             })}

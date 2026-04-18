@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 
-export type MembershipState = "active" | "renewal_due" | "expired" | "cancelled" | "suspended";
+export type MembershipState = "active" | "renewal_due" | "expired" | "cancelled" | "suspended" | "pending_verification";
 
 function deriveStatus(endsAt: string): MembershipState {
   const now = Date.now();

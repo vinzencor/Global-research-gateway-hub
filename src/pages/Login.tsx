@@ -52,14 +52,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">KH</span>
-            </div>
-            <span className="font-heading text-xl font-bold">KnowledgeHub</span>
+          <Link to="/" className="inline-block mb-8">
+            <img src="/Logo.png" alt="KnowledgeHub" className="h-20 w-auto mx-auto object-contain" />
           </Link>
-          <h1 className="font-heading text-2xl font-bold">Welcome Back</h1>
-          <p className="text-muted-foreground text-sm mt-1">Log in to access your account, membership, saved items, invoices, and digital library experience.</p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">Welcome Back</h1>
+          <p className="text-muted-foreground text-sm mt-2">Log in to access your account, membership, and digital library experience.</p>
         </div>
 
         <div className="rounded-xl border bg-card p-8 card-shadow">

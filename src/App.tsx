@@ -27,6 +27,7 @@ import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalProfile from "./pages/portal/PortalProfile";
 import PortalMembership from "./pages/portal/PortalMembership";
 import PortalLibrary from "./pages/portal/PortalLibrary";
+import PendingVerification from "./pages/portal/PendingVerification";
 
 // Admin pages
 import AdminPortal from "./pages/AdminPortal";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/portal/profile" element={<ProtectedRoute><PortalProfile /></ProtectedRoute>} />
             <Route path="/portal/membership" element={<ProtectedRoute><PortalMembership /></ProtectedRoute>} />
             <Route path="/portal/library" element={<ProtectedRoute><PortalLibrary /></ProtectedRoute>} />
+            <Route path="/portal/pending" element={<ProtectedRoute><PendingVerification /></ProtectedRoute>} />
 
             {/* Admin routes */}
             <Route path="/admin/*" element={

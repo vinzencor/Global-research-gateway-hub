@@ -27,8 +27,24 @@ export function ProtectedRoute({ children, requiredRoles, redirectTo = "/login" 
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
+  const normalizedRoles: UserRole[] = user.roles.length > 0 ? user.roles : ["registered_user"];
+
+  const privilegedRoles: UserRole[] = ["super_admin", "content_admin", "editor", "sub_admin", "reviewer"];
+  const isPrivileged = normalizedRoles.some((role) => privilegedRoles.includes(role));
+  const hasApprovedRole = normalizedRoles.includes("member") || normalizedRoles.includes("subscriber");
+  const isApprovedMembership = user.membershipStatus === "active" || user.membershipStatus === "renewal_due" || user.membershipStatus === "approved" || hasApprovedRole;
+
+  // Non-privileged users must be approved before using protected areas.
+  if (!isPrivileged && !isApprovedMembership && location.pathname !== "/portal/pending") {
+    return <Navigate to="/portal/pending" replace />;
+  }
+
+  if (!isPrivileged && isApprovedMembership && location.pathname === "/portal/pending") {
+    return <Navigate to="/portal/dashboard" replace />;
+  }
+
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasRole = requiredRoles.some((role) => user.roles.includes(role));
+    const hasRole = requiredRoles.some((role) => normalizedRoles.includes(role));
     if (!hasRole) {
       return <Navigate to="/portal/dashboard" replace />;
     }

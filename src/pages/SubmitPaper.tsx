@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { supabase, isAdmin } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -63,7 +63,7 @@ export default function SubmitPaper() {
       .in("status", ["active", "renewal_due"])
       .maybeSingle()
       .then(({ data }) => {
-        setHasMembership(!!data);
+        setHasMembership(!!data || isAdmin(user.roles));
         setCheckingMembership(false);
       });
   }, [user]);
@@ -114,8 +114,21 @@ export default function SubmitPaper() {
   }
 
   return (
-    <DashboardLayout navItems={navItems} title={editId ? "Edit & Resubmit" : "Submit Journal"}>
-      <div className="max-w-3xl">
+    <DashboardLayout navItems={navItems} title="Submit Journal">
+      <div className="mb-6 flex items-center gap-4">
+        <Link to="/author">
+          <Button variant="ghost" size="sm" className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back to Submissions
+          </Button>
+        </Link>
+        <div>
+          <h2 className="text-2xl font-bold font-heading">{editId ? "Revise Submission" : "Submit New Journal"}</h2>
+          <p className="text-sm text-muted-foreground italic">Prepare and submit your manuscript for peer review.</p>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-4">
         {editId && (
           <div className="rounded-xl border border-orange-300 bg-orange-50 dark:bg-orange-950/20 p-4 mb-4 flex items-center gap-3">
             <span className="text-orange-700 dark:text-orange-400 text-sm font-medium">⚠️ Changes were requested. Please revise your submission and resubmit.</span>
@@ -126,11 +139,17 @@ export default function SubmitPaper() {
             📋 Active workflow: <span className="font-semibold text-foreground">{activeTemplate.name}</span> — your submission will go through this review pipeline.
           </div>
         )}
-        {!checkingMembership && !hasMembership && (
+        {!checkingMembership && !hasMembership && !isAdmin(user?.roles || []) && (
           <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 mb-4 text-sm">
             <p className="font-medium">Membership required</p>
-            <p className="text-muted-foreground">You can submit/publish journals only with an active membership.</p>
-            <Link to="/portal/membership" className="text-primary hover:underline font-medium">Activate membership</Link>
+            {user?.membershipStatus === "pending_verification" ? (
+              <p className="text-muted-foreground">Your membership payment is currently being verified. You will be able to submit once approved.</p>
+            ) : (
+              <>
+                <p className="text-muted-foreground">You can submit/publish journals only with an active membership.</p>
+                <Link to="/portal/membership" className="text-primary hover:underline font-medium">Activate membership</Link>
+              </>
+            )}
           </div>
         )}
         <div className="rounded-xl border bg-card p-8 card-shadow">
@@ -184,6 +203,39 @@ export default function SubmitPaper() {
               <Button type="submit" size="lg" disabled={submitting || !hasMembership}>{submitting ? "Submitting..." : editId ? "Resubmit Journal" : "Submit Journal"}</Button>
             </div>
           </form>
+        </div>
+
+        </div>
+
+        {/* Info Sidebar */}
+        <div className="space-y-6">
+          <div className="rounded-xl border bg-card p-6 card-shadow">
+            <h3 className="font-heading font-bold text-sm mb-4 border-b pb-2">Technical requirements</h3>
+            <div className="space-y-4 text-xs text-muted-foreground">
+              <div>
+                <p className="font-bold text-foreground mb-1">File Format</p>
+                <p>Only PDF files are accepted. Max size 50MB.</p>
+              </div>
+              <div>
+                <p className="font-bold text-foreground mb-1">Citations</p>
+                <p>Use APA or IEEE formatting style throughout your paper.</p>
+              </div>
+              <div>
+                <p className="font-bold text-foreground mb-1">Processing Time</p>
+                <p>Initial screening usually takes 3-5 business days.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-6">
+            <h3 className="font-heading font-bold text-sm mb-2 text-primary">Need Clarification?</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+              Check our Author Guidelines for detailed information on the formatting, ethical standards, and review process.
+            </p>
+            <Button variant="link" className="p-0 h-auto text-xs" asChild>
+              <Link to="/standards">Author Guidelines →</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </DashboardLayout>

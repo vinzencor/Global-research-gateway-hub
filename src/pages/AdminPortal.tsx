@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp } from "lucide-react";
+import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -15,6 +15,7 @@ import AdminWorkflow from "@/pages/admin/AdminWorkflow";
 import AdminSubAdmins from "@/pages/admin/AdminSubAdmins";
 import AdminJournalPipeline from "@/pages/admin/AdminJournalPipeline";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
+import AdminValidateUsers from "@/pages/admin/AdminValidateUsers";
 
 const navItems = [
   { label: "Dashboard", to: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -27,11 +28,13 @@ const navItems = [
   { label: "Featured Users", to: "/admin/people", icon: <Star className="h-4 w-4" /> },
   { label: "Digital Library", to: "/admin/library", icon: <BookOpen className="h-4 w-4" /> },
   { label: "Users & Roles", to: "/admin/users", icon: <Users className="h-4 w-4" /> },
+  { label: "Validate New Users", to: "/admin/validate-users", icon: <CheckCircle2 className="h-4 w-4" /> },
   { label: "Billing", to: "/admin/billing", icon: <CreditCard className="h-4 w-4" /> },
+  { label: "Switch to User Portal", to: "/portal/dashboard", icon: <ArrowLeftRight className="h-4 w-4" /> },
 ];
 
 export default function AdminPortal() {
-  const [stats, setStats] = useState({ content: 0, inReview: 0, published: 0, featuredUsers: 0, users: 0, members: 0 });
+  const [stats, setStats] = useState({ content: 0, inReview: 0, published: 0, featuredUsers: 0, users: 0, members: 0, pendingApprovals: 0 });
   const [recentContent, setRecentContent] = useState<any[]>([]);
   const navigate = useNavigate();
 
@@ -42,9 +45,18 @@ export default function AdminPortal() {
       supabase.from("content_items").select("id", { count: "exact" }).eq("status", "published"),
       supabase.from("featured_users").select("user_id", { count: "exact" }).eq("is_featured", true),
       supabase.from("memberships").select("id", { count: "exact" }).eq("status", "active"),
+      supabase.from("memberships").select("id", { count: "exact" }).eq("status", "pending_verification"),
       supabase.from("content_items").select("id,title,type,status,created_at").order("created_at", { ascending: false }).limit(6),
-    ]).then(([all, inRev, pub, featured, mems, recent]) => {
-      setStats({ content: all.count || 0, inReview: inRev.count || 0, published: pub.count || 0, featuredUsers: featured.count || 0, users: 0, members: mems.count || 0 });
+    ]).then(([all, inRev, pub, featured, mems, pending, recent]) => {
+      setStats({
+        content: all.count || 0,
+        inReview: inRev.count || 0,
+        published: pub.count || 0,
+        featuredUsers: featured.count || 0,
+        users: 0,
+        members: mems.count || 0,
+        pendingApprovals: pending.count || 0,
+      });
       setRecentContent(recent.data || []);
     });
   }, []);
@@ -67,6 +79,7 @@ export default function AdminPortal() {
                 { label: "Published", value: stats.published, action: () => navigate("/admin/content") },
                 { label: "Featured Users", value: stats.featuredUsers, action: () => navigate("/admin/people") },
                 { label: "Active Members", value: stats.members, action: () => navigate("/admin/billing") },
+                { label: "Pending Approvals", value: stats.pendingApprovals, action: () => navigate("/admin/validate-users") },
               ].map((s) => (
                 <button key={s.label} onClick={s.action} className="rounded-xl border bg-card p-5 card-shadow text-left hover:border-primary/40 transition-colors">
                   <p className="text-sm text-muted-foreground mb-1">{s.label}</p>
@@ -78,6 +91,7 @@ export default function AdminPortal() {
               {[
                 { title: "Create Content", desc: "Add new articles, publications, pages", action: () => navigate("/admin/content"), btn: "Create" },
                 { title: "Review Queue", desc: "Review pending content submissions", action: () => navigate("/admin/reviews"), btn: "View Queue" },
+                { title: "Validate New Users", desc: `Approve pending memberships and upgrades (${stats.pendingApprovals} pending).`, action: () => navigate("/admin/validate-users"), btn: "Open Validation" },
                 { title: "Manage Featured Users", desc: "Feature published users for the public authors page", action: () => navigate("/admin/people"), btn: "Manage" },
                 { title: "Digital Library", desc: "Upload and manage library papers", action: () => navigate("/admin/library"), btn: "Manage" },
               ].map((c) => (
@@ -126,6 +140,7 @@ export default function AdminPortal() {
         <Route path="/people" element={<AdminPeople />} />
         <Route path="/library" element={<AdminLibrary />} />
         <Route path="/users" element={<AdminUsers />} />
+        <Route path="/validate-users" element={<AdminValidateUsers />} />
         <Route path="/billing" element={<AdminBilling />} />
       </Routes>
     </DashboardLayout>

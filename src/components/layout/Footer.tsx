@@ -29,9 +29,7 @@ export function Footer() {
           {/* Brand block */}
           <div className="space-y-6">
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
-                <Sparkles className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <img src="/Logo.png" alt="KnowledgeHub Logo" className="h-10 w-auto object-contain transition-transform group-hover:scale-110" />
               <span className="font-heading text-xl font-bold tracking-tight">
                 KnowledgeHub
               </span>

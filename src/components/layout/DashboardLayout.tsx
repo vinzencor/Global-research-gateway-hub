@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, User, ChevronDown, ExternalLink } from "lucide-react";
+import { Menu, X, LogOut, User, ChevronDown, ExternalLink, ChevronRight, Home } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -38,11 +38,11 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center gap-2 px-6 border-b border-sidebar-border">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
-            <span className="text-xs font-bold text-sidebar-primary-foreground">RJ</span>
-          </div>
-          <span className="font-heading font-bold text-sm">{title}</span>
+        <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
+          <Link to="/" className="flex items-center gap-2 group">
+            <img src="/Logo.png" alt="Logo" className="h-8 w-auto object-contain transition-transform group-hover:scale-105" />
+            <span className="font-heading font-bold text-sm tracking-tight">{title}</span>
+          </Link>
           <Button
             variant="ghost"
             size="icon"
@@ -119,7 +119,16 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
             </DropdownMenu>
           </div>
         </header>
-        <main className="p-6">{children}</main>
+        <main className="p-6">
+          <div className="mb-6 flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Link to="/" className="hover:text-foreground transition-colors flex items-center gap-1">
+              <Home className="h-3 w-3" /> Home
+            </Link>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-foreground/80">{title}</span>
+          </div>
+          {children}
+        </main>
       </div>
     </div>
   );

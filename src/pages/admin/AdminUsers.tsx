@@ -46,7 +46,7 @@ export default function AdminUsers() {
   async function loadUsers() {
     setLoading(true);
     await reconcileMembershipStatuses();
-    const [profilesRes, userRolesRes, membershipsRes, invoicesRes] = await Promise.all([
+    const [profilesRes, userRolesRes, membershipsRes, invoicesRes, pendingRpcRes] = await Promise.all([
       supabase
         .from("profiles")
         .select("id, full_name, institution, created_at")
@@ -57,11 +57,13 @@ export default function AdminUsers() {
       supabase
         .from("memberships")
         .select("id, user_id, plan_id, status, starts_at, ends_at, created_at, membership_plans(name, billing_period, price)")
+        .in("status", ["active", "renewal_due", "pending_verification", "pending", "expired", "cancelled", "suspended"])
         .order("created_at", { ascending: false }),
       supabase
         .from("invoices")
-        .select("id, user_id, amount, currency, status, created_at")
+        .select("id, user_id, membership_id, amount, currency, status, created_at")
         .order("created_at", { ascending: false }),
+      supabase.rpc("get_pending_validations_admin"),
     ]);
 
     const profiles = profilesRes.data;
@@ -77,30 +79,112 @@ export default function AdminUsers() {
     });
 
     const membershipMap: Record<string, any> = {};
+    const membershipsByUser: Record<string, any[]> = {};
     (membershipsData || []).forEach((m: any) => {
-      if (!membershipMap[m.user_id]) {
-        membershipMap[m.user_id] = m;
+      if (!membershipsByUser[m.user_id]) membershipsByUser[m.user_id] = [];
+      membershipsByUser[m.user_id].push(m);
+    });
+
+    const pendingFromRpcByUser: Record<string, any> = {};
+    if (!pendingRpcRes.error && Array.isArray(pendingRpcRes.data)) {
+      (pendingRpcRes.data as any[]).forEach((r: any) => {
+        if (!r?.user_id) return;
+        pendingFromRpcByUser[r.user_id] = {
+          id: r.membership_id,
+          user_id: r.user_id,
+          status: r.status,
+          plan_id: r.plan_id,
+          starts_at: r.starts_at,
+          ends_at: r.ends_at,
+          created_at: r.created_at,
+          membership_plans: {
+            name: r.plan_name || null,
+            billing_period: r.plan_billing_period || null,
+            price: r.plan_price ?? null,
+          },
+        };
+      });
+    }
+
+    Object.entries(membershipsByUser).forEach(([uid, list]) => {
+      const approved = list.find((m: any) => m.status === "active" || m.status === "renewal_due" || m.status === "approved");
+      const pending = list.find((m: any) => m.status === "pending_verification" || m.status === "pending");
+      const withPlan = list.find((m: any) => !!m.plan_id || !!m.membership_plans?.name);
+      membershipMap[uid] = approved || pending || withPlan || list[0] || null;
+    });
+
+    Object.entries(pendingFromRpcByUser).forEach(([uid, row]) => {
+      if (!membershipMap[uid]) {
+        membershipMap[uid] = row;
       }
     });
 
     const invoiceSummaryMap: Record<string, { total: number; paidCount: number; lastInvoiceAt: string | null }> = {};
+    const paidMembershipInvoiceUserIds = new Set<string>();
     (invoicesData || []).forEach((inv: any) => {
+      if (!inv.membership_id) return;
       if (!invoiceSummaryMap[inv.user_id]) {
         invoiceSummaryMap[inv.user_id] = { total: 0, paidCount: 0, lastInvoiceAt: null };
       }
       invoiceSummaryMap[inv.user_id].total += Number(inv.amount || 0);
-      if (inv.status === "paid") invoiceSummaryMap[inv.user_id].paidCount += 1;
+      if (inv.status === "paid") {
+        invoiceSummaryMap[inv.user_id].paidCount += 1;
+        paidMembershipInvoiceUserIds.add(inv.user_id);
+      }
       if (!invoiceSummaryMap[inv.user_id].lastInvoiceAt) invoiceSummaryMap[inv.user_id].lastInvoiceAt = inv.created_at;
     });
 
-    const merged = (profiles || []).map(p => ({
-      ...p,
-      roleNames: roleMap[p.id] || ["registered_user"],
-      membership: membershipMap[p.id] || null,
-      invoiceSummary: invoiceSummaryMap[p.id] || { total: 0, paidCount: 0, lastInvoiceAt: null },
-    }));
+    Object.entries(membershipMap).forEach(([uid, m]) => {
+      const status = String(m?.status || "");
+      const isPending = status === "pending_verification" || status === "pending";
+      if (isPending && paidMembershipInvoiceUserIds.has(uid)) {
+        membershipMap[uid] = { ...m, status: "approved" };
+      }
+    });
 
-    setUsers(merged);
+    const profileMap: Record<string, any> = {};
+    (profiles || []).forEach((p: any) => {
+      profileMap[p.id] = p;
+    });
+
+    const privilegedRoles = new Set(["super_admin", "content_admin", "editor", "sub_admin", "reviewer", "author"]);
+    const approvedStatuses = new Set(["active", "renewal_due"]);
+    approvedStatuses.add("approved");
+
+    const roleUserIds = Object.keys(roleMap);
+    const approvedMembershipUserIds = Object.entries(membershipMap)
+      .filter(([, m]: any) => approvedStatuses.has(String(m?.status || "")))
+      .map(([uid]) => uid);
+
+    const baseUserIds = Array.from(
+      new Set([
+        ...Object.keys(profileMap),
+        ...roleUserIds,
+        ...approvedMembershipUserIds,
+      ])
+    );
+
+    const merged = baseUserIds.map((uid) => {
+      const p = profileMap[uid] || {};
+      return {
+        id: uid,
+        full_name: p.full_name || "Unnamed user",
+        institution: p.institution || null,
+        created_at: p.created_at || membershipMap[uid]?.created_at || new Date().toISOString(),
+        roleNames: roleMap[uid] || ["registered_user"],
+        membership: membershipMap[uid] || null,
+        invoiceSummary: invoiceSummaryMap[uid] || { total: 0, paidCount: 0, lastInvoiceAt: null },
+        email: null,
+      };
+    });
+
+    const allUsers = [...merged].sort((a: any, b: any) => {
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+
+    setUsers(allUsers);
     setLoading(false);
   }
 
@@ -371,11 +455,12 @@ export default function AdminUsers() {
                     <td className="p-4 hidden lg:table-cell">
                       {membership ? (
                         <div className="space-y-1">
-                          <Badge variant="outline" className={membership.status === "active" ? "bg-success/10 text-success border-success/20" : ""}>
+                          <Badge variant="outline" className={membership.status === "active" || membership.status === "renewal_due" || membership.status === "approved" ? "bg-success/10 text-success border-success/20" : ""}>
                             {String(membership.status || "unknown").replace("_", " ")}
                           </Badge>
                           <p className="text-xs text-muted-foreground">
                             {membership.membership_plans?.name || "Plan"}
+                            {typeof membership.membership_plans?.price === "number" ? ` · $${Number(membership.membership_plans.price).toFixed(2)}` : ""}
                             {membership.ends_at ? ` · ${new Date(membership.ends_at).toLocaleDateString()}` : ""}
                           </p>
                         </div>
@@ -383,8 +468,8 @@ export default function AdminUsers() {
                     </td>
                     <td className="p-4 hidden lg:table-cell">
                       <div className="text-xs">
-                        <p className="font-medium">{invoiceSummary.paidCount} paid</p>
-                        <p className="text-muted-foreground">${invoiceSummary.total.toFixed(0)} total</p>
+                        <p className="font-medium">{invoiceSummary.paidCount} membership paid</p>
+                        <p className="text-muted-foreground">${invoiceSummary.total.toFixed(0)} membership total</p>
                       </div>
                     </td>
                     <td className="p-4 text-muted-foreground hidden sm:table-cell">
@@ -499,7 +584,7 @@ export default function AdminUsers() {
             </div>
 
             <div className="rounded-lg border p-3 bg-muted/20">
-              <p className="text-xs text-muted-foreground mb-1">Invoice Summary</p>
+              <p className="text-xs text-muted-foreground mb-1">Membership Invoice Summary</p>
               <p className="text-sm">
                 Paid invoices: <span className="font-medium">{showMembershipDialog?.invoiceSummary?.paidCount || 0}</span>
               </p>

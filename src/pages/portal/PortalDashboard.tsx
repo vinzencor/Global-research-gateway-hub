@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, User, CreditCard, BookOpen, Bell, FileText, PenSquare } from "lucide-react";
+import { LayoutDashboard, User, CreditCard, BookOpen, Bell, FileText, PenSquare, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,34 +18,58 @@ const navItems = [
 
 export default function PortalDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [membership, setMembership] = useState<any>(null);
   const [savedCount, setSavedCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;
-    // Redirect sub-admins to their own portal
-    if (user.roles.includes("sub_admin") && !user.roles.includes("super_admin")) {
-      navigate("/sub-admin", { replace: true });
-      return;
-    }
-    // Redirect super admins/editors to admin portal
-    if (isAdmin(user.roles)) {
-      navigate("/admin", { replace: true });
-      return;
-    }
     Promise.all([
-      supabase.from("memberships").select("*, membership_plans(name)").eq("user_id", user.id).in("status", ["active", "renewal_due"]).maybeSingle(),
+      supabase
+        .from("memberships")
+        .select("*, membership_plans(name, price, billing_period)")
+        .eq("user_id", user.id)
+        .in("status", ["active", "renewal_due", "approved"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("memberships")
+        .select("*, membership_plans(name, price, billing_period)")
+        .eq("user_id", user.id)
+        .in("status", ["pending_verification", "pending"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("invoices")
+        .select("membership_id,status")
+        .eq("user_id", user.id)
+        .not("membership_id", "is", null)
+        .limit(50),
       supabase.from("saved_library_items").select("library_item_id", { count: "exact" }).eq("user_id", user.id),
-    ]).then(([mem, saved]) => {
-      setMembership(mem.data);
+    ]).then(([approvedMem, pendingMem, invoiceRows, saved]) => {
+      const approved = approvedMem.data || null;
+      const pending = pendingMem.data || null;
+      const paidMembershipIds = new Set(
+        ((invoiceRows.data || []) as any[])
+          .filter((inv: any) => inv?.status === "paid" && !!inv?.membership_id)
+          .map((inv: any) => inv.membership_id)
+      );
+
+      const displayMembership = approved || ((pending?.id && paidMembershipIds.has(pending.id)) ? { ...pending, status: "approved" } : null);
+
+      setMembership(displayMembership);
       setSavedCount(saved.count || 0);
     });
   }, [user]);
 
   const adminLinks = isAdmin(user?.roles || []) ? [{ label: "Admin Console", to: "/admin" }] : [];
   const reviewerLinks = isReviewer(user?.roles || []) ? [{ label: "Reviewer Portal", to: "/reviewer" }] : [];
-  const allNavItems = [...navItems, ...adminLinks.map(l => ({ label: l.label, to: l.to, icon: <FileText className="h-4 w-4" /> })), ...reviewerLinks.map(l => ({ label: l.label, to: l.to, icon: <Bell className="h-4 w-4" /> }))];
+  const allNavItems = [
+    ...navItems,
+    ...adminLinks.map(l => ({ label: l.label, to: l.to, icon: <ShieldCheck className="h-4 w-4" /> })),
+    ...reviewerLinks.map(l => ({ label: l.label, to: l.to, icon: <Bell className="h-4 w-4" /> })),
+  ];
 
   return (
     <DashboardLayout navItems={allNavItems} title="My Dashboard">
@@ -81,6 +105,24 @@ export default function PortalDashboard() {
             </div>
           ))}
         </div>
+
+        {/* Admin Access Card */}
+        {isAdmin(user?.roles || []) && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                <ShieldCheck className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-heading font-bold">Admin Console Access</h3>
+                <p className="text-sm text-muted-foreground">You have administrative privileges. Manage users, billing, and system settings.</p>
+              </div>
+            </div>
+            <Link to="/admin">
+              <Button className="font-bold">Enter Admin Portal</Button>
+            </Link>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="rounded-xl border bg-card p-6 card-shadow">
@@ -139,4 +181,3 @@ export default function PortalDashboard() {
     </DashboardLayout>
   );
 }
-
