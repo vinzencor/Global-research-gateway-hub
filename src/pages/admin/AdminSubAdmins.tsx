@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+﻿import { useEffect, useState } from "react";
+import { db } from "@/lib/legacyDb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,27 +19,41 @@ export default function AdminSubAdmins() {
     setLoading(true);
 
     // Get the sub_admin role ID first
-    const { data: roleData } = await supabase.from("roles").select("id").eq("name", "sub_admin").single();
+    let { data: roleData } = await db.from("roles").select("id").eq("name", "sub_admin").maybeSingle();
+    if (!roleData) {
+      await db.rpc("admin_upsert_role", { p_name: "sub_admin", p_description: null });
+      const refetch = await db.from("roles").select("id").eq("name", "sub_admin").maybeSingle();
+      roleData = refetch.data;
+    }
     const rid = roleData?.id || "";
     setSubAdminRoleId(rid);
 
-    // Fetch current sub-admins using role_id directly (reliable, no join filter needed)
+    // Fetch current sub-admins using admin-safe RPC to avoid RLS visibility gaps.
     let saIds: string[] = [];
-    if (rid) {
-      const { data: saRows } = await supabase.from("user_roles").select("user_id").eq("role_id", rid);
+    const adminRolesRes = await db.rpc("get_all_user_roles_admin");
+    if (!adminRolesRes.error && Array.isArray(adminRolesRes.data)) {
+      saIds = Array.from(new Set(
+        (adminRolesRes.data as any[])
+          .filter((r: any) => String(r?.role_name || "") === "sub_admin")
+          .map((r: any) => String(r.user_id || ""))
+          .filter(Boolean)
+      ));
+    } else if (rid) {
+      const { data: saRows } = await db.from("user_roles").select("user_id").eq("role_id", rid);
       saIds = (saRows || []).map((u: any) => u.user_id);
     }
 
     if (saIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name, institution").in("id", saIds);
-      setSubAdmins(profiles || []);
+      const { data: profiles } = await db.from("profiles").select("id, full_name, institution").in("id", saIds);
+      const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
+      setSubAdmins(saIds.map((id) => profileMap.get(id) || ({ id, full_name: "Unnamed user", institution: null })));
     } else {
       setSubAdmins([]);
     }
 
     // Load all non-sub-admin users for the assign panel
     const excludeIds = saIds.length > 0 ? saIds : ["00000000-0000-0000-0000-000000000000"];
-    const { data: allProf } = await supabase
+    const { data: allProf } = await db
       .from("profiles")
       .select("id, full_name, institution")
       .not("id", "in", `(${excludeIds.join(",")})`)
@@ -51,7 +65,7 @@ export default function AdminSubAdmins() {
 
   async function assignSubAdmin(userId: string) {
     if (!subAdminRoleId) { toast.error("sub_admin role not found"); return; }
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role_id: subAdminRoleId });
+    const { error } = await db.from("user_roles").insert({ user_id: userId, role_id: subAdminRoleId });
     if (error) { toast.error("Failed to assign role"); return; }
     const user = allUsers.find(u => u.id === userId);
     setSubAdmins(prev => [...prev, user]);
@@ -61,7 +75,7 @@ export default function AdminSubAdmins() {
 
   async function removeSubAdmin(userId: string) {
     if (!subAdminRoleId) return;
-    const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role_id", subAdminRoleId);
+    const { error } = await db.from("user_roles").delete().eq("user_id", userId).eq("role_id", subAdminRoleId);
     if (error) { toast.error("Failed to remove role"); return; }
     const user = subAdmins.find(u => u.id === userId);
     setSubAdmins(prev => prev.filter(u => u.id !== userId));
@@ -130,4 +144,5 @@ export default function AdminSubAdmins() {
     </div>
   );
 }
+
 

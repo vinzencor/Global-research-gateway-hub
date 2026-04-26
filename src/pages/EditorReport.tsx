@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, ClipboardList, Settings, BarChart2, CheckCircle, XCircle, Clock, TrendingUp, Award, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { useAuth } from "@/contexts/AuthContext";
 import { editorNavItems } from "./EditorDashboard";
 
@@ -29,7 +29,7 @@ export default function EditorReport() {
 
   async function loadReport() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await db
       .from("workflow_logs")
       .select("id, action, comment, acted_at, content_id, content_items(id, title, type)")
       .eq("acted_by", user!.id)
@@ -78,7 +78,7 @@ export default function EditorReport() {
             <BarChart2 className="h-6 w-6 text-primary" />
             <h2 className="font-heading text-2xl font-bold">My Performance Report</h2>
           </div>
-          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} · Editor · All-time statistics</p>
+          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} Â· Editor Â· All-time statistics</p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -125,7 +125,7 @@ export default function EditorReport() {
                     <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden">
                       <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% · +{item.count * item.pts} pts</p>
+                    <p className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% Â· +{item.count * item.pts} pts</p>
                   </div>
                 );
               })}
@@ -154,13 +154,13 @@ export default function EditorReport() {
                 <tbody>
                   {logs.slice(0, 10).map(log => (
                     <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "—"}</td>
+                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "â€”"}</td>
                       <td className="p-4 hidden sm:table-cell">
                         <Badge variant="outline" className={`text-xs ${log.action === "approved" ? "bg-success/10 text-success border-success/20" : log.action === "changes_requested" ? "bg-orange-500/10 text-orange-600 border-orange-200" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
                           {log.action?.replace("_", " ")}
                         </Badge>
                       </td>
-                      <td className="p-4 text-muted-foreground hidden md:table-cell"><span className="line-clamp-1">{log.comment || "—"}</span></td>
+                      <td className="p-4 text-muted-foreground hidden md:table-cell"><span className="line-clamp-1">{log.comment || "â€”"}</span></td>
                       <td className="p-4 text-xs text-muted-foreground">{new Date(log.acted_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -173,3 +173,4 @@ export default function EditorReport() {
     </DashboardLayout>
   );
 }
+

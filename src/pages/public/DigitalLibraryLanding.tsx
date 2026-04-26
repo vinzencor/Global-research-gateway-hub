@@ -103,7 +103,7 @@ export default function DigitalLibraryPublic() {
               Search, discover, and access a growing ecosystem of scholarly publications, technical frameworks, and professional insights through our structured digital environment.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/library/search">
+              <Link to="/library">
                 <Button size="lg" className="h-16 px-10 rounded-full font-bold text-lg group shadow-xl shadow-primary/20">
                   Enter Library
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

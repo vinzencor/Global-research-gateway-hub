@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { featuredApi, journalApi, usersApi } from "@/lib/api";
 import { Search, ArrowRight, Star } from "lucide-react";
 
 export default function    AuthorsPage() {
@@ -15,34 +15,85 @@ export default function    AuthorsPage() {
 
   useEffect(() => {
     async function loadAuthors() {
-      const { data: published } = await supabase
-        .from("content_items")
-        .select("author_user_id")
-        .eq("status", "published")
-        .not("author_user_id", "is", null);
+      setLoading(true);
+      try {
+        const [usersRes, journalsRes, featuredRes] = await Promise.all([
+          usersApi.list({ role: "author", limit: "2000" }) as Promise<any>,
+          journalApi.listPublished({ limit: "2000" }) as Promise<any>,
+          featuredApi.list() as Promise<any>,
+        ]);
 
-      const ids = Array.from(new Set((published || []).map((p: any) => p.author_user_id).filter(Boolean)));
-      if (ids.length === 0) {
+        const users = Array.isArray(usersRes?.users)
+          ? usersRes.users
+          : Array.isArray(usersRes?.items)
+          ? usersRes.items
+          : Array.isArray(usersRes)
+          ? usersRes
+          : [];
+
+        const journals = Array.isArray(journalsRes?.items)
+          ? journalsRes.items
+          : Array.isArray(journalsRes)
+          ? journalsRes
+          : [];
+
+        const featuredUsers = Array.isArray(featuredRes?.items)
+          ? featuredRes.items
+          : Array.isArray(featuredRes)
+          ? featuredRes
+          : [];
+
+        const publishedAuthorIds = new Set<string>();
+        for (const j of journals) {
+          const authorId = String(j?.authorUser?._id || j?.author_user_id || "");
+          if (authorId) publishedAuthorIds.add(authorId);
+        }
+
+        const featuredIdSet = new Set<string>();
+        for (const f of featuredUsers) {
+          const id = String(f?._id || f?.id || "");
+          if (id) featuredIdSet.add(id);
+        }
+
+        const userMap = new Map<string, any>();
+        for (const u of users) {
+          const id = String(u?._id || u?.id || "");
+          if (!id) continue;
+          userMap.set(id, {
+            id,
+            full_name: u?.fullName || "Unnamed User",
+            institution: u?.institution || "",
+            organization: u?.institution || "",
+            bio: u?.bio || "",
+            photo_url: u?.photoUrl || "",
+            is_featured: featuredIdSet.has(id),
+          });
+        }
+
+        for (const f of featuredUsers) {
+          const id = String(f?._id || f?.id || "");
+          if (!id || userMap.has(id)) continue;
+          userMap.set(id, {
+            id,
+            full_name: f?.fullName || "Unnamed User",
+            institution: f?.institution || "",
+            organization: f?.institution || "",
+            bio: f?.bio || "",
+            photo_url: f?.photoUrl || "",
+            is_featured: true,
+          });
+        }
+
+        const merged = Array.from(userMap.values())
+          .filter((a) => publishedAuthorIds.has(a.id) || a.is_featured)
+          .sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
+
+        setAuthors(merged);
+      } catch {
         setAuthors([]);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const [{ data: profiles }, { data: featuredRows }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, institution, bio, photo_url").in("id", ids),
-        supabase.from("featured_users").select("user_id, is_featured").in("user_id", ids),
-      ]);
-
-      const featuredMap = new Map<string, boolean>((featuredRows || []).map((r: any) => [r.user_id, !!r.is_featured]));
-      const merged = (profiles || []).map((p: any) => ({
-        ...p,
-        organization: p.institution,
-        is_featured: featuredMap.get(p.id) || false,
-      }));
-
-      merged.sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || ""));
-      setAuthors(merged);
-      setLoading(false);
     }
 
     loadAuthors();
@@ -180,4 +231,5 @@ export default function    AuthorsPage() {
     </div>
   );
 }
+
 

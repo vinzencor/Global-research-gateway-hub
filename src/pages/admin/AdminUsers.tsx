@@ -3,16 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
-import { UserRole } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
-import { reconcileMembershipStatuses } from "@/lib/membership";
+import { UserRole } from "@/contexts/AuthContext";
+import { authApi, membershipApi, usersApi } from "@/lib/api";
+import { PREDEFINED_ROLES } from "@/lib/roles";
 import { toast } from "sonner";
-import { Search, Shield, RefreshCw, UserPlus, ReceiptText, XCircle, RotateCw } from "lucide-react";
-
-const ALL_ROLES: UserRole[] = ["registered_user", "member", "subscriber", "author", "reviewer", "editor", "content_admin", "sub_admin", "super_admin"];
+import { Search, Shield, RefreshCw, UserPlus, ReceiptText, XCircle, RotateCw, Trash2 } from "lucide-react";
 
 const roleColor: Record<string, string> = {
   super_admin: "bg-destructive/10 text-destructive border-destructive/20",
@@ -25,14 +22,60 @@ const roleColor: Record<string, string> = {
   registered_user: "bg-muted text-muted-foreground",
 };
 
-const EMPTY_FORM = { full_name: "", email: "", password: "", institution: "", role: "registered_user" as UserRole };
+const EMPTY_FORM = { full_name: "", email: "", password: "", institution: "", role: "registered_user" };
+
+function normalizeRoleName(value: unknown) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function parseRoleNames(payload: unknown): string[] {
+  const found = new Set<string>();
+
+  function addRole(value: unknown) {
+    const role = normalizeRoleName(value);
+    if (role) found.add(role);
+  }
+
+  function walk(value: unknown) {
+    if (!value) return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item);
+      return;
+    }
+
+    if (typeof value !== "object") return;
+    const row = value as Record<string, unknown>;
+
+    if (row.roleName !== undefined || row.role_name !== undefined || row.role !== undefined) {
+      addRole(row.roleName ?? row.role_name ?? row.role);
+    }
+
+    for (const nestedKey of ["rows", "items", "data", "roleModuleAccess", "roles", "access"]) {
+      if (nestedKey in row) walk(row[nestedKey]);
+    }
+
+    const maybeRoleMap = Object.entries(row);
+    if (maybeRoleMap.length > 0 && maybeRoleMap.every(([, v]) => typeof v === "object" && v !== null)) {
+      for (const [roleName] of maybeRoleMap) {
+        addRole(roleName);
+      }
+    }
+  }
+
+  walk(payload);
+  return Array.from(found);
+}
 
 export default function AdminUsers() {
-  const { user: authUser } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
+  const [roleOptions, setRoleOptions] = useState<string[]>(["registered_user"]);
   const [search, setSearch] = useState("");
   const [showRoleEdit, setShowRoleEdit] = useState<any>(null);
-  const [selectedRole, setSelectedRole] = useState<UserRole>("registered_user");
+  const [selectedRole, setSelectedRole] = useState<string>("registered_user");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -40,230 +83,92 @@ export default function AdminUsers() {
   const [creating, setCreating] = useState(false);
   const [showMembershipDialog, setShowMembershipDialog] = useState<any>(null);
   const [membershipActionLoading, setMembershipActionLoading] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<string | null>(null);
 
   useEffect(() => { loadUsers(); }, []);
 
   async function loadUsers() {
     setLoading(true);
-    await reconcileMembershipStatuses();
-    const [profilesRes, userRolesRes, membershipsRes, invoicesRes, pendingRpcRes] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, institution, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("user_roles")
-        .select("user_id, roles(name)"),
-      supabase
-        .from("memberships")
-        .select("id, user_id, plan_id, status, starts_at, ends_at, created_at, membership_plans(name, billing_period, price)")
-        .in("status", ["active", "renewal_due", "pending_verification", "pending", "expired", "cancelled", "suspended"])
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("invoices")
-        .select("id, user_id, membership_id, amount, currency, status, created_at")
-        .order("created_at", { ascending: false }),
-      supabase.rpc("get_pending_validations_admin"),
-    ]);
+    const baseRoles = [...PREDEFINED_ROLES];
+    setRoleOptions(baseRoles);
 
-    const profiles = profilesRes.data;
-    const userRolesData = userRolesRes.data;
-    const membershipsData = membershipsRes.data;
-    const invoicesData = invoicesRes.data;
+    try {
+      const [usersRes, membershipsRes, invoicesRes, roleAccessRes] = await Promise.all([
+        usersApi.list({ limit: "500" }),
+        membershipApi.adminList({ limit: "1000" }),
+        membershipApi.getAllInvoices({ limit: "2000" }),
+        usersApi.getRoleModuleAccess().catch(() => null),
+      ]);
 
-    // Build a map of user_id → role names
-    const roleMap: Record<string, string[]> = {};
-    (userRolesData || []).forEach((ur: any) => {
-      if (!roleMap[ur.user_id]) roleMap[ur.user_id] = [];
-      if (ur.roles?.name) roleMap[ur.user_id].push(ur.roles.name);
-    });
+      const dynamicRoles = parseRoleNames(roleAccessRes);
+      const mergedRoleOptions = Array.from(new Set([...baseRoles, ...dynamicRoles])).sort((a, b) => a.localeCompare(b));
+      setRoleOptions(mergedRoleOptions);
 
-    const membershipMap: Record<string, any> = {};
-    const membershipsByUser: Record<string, any[]> = {};
-    (membershipsData || []).forEach((m: any) => {
-      if (!membershipsByUser[m.user_id]) membershipsByUser[m.user_id] = [];
-      membershipsByUser[m.user_id].push(m);
-    });
+      const apiUsers = Array.isArray((usersRes as any)?.users) ? (usersRes as any).users : [];
+      const memberships = Array.isArray((membershipsRes as any)?.memberships)
+        ? (membershipsRes as any).memberships
+        : Array.isArray(membershipsRes)
+        ? (membershipsRes as any[])
+        : [];
+      const invoices = Array.isArray((invoicesRes as any)?.invoices)
+        ? (invoicesRes as any).invoices
+        : Array.isArray(invoicesRes)
+        ? (invoicesRes as any[])
+        : [];
 
-    const pendingFromRpcByUser: Record<string, any> = {};
-    if (!pendingRpcRes.error && Array.isArray(pendingRpcRes.data)) {
-      (pendingRpcRes.data as any[]).forEach((r: any) => {
-        if (!r?.user_id) return;
-        pendingFromRpcByUser[r.user_id] = {
-          id: r.membership_id,
-          user_id: r.user_id,
-          status: r.status,
-          plan_id: r.plan_id,
-          starts_at: r.starts_at,
-          ends_at: r.ends_at,
-          created_at: r.created_at,
-          membership_plans: {
-            name: r.plan_name || null,
-            billing_period: r.plan_billing_period || null,
-            price: r.plan_price ?? null,
-          },
-        };
-      });
+      const membershipMap: Record<string, any> = {};
+      for (const m of memberships) {
+        const uid = String(m?.user?._id || m?.user || m?.userId || "");
+        if (!uid) continue;
+        const prev = membershipMap[uid];
+        if (!prev || new Date(m?.createdAt || 0).getTime() > new Date(prev?.createdAt || 0).getTime()) {
+          membershipMap[uid] = m;
+        }
+      }
+
+      const invoiceSummaryMap: Record<string, { total: number; paidCount: number; lastInvoiceAt: string | null }> = {};
+      for (const inv of invoices) {
+        const uid = String(inv?.user?._id || inv?.user || inv?.userId || "");
+        if (!uid) continue;
+        if (!invoiceSummaryMap[uid]) {
+          invoiceSummaryMap[uid] = { total: 0, paidCount: 0, lastInvoiceAt: null };
+        }
+        invoiceSummaryMap[uid].total += Number(inv?.amount || 0);
+        if (String(inv?.status || "") === "paid") {
+          invoiceSummaryMap[uid].paidCount += 1;
+        }
+        if (!invoiceSummaryMap[uid].lastInvoiceAt) {
+          invoiceSummaryMap[uid].lastInvoiceAt = inv?.createdAt || null;
+        }
+      }
+
+      const mapped = apiUsers.map((u: any) => ({
+        id: u._id,
+        full_name: u.fullName || "Unnamed user",
+        institution: u.institution || null,
+        created_at: u.createdAt || new Date().toISOString(),
+        roleNames: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : ["registered_user"],
+        membership: membershipMap[u._id] || null,
+        invoiceSummary: invoiceSummaryMap[u._id] || { total: 0, paidCount: 0, lastInvoiceAt: null },
+        email: u.email || null,
+      }));
+
+      setUsers(mapped);
+    } catch {
+      toast.error("Failed to load users.");
+      setUsers([]);
+      setRoleOptions(baseRoles);
+    } finally {
+      setLoading(false);
     }
-
-    Object.entries(membershipsByUser).forEach(([uid, list]) => {
-      const approved = list.find((m: any) => m.status === "active" || m.status === "renewal_due" || m.status === "approved");
-      const pending = list.find((m: any) => m.status === "pending_verification" || m.status === "pending");
-      const withPlan = list.find((m: any) => !!m.plan_id || !!m.membership_plans?.name);
-      membershipMap[uid] = approved || pending || withPlan || list[0] || null;
-    });
-
-    Object.entries(pendingFromRpcByUser).forEach(([uid, row]) => {
-      if (!membershipMap[uid]) {
-        membershipMap[uid] = row;
-      }
-    });
-
-    const invoiceSummaryMap: Record<string, { total: number; paidCount: number; lastInvoiceAt: string | null }> = {};
-    const paidMembershipInvoiceUserIds = new Set<string>();
-    (invoicesData || []).forEach((inv: any) => {
-      if (!inv.membership_id) return;
-      if (!invoiceSummaryMap[inv.user_id]) {
-        invoiceSummaryMap[inv.user_id] = { total: 0, paidCount: 0, lastInvoiceAt: null };
-      }
-      invoiceSummaryMap[inv.user_id].total += Number(inv.amount || 0);
-      if (inv.status === "paid") {
-        invoiceSummaryMap[inv.user_id].paidCount += 1;
-        paidMembershipInvoiceUserIds.add(inv.user_id);
-      }
-      if (!invoiceSummaryMap[inv.user_id].lastInvoiceAt) invoiceSummaryMap[inv.user_id].lastInvoiceAt = inv.created_at;
-    });
-
-    Object.entries(membershipMap).forEach(([uid, m]) => {
-      const status = String(m?.status || "");
-      const isPending = status === "pending_verification" || status === "pending";
-      if (isPending && paidMembershipInvoiceUserIds.has(uid)) {
-        membershipMap[uid] = { ...m, status: "approved" };
-      }
-    });
-
-    const profileMap: Record<string, any> = {};
-    (profiles || []).forEach((p: any) => {
-      profileMap[p.id] = p;
-    });
-
-    const privilegedRoles = new Set(["super_admin", "content_admin", "editor", "sub_admin", "reviewer", "author"]);
-    const approvedStatuses = new Set(["active", "renewal_due"]);
-    approvedStatuses.add("approved");
-
-    const roleUserIds = Object.keys(roleMap);
-    const approvedMembershipUserIds = Object.entries(membershipMap)
-      .filter(([, m]: any) => approvedStatuses.has(String(m?.status || "")))
-      .map(([uid]) => uid);
-
-    const baseUserIds = Array.from(
-      new Set([
-        ...Object.keys(profileMap),
-        ...roleUserIds,
-        ...approvedMembershipUserIds,
-      ])
-    );
-
-    const merged = baseUserIds.map((uid) => {
-      const p = profileMap[uid] || {};
-      return {
-        id: uid,
-        full_name: p.full_name || "Unnamed user",
-        institution: p.institution || null,
-        created_at: p.created_at || membershipMap[uid]?.created_at || new Date().toISOString(),
-        roleNames: roleMap[uid] || ["registered_user"],
-        membership: membershipMap[uid] || null,
-        invoiceSummary: invoiceSummaryMap[uid] || { total: 0, paidCount: 0, lastInvoiceAt: null },
-        email: null,
-      };
-    });
-
-    const allUsers = [...merged].sort((a: any, b: any) => {
-      const aTime = new Date(a.created_at || 0).getTime();
-      const bTime = new Date(b.created_at || 0).getTime();
-      return bTime - aTime;
-    });
-
-    setUsers(allUsers);
-    setLoading(false);
   }
 
   async function openMembershipManage(u: any) {
     setShowMembershipDialog(u);
   }
 
-  async function logAdminAction(params: {
-    targetUserId: string;
-    membershipId?: string | null;
-    invoiceId?: string | null;
-    actionType: string;
-    actionNote?: string | null;
-  }) {
-    if (!authUser?.id) return;
-    await supabase.from("payment_admin_actions").insert({
-      admin_user_id: authUser.id,
-      target_user_id: params.targetUserId,
-      membership_id: params.membershipId || null,
-      invoice_id: params.invoiceId || null,
-      action_type: params.actionType,
-      action_note: params.actionNote || null,
-    } as any);
-  }
-
   async function handleCancelMembership() {
-    if (!showMembershipDialog?.membership?.id) {
-      toast.error("No active membership found for this user");
-      return;
-    }
-
-    setMembershipActionLoading(true);
-    const membershipId = showMembershipDialog.membership.id;
-    const nowIso = new Date().toISOString();
-
-    const cancelAttempt = await supabase
-      .from("memberships")
-      .update({ status: "cancelled", ends_at: nowIso, updated_at: nowIso, cancelled_at: nowIso } as any)
-      .eq("id", membershipId);
-
-    if (cancelAttempt.error) {
-      const fallback = await supabase
-        .from("memberships")
-        .update({ status: "cancelled", ends_at: nowIso } as any)
-        .eq("id", membershipId);
-
-      if (fallback.error) {
-        toast.error("Failed to cancel membership: " + fallback.error.message);
-        setMembershipActionLoading(false);
-        return;
-      }
-    }
-
-    // Revoke member role on cancellation so route checks remain consistent.
-    const [{ data: memberRole }, { data: subscriberRole }] = await Promise.all([
-      supabase.from("roles").select("id").eq("name", "member").maybeSingle(),
-      supabase.from("roles").select("id").eq("name", "subscriber").maybeSingle(),
-    ]);
-
-    const removableRoleIds = [memberRole?.id, subscriberRole?.id].filter(Boolean);
-    if (removableRoleIds.length > 0) {
-      await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", showMembershipDialog.id)
-        .in("role_id", removableRoleIds as string[]);
-    }
-
-    await logAdminAction({
-      targetUserId: showMembershipDialog.id,
-      membershipId,
-      actionType: "membership_cancelled",
-      actionNote: "Cancelled from AdminUsers dialog",
-    });
-
-    setMembershipActionLoading(false);
-    toast.success("Membership cancelled successfully");
-    setShowMembershipDialog(null);
-    loadUsers();
+    toast.error("Admin cancel action is not exposed by the API yet.");
   }
 
   async function handleRenewMembership() {
@@ -286,38 +191,13 @@ export default function AdminUsers() {
       baseDate.setFullYear(baseDate.getFullYear() + 1);
     }
 
-    const renewAttempt = await supabase
-      .from("memberships")
-      .update({ status: "active", ends_at: baseDate.toISOString(), renewed_at: new Date().toISOString() } as any)
-      .eq("id", membership.id);
-
-    if (renewAttempt.error) {
-      const fallback = await supabase
-        .from("memberships")
-        .update({ status: "active", ends_at: baseDate.toISOString() } as any)
-        .eq("id", membership.id);
-
-      if (fallback.error) {
-        toast.error("Failed to renew membership: " + fallback.error.message);
-        setMembershipActionLoading(false);
-        return;
-      }
+    try {
+      await membershipApi.renew(membership.id);
+    } catch (err: any) {
+      toast.error("Failed to renew membership: " + (err?.message || "Unknown error"));
+      setMembershipActionLoading(false);
+      return;
     }
-
-    // Ensure member role exists after renewal.
-    const { data: memberRole } = await supabase.from("roles").select("id").eq("name", "member").maybeSingle();
-    if (memberRole?.id) {
-      await supabase
-        .from("user_roles")
-        .insert({ user_id: showMembershipDialog.id, role_id: memberRole.id } as any);
-    }
-
-    await logAdminAction({
-      targetUserId: showMembershipDialog.id,
-      membershipId: membership.id,
-      actionType: "membership_renewed",
-      actionNote: "Renewed from AdminUsers dialog",
-    });
 
     setMembershipActionLoading(false);
     toast.success("Membership renewed successfully");
@@ -328,36 +208,21 @@ export default function AdminUsers() {
   async function openRoleEdit(u: any) {
     const roles: string[] = u.roleNames || ["registered_user"];
     const primary = roles.find(r => r !== "registered_user") || "registered_user";
-    setSelectedRole(primary as UserRole);
+    setSelectedRole(primary);
     setShowRoleEdit(u);
   }
+
 
   async function handleRoleUpdate() {
     if (!showRoleEdit) return;
     setSaving(true);
 
-    // Look up the role_id for the selected role
-    const { data: roleData } = await supabase.from("roles").select("id").eq("name", selectedRole).single();
-    if (!roleData) { toast.error("Role not found"); setSaving(false); return; }
-
-    // Get registered_user role_id so we never delete it
-    const { data: baseRole } = await supabase.from("roles").select("id").eq("name", "registered_user").single();
-
-    // Remove all non-registered_user roles for this user
-    if (baseRole) {
-      await supabase.from("user_roles").delete()
-        .eq("user_id", showRoleEdit.id)
-        .neq("role_id", baseRole.id);
-    }
-
-    // Insert new role if it's not the base role
-    if (selectedRole !== "registered_user") {
-      const { error } = await supabase.from("user_roles").insert({ user_id: showRoleEdit.id, role_id: roleData.id });
-      if (error && !error.message.includes("duplicate")) {
-        toast.error("Failed to update role: " + error.message);
-        setSaving(false);
-        return;
-      }
+    try {
+      await usersApi.assignRoles(showRoleEdit.id, [selectedRole]);
+    } catch (err: any) {
+      toast.error("Failed to update role: " + (err?.message || "Unknown error"));
+      setSaving(false);
+      return;
     }
 
     setSaving(false);
@@ -372,22 +237,40 @@ export default function AdminUsers() {
       return;
     }
     setCreating(true);
-    const { data, error } = await supabase.rpc("admin_create_user", {
-      p_email: newUser.email.trim(),
-      p_password: newUser.password,
-      p_full_name: newUser.full_name.trim(),
-      p_institution: newUser.institution.trim() || null,
-      p_role_name: newUser.role,
-    });
-    setCreating(false);
-    if (error) {
-      toast.error("Failed to create user: " + error.message);
+    try {
+      const reg = await authApi.register({
+        email: newUser.email.trim(),
+        password: newUser.password,
+        fullName: newUser.full_name.trim(),
+        institution: newUser.institution.trim() || undefined,
+      }) as any;
+
+      const userId = reg?.user?._id;
+      if (userId && newUser.role !== "registered_user") {
+        await usersApi.assignRoles(userId, [newUser.role]);
+      }
+    } catch (err: any) {
+      setCreating(false);
+      toast.error("Failed to create user: " + (err?.message || "Unknown error"));
       return;
     }
+    setCreating(false);
     toast.success(`User "${newUser.full_name}" created successfully!`);
     setShowAddUser(false);
     setNewUser(EMPTY_FORM);
     loadUsers();
+  }
+
+  async function handleDeleteUser(userId: string, name: string) {
+    if (!window.confirm(`Are you sure you want to PERMANENTLY delete user "${name}"? This action cannot be undone.`)) return;
+    
+    try {
+      await usersApi.delete(userId);
+      toast.success(`User "${name}" deleted successfully.`);
+      loadUsers();
+    } catch (err: any) {
+      toast.error("Failed to delete user: " + (err?.message || "Unknown error"));
+    }
   }
 
   const filtered = users.filter(u => {
@@ -421,6 +304,7 @@ export default function AdminUsers() {
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-muted/50">
               <th className="text-left p-4 font-medium text-muted-foreground">User</th>
+              <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Email</th>
               <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Institution</th>
               <th className="text-left p-4 font-medium text-muted-foreground">Role</th>
               <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Membership</th>
@@ -430,9 +314,9 @@ export default function AdminUsers() {
             </tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Loading users...</td></tr>
+                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Loading users...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No users found</td></tr>
+                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No users found</td></tr>
               ) : filtered.map((u) => {
                 const roles: string[] = u.roleNames || ["registered_user"];
                 const role: UserRole = (roles.find((r: string) => r !== "registered_user") || "registered_user") as UserRole;
@@ -445,10 +329,14 @@ export default function AdminUsers() {
                         <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
                           {u.full_name?.charAt(0)?.toUpperCase() || "?"}
                         </div>
-                        <span className="font-medium">{u.full_name || "—"}</span>
+                        <div>
+                          <span className="font-medium block">{u.full_name || "â€”"}</span>
+                          <span className="text-xs text-muted-foreground md:hidden">{u.email || "No email"}</span>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.institution || "—"}</td>
+                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.email || "â€”"}</td>
+                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.institution || "â€”"}</td>
                     <td className="p-4">
                       <Badge variant="outline" className={roleColor[role] || ""}>{role.replace("_", " ")}</Badge>
                     </td>
@@ -460,8 +348,8 @@ export default function AdminUsers() {
                           </Badge>
                           <p className="text-xs text-muted-foreground">
                             {membership.membership_plans?.name || "Plan"}
-                            {typeof membership.membership_plans?.price === "number" ? ` · $${Number(membership.membership_plans.price).toFixed(2)}` : ""}
-                            {membership.ends_at ? ` · ${new Date(membership.ends_at).toLocaleDateString()}` : ""}
+                            {typeof membership.membership_plans?.price === "number" ? ` Â· $${Number(membership.membership_plans.price).toFixed(2)}` : ""}
+                            {membership.ends_at ? ` Â· ${new Date(membership.ends_at).toLocaleDateString()}` : ""}
                           </p>
                         </div>
                       ) : <span className="text-muted-foreground text-xs">No membership</span>}
@@ -483,6 +371,9 @@ export default function AdminUsers() {
                         <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={() => openMembershipManage(u)}>
                           <ReceiptText className="h-3 w-3" /> Membership
                         </Button>
+                        <Button variant="ghost" size="sm" className="flex items-center gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteUser(u.id, u.full_name)}>
+                          <Trash2 className="h-3 w-3" /> Delete
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -496,7 +387,10 @@ export default function AdminUsers() {
       {/* Add User Dialog */}
       <Dialog open={showAddUser} onOpenChange={(o) => { setShowAddUser(o); if (!o) setNewUser(EMPTY_FORM); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Create New User</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Create New User</DialogTitle>
+            <DialogDescription>Create a user account and assign an initial role.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Full Name *</Label>
@@ -516,10 +410,10 @@ export default function AdminUsers() {
             </div>
             <div className="space-y-2">
               <Label>Assign Role</Label>
-              <Select value={newUser.role} onValueChange={(v) => setNewUser(p => ({ ...p, role: v as UserRole }))}>
+              <Select value={newUser.role} onValueChange={(v) => setNewUser(p => ({ ...p, role: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALL_ROLES.map(r => <SelectItem key={r} value={r} className="capitalize">{r.replace(/_/g, " ")}</SelectItem>)}
+                  {roleOptions.map(r => <SelectItem key={r} value={r} className="capitalize">{r.replace(/_/g, " ")}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -533,15 +427,18 @@ export default function AdminUsers() {
 
       <Dialog open={!!showRoleEdit} onOpenChange={() => setShowRoleEdit(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit User Role</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit User Role</DialogTitle>
+            <DialogDescription>Choose the primary role for this user.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground font-medium">{showRoleEdit?.full_name || "Unknown user"}</p>
             <div className="space-y-2">
               <Label>Assign Role</Label>
-              <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as UserRole)}>
+              <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALL_ROLES.map(r => (
+                  {roleOptions.map(r => (
                     <SelectItem key={r} value={r} className="capitalize">{r.replace("_", " ")}</SelectItem>
                   ))}
                 </SelectContent>
@@ -557,7 +454,10 @@ export default function AdminUsers() {
 
       <Dialog open={!!showMembershipDialog} onOpenChange={() => setShowMembershipDialog(null)}>
         <DialogContent className="sm:max-w-lg">
-          <DialogHeader><DialogTitle>Membership & Invoices</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Membership & Invoices</DialogTitle>
+            <DialogDescription>Review membership status and invoice summary for this user.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
               <p className="text-sm text-muted-foreground">User</p>
@@ -574,7 +474,7 @@ export default function AdminUsers() {
                   <p className="text-sm">{showMembershipDialog.membership.membership_plans?.name || "Plan"}</p>
                   <p className="text-xs text-muted-foreground">
                     Starts: {showMembershipDialog.membership.starts_at ? new Date(showMembershipDialog.membership.starts_at).toLocaleDateString() : "N/A"}
-                    {" · "}
+                    {" Â· "}
                     Ends: {showMembershipDialog.membership.ends_at ? new Date(showMembershipDialog.membership.ends_at).toLocaleDateString() : "N/A"}
                   </p>
                 </div>
@@ -610,4 +510,5 @@ export default function AdminUsers() {
     </div>
   );
 }
+
 

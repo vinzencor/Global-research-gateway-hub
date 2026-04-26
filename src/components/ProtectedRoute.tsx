@@ -1,14 +1,16 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/lib/supabase";
+import { UserRole } from "@/contexts/AuthContext";
+import { getEffectiveModuleAccess, getPortalNavItemsForRoles, getSubAdminNavItemsForRoles, isModuleAllowed } from "@/lib/portalNav";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: UserRole[];
+  requiredModule?: string;
   redirectTo?: string;
 }
 
-export function ProtectedRoute({ children, requiredRoles, redirectTo = "/login" }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRoles, requiredModule, redirectTo = "/login" }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -31,15 +33,14 @@ export function ProtectedRoute({ children, requiredRoles, redirectTo = "/login" 
 
   const privilegedRoles: UserRole[] = ["super_admin", "content_admin", "editor", "sub_admin", "reviewer"];
   const isPrivileged = normalizedRoles.some((role) => privilegedRoles.includes(role));
-  const hasApprovedRole = normalizedRoles.includes("member") || normalizedRoles.includes("subscriber");
-  const isApprovedMembership = user.membershipStatus === "active" || user.membershipStatus === "renewal_due" || user.membershipStatus === "approved" || hasApprovedRole;
+  const isPendingMembership = user.membershipStatus === "pending_verification" || user.membershipStatus === "pending";
 
-  // Non-privileged users must be approved before using protected areas.
-  if (!isPrivileged && !isApprovedMembership && location.pathname !== "/portal/pending") {
+  // Non-privileged users in pending verification are directed to pending page.
+  if (!isPrivileged && isPendingMembership && location.pathname !== "/portal/pending") {
     return <Navigate to="/portal/pending" replace />;
   }
 
-  if (!isPrivileged && isApprovedMembership && location.pathname === "/portal/pending") {
+  if (!isPrivileged && !isPendingMembership && location.pathname === "/portal/pending") {
     return <Navigate to="/portal/dashboard" replace />;
   }
 
@@ -47,6 +48,20 @@ export function ProtectedRoute({ children, requiredRoles, redirectTo = "/login" 
     const hasRole = requiredRoles.some((role) => normalizedRoles.includes(role));
     if (!hasRole) {
       return <Navigate to="/portal/dashboard" replace />;
+    }
+  }
+
+  if (requiredModule) {
+    const roleAccess = getEffectiveModuleAccess(normalizedRoles, user.moduleAccess || {});
+    if (!isModuleAllowed(requiredModule, roleAccess)) {
+      const firstAllowedPortal = getPortalNavItemsForRoles(normalizedRoles, roleAccess);
+      const firstAllowedSubAdmin = getSubAdminNavItemsForRoles(normalizedRoles, roleAccess);
+      const allowedTargets = [...firstAllowedSubAdmin, ...firstAllowedPortal];
+      const fallbackTo =
+        allowedTargets.find((n) => n.to.startsWith("/sub-admin") || n.to === "/reviewer/stage")?.to ||
+        allowedTargets.find((n) => n.to.startsWith("/portal/") || n.to === "/author" || n.to === "/submit-paper")?.to ||
+        "/portal/pending";
+      return <Navigate to={fallbackTo} replace />;
     }
   }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, FileText, BarChart2, Settings, KeyRound, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { toast } from "sonner";
 
 const navItems = [
@@ -28,9 +28,9 @@ export default function ReviewerSettings() {
     if (newPassword.length < 8) { toast.error("New password must be at least 8 characters."); return; }
     if (newPassword !== confirmPassword) { toast.error("New passwords do not match."); return; }
     setSaving(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: user?.email || "", password: currentPassword });
+    const { error: signInError } = await db.auth.signInWithPassword({ email: user?.email || "", password: currentPassword });
     if (signInError) { toast.error("Current password is incorrect."); setSaving(false); return; }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await db.auth.updateUser({ password: newPassword });
     setSaving(false);
     if (error) { toast.error("Failed to update password: " + error.message); return; }
     toast.success("Password changed successfully!");
@@ -69,7 +69,7 @@ export default function ReviewerSettings() {
             <div className="space-y-2 pt-4 border-t">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Full Name</span>
-                <span className="font-medium">{user?.profile?.full_name || "—"}</span>
+                <span className="font-medium">{user?.profile?.full_name || "â€”"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Email</span>
@@ -111,3 +111,4 @@ export default function ReviewerSettings() {
     </DashboardLayout>
   );
 }
+

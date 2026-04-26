@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, ClipboardList, Settings, BarChart2, CheckCircle, Clock, XCircle, GitBranch, Trophy, Flame, TrendingUp } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Settings, BarChart2, CheckCircle, Clock, XCircle, GitBranch, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const editorNavItems = [
@@ -14,29 +14,6 @@ export const editorNavItems = [
   { label: "Settings", to: "/editor/settings", icon: <Settings className="h-4 w-4" /> },
 ];
 
-const SCORE_APPROVED = 10;
-const SCORE_CHANGES_REQUESTED = 5;
-const SCORE_REJECTED = 3;
-
-const LEVELS = [
-  { name: "Bronze", minScore: 0, color: "from-amber-700 to-amber-600", textColor: "text-amber-700", icon: "🥉" },
-  { name: "Silver", minScore: 50, color: "from-gray-400 to-gray-300", textColor: "text-gray-500", icon: "🥈" },
-  { name: "Gold", minScore: 150, color: "from-yellow-500 to-yellow-400", textColor: "text-yellow-600", icon: "🥇" },
-  { name: "Platinum", minScore: 300, color: "from-indigo-500 to-purple-500", textColor: "text-indigo-600", icon: "💎" },
-  { name: "Diamond", minScore: 500, color: "from-cyan-400 to-blue-500", textColor: "text-cyan-600", icon: "👑" },
-];
-
-function getLevel(score: number) {
-  let level = LEVELS[0];
-  for (const l of LEVELS) { if (score >= l.minScore) level = l; }
-  return level;
-}
-
-function getNextLevel(score: number) {
-  for (const l of LEVELS) { if (score < l.minScore) return l; }
-  return null;
-}
-
 export default function EditorDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -44,8 +21,6 @@ export default function EditorDashboard() {
   const [stats, setStats] = useState({ stages: 0, pending: 0, inReview: 0, approved: 0, changesRequested: 0, rejected: 0, total: 0 });
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [myStages, setMyStages] = useState<any[]>([]);
-  const [totalScore, setTotalScore] = useState(0);
-  const [streak, setStreak] = useState(0);
   const [pendingReviews, setPendingReviews] = useState<any[]>([]);
 
   useEffect(() => { if (user) loadData(); }, [user]);
@@ -54,7 +29,7 @@ export default function EditorDashboard() {
     setLoading(true);
     try {
     // Get workflow stages assigned to this editor
-    const { data: stages } = await supabase
+    const { data: stages } = await db
       .from("workflow_stages")
       .select("id, stage_name, order_index, template_id")
       .eq("assigned_user_id", user!.id);
@@ -68,7 +43,7 @@ export default function EditorDashboard() {
 
     if (stages && stages.length > 0) {
       const templateIds = stages.map((s: any) => s.template_id);
-      const { data: items } = await supabase
+      const { data: items } = await db
         .from("content_items")
         .select("id, title, type, workflow_status, current_stage_index, workflow_template_id, created_at")
         .in("workflow_template_id", templateIds)
@@ -88,7 +63,7 @@ export default function EditorDashboard() {
     setPendingReviews(pendingItems.slice(0, 5));
 
     // Review history from workflow_logs
-    const { data: allLogsData } = await supabase
+    const { data: allLogsData } = await db
       .from("workflow_logs")
       .select("id, action, acted_at, content_id")
       .eq("acted_by", user!.id)
@@ -98,22 +73,6 @@ export default function EditorDashboard() {
     const approved = allLogs.filter((l: any) => l.action === "approved").length;
     const changesReq = allLogs.filter((l: any) => l.action === "changes_requested").length;
     const rejected = allLogs.filter((l: any) => l.action === "rejected").length;
-    const score = (approved * SCORE_APPROVED) + (changesReq * SCORE_CHANGES_REQUESTED) + (rejected * SCORE_REJECTED);
-    setTotalScore(score);
-
-    // Streak
-    let streakCount = 0;
-    if (allLogs.length > 0) {
-      const uniqueDays = new Set(allLogs.map((l: any) => new Date(l.acted_at).toDateString()));
-      const today = new Date();
-      for (let i = 0; i < 365; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        if (uniqueDays.has(d.toDateString())) streakCount++;
-        else if (i > 0) break;
-      }
-    }
-    setStreak(streakCount);
 
     setStats({ stages: stageCount, pending: pendingCount, inReview: inReviewCount, approved, changesRequested: changesReq, rejected, total: allLogs.length });
     setRecentLogs(allLogs.slice(0, 5));
@@ -121,12 +80,6 @@ export default function EditorDashboard() {
       setLoading(false);
     }
   }
-
-  const currentLevel = getLevel(totalScore);
-  const nextLevel = getNextLevel(totalScore);
-  const progressToNext = nextLevel
-    ? ((totalScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100
-    : 100;
 
   if (loading) return (
     <DashboardLayout navItems={editorNavItems} title="Editor Portal">
@@ -143,70 +96,6 @@ export default function EditorDashboard() {
             Welcome, {user?.profile?.full_name?.split(" ")[0] || "Editor"}!
           </h2>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
-        </div>
-
-        {/* Gamification Score Card */}
-        <div className="rounded-xl border bg-card card-shadow overflow-hidden">
-          <div className={`bg-gradient-to-r ${currentLevel.color} p-5 text-white`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="text-4xl">{currentLevel.icon}</div>
-                <div>
-                  <h3 className="font-heading font-bold text-lg">{currentLevel.name} Editor</h3>
-                  <p className="text-sm opacity-90">{totalScore} points earned</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                {streak > 0 && (
-                  <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1.5">
-                    <Flame className="h-4 w-4" />
-                    <span className="text-sm font-bold">{streak} day streak</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 bg-white/20 rounded-full px-3 py-1.5">
-                  <Trophy className="h-4 w-4" />
-                  <span className="text-sm font-bold">{stats.total} reviews</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                {nextLevel ? `${nextLevel.minScore - totalScore} pts to ${nextLevel.name}` : "Maximum level reached!"}
-              </span>
-              <span className="text-xs font-medium text-muted-foreground">{Math.round(progressToNext)}%</span>
-            </div>
-            <div className="w-full h-3 bg-secondary rounded-full overflow-hidden">
-              <div
-                className={`h-full bg-gradient-to-r ${currentLevel.color} rounded-full transition-all duration-1000`}
-                style={{ width: `${progressToNext}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <CheckCircle className="h-4 w-4 text-success" />
-                  <span className="text-lg font-bold text-success">{stats.approved}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Approved (+{SCORE_APPROVED}pts each)</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <XCircle className="h-4 w-4 text-orange-500" />
-                  <span className="text-lg font-bold text-orange-500">{stats.changesRequested}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Changes Req. (+{SCORE_CHANGES_REQUESTED}pts)</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <XCircle className="h-4 w-4 text-destructive" />
-                  <span className="text-lg font-bold text-destructive">{stats.rejected}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Rejected (+{SCORE_REJECTED}pts each)</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Stats */}
@@ -249,7 +138,7 @@ export default function EditorDashboard() {
           </div>
         </div>
 
-        {/* My Assigned Stages (same workflow pattern as admin designer) */}
+        {/* My Assigned Stages */}
         {myStages.length > 0 && (
           <div className="rounded-xl border bg-card card-shadow overflow-hidden">
             <div className="p-5 border-b">
@@ -284,7 +173,7 @@ export default function EditorDashboard() {
                 <div key={item.id} className="p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">{item.title}</p>
-                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{item.type} · {new Date(item.created_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{item.type} Â· {new Date(item.created_at).toLocaleDateString()}</p>
                   </div>
                   <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/20">
                     {item.workflow_status?.replace("_", " ")}
@@ -309,9 +198,6 @@ export default function EditorDashboard() {
                     {log.action === "changes_requested" && <XCircle className="h-4 w-4 text-orange-500" />}
                     {log.action === "rejected" && <XCircle className="h-4 w-4 text-destructive" />}
                     <span className="text-sm capitalize">{log.action?.replace("_", " ")}</span>
-                    <Badge variant="outline" className="text-xs">
-                      +{log.action === "approved" ? SCORE_APPROVED : log.action === "changes_requested" ? SCORE_CHANGES_REQUESTED : SCORE_REJECTED} pts
-                    </Badge>
                   </div>
                   <span className="text-xs text-muted-foreground">{new Date(log.acted_at).toLocaleDateString()}</span>
                 </div>

@@ -1,20 +1,13 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, User, CreditCard, BookOpen, Bell, FileText, PenSquare, ShieldCheck } from "lucide-react";
+import { BookOpen, FileText, PenSquare, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase, isAdmin, isReviewer } from "@/lib/supabase";
-
-const navItems = [
-  { label: "Dashboard", to: "/portal/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Profile", to: "/portal/profile", icon: <User className="h-4 w-4" /> },
-  { label: "Submit Journal", to: "/submit-paper", icon: <PenSquare className="h-4 w-4" /> },
-  { label: "My Submissions", to: "/author", icon: <FileText className="h-4 w-4" /> },
-  { label: "Membership & Billing", to: "/portal/membership", icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Digital Library", to: "/portal/library", icon: <BookOpen className="h-4 w-4" /> },
-];
+import { isAdmin } from "@/contexts/AuthContext";
+import { authApi, libraryApi, membershipApi } from "@/lib/api";
+import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 
 export default function PortalDashboard() {
   const { user } = useAuth();
@@ -23,53 +16,94 @@ export default function PortalDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      supabase
-        .from("memberships")
-        .select("*, membership_plans(name, price, billing_period)")
-        .eq("user_id", user.id)
-        .in("status", ["active", "renewal_due", "approved"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("memberships")
-        .select("*, membership_plans(name, price, billing_period)")
-        .eq("user_id", user.id)
-        .in("status", ["pending_verification", "pending"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("invoices")
-        .select("membership_id,status")
-        .eq("user_id", user.id)
-        .not("membership_id", "is", null)
-        .limit(50),
-      supabase.from("saved_library_items").select("library_item_id", { count: "exact" }).eq("user_id", user.id),
-    ]).then(([approvedMem, pendingMem, invoiceRows, saved]) => {
-      const approved = approvedMem.data || null;
-      const pending = pendingMem.data || null;
-      const paidMembershipIds = new Set(
-        ((invoiceRows.data || []) as any[])
-          .filter((inv: any) => inv?.status === "paid" && !!inv?.membership_id)
-          .map((inv: any) => inv.membership_id)
-      );
+    (async () => {
+      try {
+        const [membershipRes, meRes, savedRes] = await Promise.all([
+          membershipApi.getMy().catch(() => null),
+          authApi.getMe().catch(() => null),
+          libraryApi.getMySaved().catch(() => []),
+        ]);
 
-      const displayMembership = approved || ((pending?.id && paidMembershipIds.has(pending.id)) ? { ...pending, status: "approved" } : null);
+        const membershipsArray = Array.isArray((membershipRes as any)?.memberships)
+          ? (membershipRes as any).memberships
+          : Array.isArray((membershipRes as any)?.items)
+          ? (membershipRes as any).items
+          : Array.isArray(membershipRes)
+          ? (membershipRes as any[])
+          : [];
 
-      setMembership(displayMembership);
-      setSavedCount(saved.count || 0);
-    });
+        const approvedFromList = membershipsArray.find((m: any) =>
+          ["active", "renewal_due", "approved"].includes(String(m?.status || "").toLowerCase())
+        );
+
+        const membershipPayload =
+          approvedFromList ||
+          (membershipRes as any)?.membership ||
+          (membershipRes as any)?.currentMembership ||
+          (membershipRes as any)?.data?.membership ||
+          ((membershipRes as any)?.id || (membershipRes as any)?._id || (membershipRes as any)?.plan
+            ? (membershipRes as any)
+            : null);
+
+        const meMembership = (meRes as any)?.membership || null;
+
+        const normalizedMembership = membershipPayload
+          ? {
+              ...membershipPayload,
+              plan_id: membershipPayload?.plan?._id || membershipPayload?.plan || membershipPayload?.planId || null,
+              membership_plans: {
+                name: membershipPayload?.plan?.name || membershipPayload?.membership_plans?.name || null,
+                price: Number(membershipPayload?.plan?.price || membershipPayload?.membership_plans?.price || 0),
+                billing_period:
+                  membershipPayload?.plan?.billingPeriod ||
+                  membershipPayload?.membership_plans?.billing_period ||
+                  null,
+              },
+              ends_at: membershipPayload?.endsAt || membershipPayload?.ends_at || null,
+              status: membershipPayload?.status || null,
+            }
+          : meMembership && ["active", "renewal_due", "approved"].includes(String(meMembership?.status || "").toLowerCase())
+          ? {
+              plan_id: meMembership?.plan?._id || meMembership?.plan || meMembership?.planId || null,
+              membership_plans: {
+                name: meMembership?.plan?.name || "Active",
+                price: Number(meMembership?.plan?.price || 0),
+                billing_period: meMembership?.plan?.billingPeriod || null,
+              },
+              ends_at: meMembership?.endsAt || meMembership?.ends_at || null,
+              status: meMembership?.status || "active",
+            }
+          : user?.membershipStatus && ["active", "renewal_due", "approved"].includes(String(user.membershipStatus).toLowerCase())
+          ? {
+              membership_plans: { name: "Active", price: 0, billing_period: null },
+              ends_at: null,
+              status: user.membershipStatus,
+            }
+          : (user?.roles || []).some((r) => ["member", "subscriber"].includes(String(r)))
+          ? {
+              membership_plans: { name: "Active", price: 0, billing_period: null },
+              ends_at: null,
+              status: "active",
+            }
+          : null;
+
+        setMembership(normalizedMembership);
+        const savedRows = Array.isArray((savedRes as any[]))
+          ? (savedRes as any[])
+          : Array.isArray((savedRes as any)?.items)
+          ? (savedRes as any).items
+          : Array.isArray((savedRes as any)?.saved)
+          ? (savedRes as any).saved
+          : [];
+        setSavedCount(savedRows.length);
+      } catch {
+        setMembership(null);
+        setSavedCount(0);
+      }
+    })();
   }, [user]);
 
-  const adminLinks = isAdmin(user?.roles || []) ? [{ label: "Admin Console", to: "/admin" }] : [];
-  const reviewerLinks = isReviewer(user?.roles || []) ? [{ label: "Reviewer Portal", to: "/reviewer" }] : [];
-  const allNavItems = [
-    ...navItems,
-    ...adminLinks.map(l => ({ label: l.label, to: l.to, icon: <ShieldCheck className="h-4 w-4" /> })),
-    ...reviewerLinks.map(l => ({ label: l.label, to: l.to, icon: <Bell className="h-4 w-4" /> })),
-  ];
+  const allNavItems = getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
 
   return (
     <DashboardLayout navItems={allNavItems} title="My Dashboard">
@@ -77,14 +111,14 @@ export default function PortalDashboard() {
         {/* Welcome */}
         <div className="rounded-xl border bg-gradient-to-r from-primary/10 to-primary/5 p-6">
           <h2 className="font-heading text-2xl font-bold mb-1">
-            Welcome back, {user?.profile?.full_name?.split(" ")[0] || "Researcher"}!
+            Welcome back, {user?.fullName?.split(" ")[0] || "Researcher"}!
           </h2>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
             <p className="text-muted-foreground text-sm">{user?.email}</p>
-            {user?.profile?.institution && (
+            {user?.institution && (
               <>
-                <span className="text-muted-foreground/40 text-sm hidden sm:inline">·</span>
-                <p className="text-muted-foreground text-sm">{user.profile.institution}</p>
+                <span className="text-muted-foreground/40 text-sm hidden sm:inline">|</span>
+                <p className="text-muted-foreground text-sm">{user.institution}</p>
               </>
             )}
           </div>
@@ -152,7 +186,7 @@ export default function PortalDashboard() {
               <span className="text-sm text-muted-foreground">Expires: {membership.ends_at ? new Date(membership.ends_at).toLocaleDateString() : "N/A"}</span>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">You don't have an active membership. <Link to="/portal/membership" className="text-primary hover:underline">View plans →</Link></p>
+            <p className="text-sm text-muted-foreground">You don't have an active membership. <Link to="/portal/membership" className="text-primary hover:underline">View plans -&gt;</Link></p>
           )}
         </div>
 
@@ -161,7 +195,7 @@ export default function PortalDashboard() {
           <div className="grid sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Full Name</p>
-              <p className="font-medium">{user?.profile?.full_name || "Not provided"}</p>
+              <p className="font-medium">{user?.fullName || "Not provided"}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Email</p>
@@ -169,7 +203,7 @@ export default function PortalDashboard() {
             </div>
             <div>
               <p className="text-muted-foreground">Institution</p>
-              <p className="font-medium">{user?.profile?.institution || "Not provided"}</p>
+              <p className="font-medium">{user?.institution || "Not provided"}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Roles</p>
@@ -181,3 +215,4 @@ export default function PortalDashboard() {
     </DashboardLayout>
   );
 }
+

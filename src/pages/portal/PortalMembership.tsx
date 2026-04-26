@@ -1,26 +1,20 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, User, CreditCard, BookOpen, Check, Receipt, PenSquare, FileText } from "lucide-react";
+import { LayoutDashboard, User, CreditCard, BookOpen, Check, Receipt, PenSquare, FileText, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
+import { featuredApi, membershipApi } from "@/lib/api";
+import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { ensureUserRole, reconcileMembershipStatuses, removeUserRoles } from "@/lib/membership";
 import { toast } from "sonner";
 
-const navItems = [
-  { label: "Dashboard", to: "/portal/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Profile", to: "/portal/profile", icon: <User className="h-4 w-4" /> },
-  { label: "Submit Journal", to: "/submit-paper", icon: <PenSquare className="h-4 w-4" /> },
-  { label: "My Submissions", to: "/author", icon: <FileText className="h-4 w-4" /> },
-  { label: "Membership & Billing", to: "/portal/membership", icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Digital Library", to: "/portal/library", icon: <BookOpen className="h-4 w-4" /> },
-];
-
 export default function PortalMembership() {
   const { user } = useAuth();
+  const navItems = getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const ppvMode = searchParams.get("mode") === "ppv";
@@ -35,8 +29,103 @@ export default function PortalMembership() {
   const [ppvContent, setPpvContent] = useState<any>(null);
   const [cancelling, setCancelling] = useState(false);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
+  const [requestFeatured, setRequestFeatured] = useState(false);
+  const [featuredRequestStatus, setFeaturedRequestStatus] = useState<string | null>(null);
+  const [featuredRequesting, setFeaturedRequesting] = useState(false);
   const approvedStatuses = ["active", "renewal_due", "approved"];
   const pendingStatuses = ["pending_verification", "pending"];
+  const maxPlanPrice = plans.length > 0 ? Math.max(...plans.map((p) => Number(p.price || 0))) : 0;
+  const currentPlanPrice = Number(currentMembership?.membership_plans?.price || 0);
+  const isOnHighestTier = !!currentMembership && currentPlanPrice >= maxPlanPrice && maxPlanPrice > 0;
+
+  function normalizePlanRows(payload: any) {
+    if (Array.isArray(payload?.plans)) return payload.plans;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload)) return payload;
+    return [];
+  }
+
+  function normalizeInvoiceRows(payload: any) {
+    if (Array.isArray(payload?.invoices)) return payload.invoices;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (Array.isArray(payload)) return payload;
+    return [];
+  }
+
+  function normalizeMembershipRows(payload: any) {
+    if (!payload) return [] as any[];
+    if (Array.isArray(payload?.memberships)) return payload.memberships;
+    if (Array.isArray(payload?.items)) return payload.items;
+    if (payload?.membership) return [payload.membership];
+    if (payload?.currentMembership) return [payload.currentMembership];
+    if (Array.isArray(payload)) return payload;
+    if (payload?.id || payload?._id) return [payload];
+    return [];
+  }
+
+  function normalizeMembershipShape(m: any) {
+    const planObj = m?.plan || m?.membership_plans || {};
+    return {
+      ...m,
+      id: String(m?._id || m?.id || ""),
+      plan_id: planObj?._id || m?.plan_id || m?.planId || null,
+      status: String(m?.status || ""),
+      created_at: m?.createdAt || m?.created_at || new Date().toISOString(),
+      starts_at: m?.startsAt || m?.starts_at || null,
+      ends_at: m?.endsAt || m?.ends_at || null,
+      screenshot_url: m?.paymentScreenshotUrl || m?.screenshotUrl || m?.screenshot_url || null,
+      request_featured: !!(m?.requestFeatured || m?.request_featured),
+      membership_plans: {
+        name: planObj?.name || null,
+        price: Number(planObj?.price || 0),
+        billing_period: planObj?.billingPeriod || planObj?.billing_period || null,
+      },
+    };
+  }
+
+  async function loadMembershipData() {
+    if (!user) return;
+    try {
+      const [plansRes, myRes, invoicesRes] = await Promise.all([
+        membershipApi.listPlans().catch(() => ({ plans: [] })),
+        membershipApi.getMy().catch(() => null),
+        membershipApi.getMyInvoices().catch(() => ({ invoices: [] })),
+      ]);
+
+      const normalizedPlans = normalizePlanRows(plansRes).map((p: any) => ({
+        id: String(p?._id || p?.id || p?.planId || ""),
+        name: String(p?.name || p?.plan_name || ""),
+        price: Number(p?.price ?? p?.amount ?? 0),
+        description: p?.description || null,
+        billing_period: p?.billingPeriod || p?.billing_period || null,
+        features: Array.isArray(p?.features) ? p.features : [],
+      }));
+      setPlans(normalizedPlans.filter((p: any) => p.id && p.name));
+
+      const invoiceRows = normalizeInvoiceRows(invoicesRes).map((inv: any) => ({
+        ...inv,
+        id: String(inv?._id || inv?.id || ""),
+        created_at: inv?.createdAt || inv?.created_at,
+        status: inv?.status,
+        amount: Number(inv?.amount || 0),
+        currency: inv?.currency || "USD",
+        membership_id: inv?.membership?._id || inv?.membershipId || inv?.membership_id || null,
+      }));
+      setInvoices(invoiceRows);
+
+      const myMembershipRows = normalizeMembershipRows(myRes).map(normalizeMembershipShape);
+      const approved = myMembershipRows.find((m: any) => approvedStatuses.includes(String(m?.status || ""))) || null;
+      const pending = myMembershipRows.find((m: any) => pendingStatuses.includes(String(m?.status || ""))) || null;
+      const resolved = resolveDisplayMembership(approved, pending, invoiceRows);
+      setCurrentMembership(resolved.current);
+      setPendingMembership(resolved.pending);
+    } catch {
+      setCurrentMembership(null);
+      setPendingMembership(null);
+      setInvoices([]);
+      setPlans([]);
+    }
+  }
 
   function resolveDisplayMembership(approved: any, pending: any, invoiceRows: any[]) {
     if (approved) {
@@ -58,40 +147,12 @@ export default function PortalMembership() {
 
   useEffect(() => {
     if (!user) return;
-    reconcileMembershipStatuses(user.id).then(() => Promise.all([
-      supabase.from("membership_plans").select("*").eq("is_active", true).order("price"),
-      supabase
-        .from("memberships")
-        .select("*, membership_plans(name, price, billing_period)")
-        .eq("user_id", user.id)
-        .in("status", approvedStatuses)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("memberships")
-        .select("*, membership_plans(name, price, billing_period)")
-        .eq("user_id", user.id)
-        .in("status", pendingStatuses)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
-    ])).then(([p, m, pending, i]) => {
-      setPlans(p.data || []);
-      const approvedMembership = m.data || null;
-      const pendingMembershipRow = pending.data || null;
-      const invoiceRows = i.data || [];
-      const resolved = resolveDisplayMembership(approvedMembership, pendingMembershipRow, invoiceRows);
-      setCurrentMembership(resolved.current);
-      setPendingMembership(resolved.pending);
-      setInvoices(invoiceRows);
-    });
+    loadMembershipData();
   }, [user]);
 
   useEffect(() => {
     if (!user || !ppvMode || !ppvContentId) return;
-    supabase
+    db
       .from("content_items")
       .select("id, title, slug, access_mode, ppv_price")
       .eq("id", ppvContentId)
@@ -99,8 +160,45 @@ export default function PortalMembership() {
       .then(({ data }) => setPpvContent(data || null));
   }, [user, ppvMode, ppvContentId]);
 
+  useEffect(() => {
+    if (!user) return;
+    featuredApi.getMyRequests().then((res: any) => {
+      const rows = Array.isArray(res?.requests)
+        ? res.requests
+        : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res)
+        ? res
+        : [];
+      const latest = rows.length > 0 ? rows[0] : null;
+      setFeaturedRequestStatus(latest?.status || null);
+    }).catch(() => setFeaturedRequestStatus(null));
+  }, [user]);
+
+  async function handleRequestFeaturedUser() {
+    if (!user) return;
+    setFeaturedRequesting(true);
+    let error: any = null;
+    try {
+      await featuredApi.submitRequest();
+    } catch (err: any) {
+      error = err;
+    }
+    setFeaturedRequesting(false);
+    if (error) {
+      toast.error("Failed to submit featured request: " + error.message);
+      return;
+    }
+    setFeaturedRequestStatus("pending");
+    toast.success("Featured user request submitted for admin approval");
+  }
+
   async function handlePurchase(plan: any) {
     if (!user) return;
+    if (pendingMembership) {
+      toast.info("You already have a plan request under verification. Please wait for admin approval.");
+      return;
+    }
     if (!paymentFile) {
       toast.error("Please upload your payment screenshot first.");
       return;
@@ -108,93 +206,36 @@ export default function PortalMembership() {
 
     const currentPrice = Number(currentMembership?.membership_plans?.price || 0);
     const targetPrice = Number(plan.price || 0);
-    const isInstitutionalCurrent = String(currentMembership?.membership_plans?.name || "").toLowerCase().includes("institutional");
 
-    if (isInstitutionalCurrent && currentMembership?.plan_id !== plan.id) {
-      toast.error("Institutional plan is the highest tier. Upgrade is not available.");
+    if (isOnHighestTier && currentMembership?.plan_id !== plan.id) {
+      toast.error("You are already on the highest premium plan. Upgrade is not available.");
       return;
     }
 
-    if (currentMembership && currentMembership.plan_id !== plan.id && targetPrice <= currentPrice) {
+    if (currentMembership && currentMembership.plan_id !== plan.id && targetPrice < currentPrice) {
+      toast.error("Downgrade is not possible right now. Please request downgrade for next month.");
+      return;
+    }
+
+    if (currentMembership && currentMembership.plan_id !== plan.id && targetPrice === currentPrice) {
       toast.error("Please choose a higher-value plan for upgrade.");
       return;
     }
 
     setPurchasing(plan.id);
-    const fileExt = paymentFile.name.split(".").pop() || "png";
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `verifications/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("payment-proofs")
-      .upload(filePath, paymentFile);
-
-    if (uploadError) {
+    try {
+      await membershipApi.apply(plan.id, paymentFile);
+    } catch (err: any) {
+      toast.error("Submission failed: " + (err?.message || "Unknown error"));
       setPurchasing(null);
-      toast.error("Screenshot upload failed: " + uploadError.message);
       return;
     }
-
-    await supabase
-      .from("memberships")
-      .delete()
-      .eq("user_id", user.id)
-      .in("status", pendingStatuses);
-
-    const membershipPayloadBase = {
-      user_id: user.id,
-      plan_id: plan.id,
-      screenshot_url: filePath,
-      starts_at: new Date().toISOString(),
-    };
-
-    const firstTry = await supabase.from("memberships").insert({
-      ...membershipPayloadBase,
-      status: "pending_verification",
-    }).select().single();
-
-    let memError = firstTry.error;
-    if (memError && String(memError.code || "") === "23514") {
-      const secondTry = await supabase.from("memberships").insert({
-        ...membershipPayloadBase,
-        status: "pending",
-      }).select().single();
-      memError = secondTry.error;
-    }
-
-    if (memError) { toast.error("Submission failed: " + memError.message); setPurchasing(null); return; }
 
     toast.success(`${plan.name} request submitted. Admin approval is required.`);
     setPurchasing(null);
     setPaymentFile(null);
-
-    // Refresh
-    const [m2, p2, i2] = await Promise.all([
-      supabase
-        .from("memberships")
-        .select("*, membership_plans(name, price, billing_period)")
-        .eq("user_id", user.id)
-        .in("status", approvedStatuses)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("memberships")
-        .select("*, membership_plans(name, price, billing_period)")
-        .eq("user_id", user.id)
-        .in("status", pendingStatuses)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
-    ]);
-    const approvedMembership = m2.data || null;
-    const pendingMembershipRow = p2.data || null;
-    const invoiceRows = i2.data || [];
-    const resolved = resolveDisplayMembership(approvedMembership, pendingMembershipRow, invoiceRows);
-    setCurrentMembership(resolved.current);
-    setPendingMembership(resolved.pending);
-    setInvoices(invoiceRows);
+    setRequestFeatured(false);
+    await loadMembershipData();
     navigate("/portal/pending", { replace: true });
   }
 
@@ -203,39 +244,28 @@ export default function PortalMembership() {
     if (!confirm("Cancel your current membership now?")) return;
 
     setCancelling(true);
-    const nowIso = new Date().toISOString();
-    const attempt = await supabase
-      .from("memberships")
-      .update({ status: "cancelled", ends_at: nowIso, cancelled_at: nowIso } as any)
-      .eq("id", currentMembership.id);
-
-    if (attempt.error) {
-      const fallback = await supabase
-        .from("memberships")
-        .update({ status: "cancelled", ends_at: nowIso } as any)
-        .eq("id", currentMembership.id);
-      if (fallback.error) {
-        toast.error("Failed to cancel membership: " + fallback.error.message);
-        setCancelling(false);
-        return;
-      }
+    try {
+      await membershipApi.cancel();
+      await removeUserRoles(user._id, ["member"]);
+      setCurrentMembership(null);
+      setPendingMembership(null);
+      await loadMembershipData();
+      toast.success("Membership cancelled");
+    } catch (err: any) {
+      toast.error("Failed to cancel membership: " + (err?.message || "Unknown error"));
+    } finally {
+      setCancelling(false);
     }
-
-    await removeUserRoles(user.id, ["member"]);
-
-    setCancelling(false);
-    setCurrentMembership(null);
-    toast.success("Membership cancelled");
   }
 
   async function handlePurchasePpv() {
     if (!user || !ppvContent?.id) return;
     setPpvPurchasing(true);
 
-    const { data: existing } = await supabase
+    const { data: existing } = await db
       .from("pay_per_view_purchases")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", user._id)
       .eq("content_id", ppvContent.id)
       .maybeSingle();
 
@@ -247,10 +277,10 @@ export default function PortalMembership() {
     }
 
     const amount = Number(ppvContent.ppv_price || 9.99);
-    const { data: invoice, error: invoiceError } = await supabase
+    const { data: invoice, error: invoiceError } = await db
       .from("invoices")
       .insert({
-        user_id: user.id,
+        user_id: user._id,
         amount,
         currency: "USD",
         status: "paid",
@@ -265,10 +295,10 @@ export default function PortalMembership() {
       return;
     }
 
-    const { error: ppvError } = await supabase
+    const { error: ppvError } = await db
       .from("pay_per_view_purchases")
       .insert({
-        user_id: user.id,
+        user_id: user._id,
         content_id: ppvContent.id,
         invoice_id: invoice?.id || null,
         amount,
@@ -282,10 +312,10 @@ export default function PortalMembership() {
     }
 
     if (ppvError && invoice?.id) {
-      await supabase.from("invoices").update({ status: "cancelled" }).eq("id", invoice.id);
+      await db.from("invoices").update({ status: "cancelled" }).eq("id", invoice.id);
     }
 
-    await ensureUserRole(user.id, "subscriber");
+    await ensureUserRole(user._id, "subscriber");
     setPpvPurchasing(false);
     toast.success("Payment successful. Access unlocked.");
     navigate(returnTo, { replace: true });
@@ -328,6 +358,35 @@ export default function PortalMembership() {
           ) : (
             <p className="text-sm text-muted-foreground">No active membership. Choose a plan below to get started.</p>
           )}
+
+          <div className="mt-4 pt-4 border-t flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={
+                  featuredRequestStatus === "approved"
+                    ? "bg-success/10 text-success border-success/20"
+                    : featuredRequestStatus === "rejected"
+                      ? "bg-destructive/10 text-destructive border-destructive/20"
+                      : featuredRequestStatus === "pending"
+                        ? "bg-warning/10 text-warning border-warning/20"
+                        : ""
+                }
+              >
+                Featured request: {featuredRequestStatus || "not requested"}
+              </Badge>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRequestFeaturedUser}
+              disabled={featuredRequesting || featuredRequestStatus === "pending"}
+              className="flex items-center gap-1"
+            >
+              <Star className="h-3 w-3" />
+              {featuredRequesting ? "Submitting..." : featuredRequestStatus === "pending" ? "Request Pending" : "Request Featured User"}
+            </Button>
+          </div>
         </div>
 
         {pendingMembership && !currentMembership && (
@@ -362,22 +421,33 @@ export default function PortalMembership() {
             />
             {paymentFile && <p className="text-xs text-muted-foreground">Selected: {paymentFile.name}</p>}
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={requestFeatured}
+              onChange={(e) => setRequestFeatured(e.target.checked)}
+            />
+            Request to be shown in Featured Users after admin approval
+          </label>
         </div>
 
         {/* Plans */}
         <div>
           <h3 className="font-heading font-bold mb-4">Available Plans</h3>
-          {String(currentMembership?.membership_plans?.name || "").toLowerCase().includes("institutional") && (
-            <p className="text-sm text-muted-foreground mb-4">You are currently on the Institutional plan. Upgrade is not available.</p>
+          {isOnHighestTier && (
+            <p className="text-sm text-muted-foreground mb-4">You are currently on the highest premium plan. Upgrade is not available.</p>
+          )}
+          {pendingMembership && !currentMembership && (
+            <p className="text-sm text-muted-foreground mb-4">Your latest membership request is under verification. You can submit a new request after admin review.</p>
           )}
           <div className="grid md:grid-cols-3 gap-4">
             {plans.map((plan) => {
               const isCurrent = currentMembership?.plan_id === plan.id;
               const currentPrice = Number(currentMembership?.membership_plans?.price || 0);
               const planPrice = Number(plan.price || 0);
-              const isInstitutionalCurrent = String(currentMembership?.membership_plans?.name || "").toLowerCase().includes("institutional");
-              const upgradeBlocked = isInstitutionalCurrent && !isCurrent;
+              const upgradeBlocked = isOnHighestTier && !isCurrent;
               const notHigherTier = !!currentMembership && !isCurrent && planPrice <= currentPrice;
+              const isDowngrade = !!currentMembership && !isCurrent && planPrice < currentPrice;
               return (
                 <div key={plan.id} className={`rounded-xl border p-6 card-shadow ${isCurrent ? "border-primary ring-2 ring-primary/20" : ""}`}>
                   {isCurrent && <Badge className="mb-3 bg-primary/10 text-primary border-primary/20">Current Plan</Badge>}
@@ -388,7 +458,7 @@ export default function PortalMembership() {
                       <li key={i} className="flex items-center gap-2 text-sm"><Check className="h-4 w-4 text-success shrink-0" />{f}</li>
                     ))}
                   </ul>
-                  <Button className="w-full" disabled={isCurrent || upgradeBlocked || notHigherTier || purchasing === plan.id} onClick={() => handlePurchase(plan)}>
+                  <Button className="w-full" disabled={isCurrent || upgradeBlocked || notHigherTier || purchasing === plan.id || !!pendingMembership} onClick={() => handlePurchase(plan)}>
                     {isCurrent
                       ? "Active"
                       : purchasing === plan.id
@@ -397,8 +467,9 @@ export default function PortalMembership() {
                           ? "Request Upgrade"
                           : "Submit For Approval"}
                   </Button>
-                  {notHigherTier && <p className="text-xs text-muted-foreground mt-2">Choose a higher-value plan to upgrade.</p>}
-                  {upgradeBlocked && <p className="text-xs text-muted-foreground mt-2">Upgrade unavailable from Institutional plan.</p>}
+                  {isDowngrade && <p className="text-xs text-muted-foreground mt-2">Downgrade is possible only from next month.</p>}
+                  {notHigherTier && !isDowngrade && <p className="text-xs text-muted-foreground mt-2">Choose a higher-value plan to upgrade.</p>}
+                  {upgradeBlocked && <p className="text-xs text-muted-foreground mt-2">You are already on the highest plan.</p>}
                 </div>
               );
             })}
@@ -435,4 +506,5 @@ export default function PortalMembership() {
     </DashboardLayout>
   );
 }
+
 

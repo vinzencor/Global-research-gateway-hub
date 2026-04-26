@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Clock, ShieldCheck, Mail, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 
 export default function PendingVerification() {
   const { signOut, user, refreshUser } = useAuth();
@@ -27,30 +27,30 @@ export default function PendingVerification() {
   }, [refreshUser]);
 
   async function checkNow() {
-    if (!user?.id) {
+    if (!user?._id) {
       toast.error("User session not found. Please sign in again.");
       return;
     }
     setChecking(true);
     await refreshUser();
-    const { data: approvedMembership } = await supabase
+    const { data: approvedMembership } = await db
       .from("memberships")
       .select("status")
-      .eq("user_id", user.id)
+      .eq("user_id", user._id)
       .in("status", ["active", "renewal_due", "approved"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     const [{ data: roleRows }, { data: paidMembershipInvoice }] = await Promise.all([
-      supabase
+      db
         .from("user_roles")
         .select("roles!inner(name)")
-        .eq("user_id", user.id),
-      supabase
+        .eq("user_id", user._id),
+      db
         .from("invoices")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", user._id)
         .eq("status", "paid")
         .not("membership_id", "is", null)
         .limit(1)
@@ -87,11 +87,11 @@ export default function PendingVerification() {
             </div>
           </div>
           
-          <h1 className="font-heading text-3xl font-bold tracking-tight mb-3">Account Not Approved Yet</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight mb-3">Your Profile Is Under Verification</h1>
           <p className="text-muted-foreground leading-relaxed">
-            Hello <span className="text-foreground font-bold">{user?.profile?.full_name || "Member"}</span>, your account is currently in
+            Hello <span className="text-foreground font-bold">{user?.fullName || "Member"}</span>, your account is currently in
             <span className="text-foreground font-bold"> {statusText}</span> status.
-            Admin approval is required before you can access dashboard features.
+            Please hold on while admin verifies your selected plan and payment screenshot.
           </p>
         </div>
 
@@ -136,3 +136,4 @@ export default function PendingVerification() {
     </div>
   );
 }
+

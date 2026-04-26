@@ -1,27 +1,20 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, Send, User, Upload, ArrowLeft, CreditCard, BookOpen, PenSquare, FileText } from "lucide-react";
+import { Upload, ArrowLeft, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase, isAdmin } from "@/lib/supabase";
+import { journalApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-const navItems = [
-  { label: "Dashboard", to: "/portal/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Profile", to: "/portal/profile", icon: <User className="h-4 w-4" /> },
-  { label: "Submit Journal", to: "/submit-paper", icon: <PenSquare className="h-4 w-4" /> },
-  { label: "My Submissions", to: "/author", icon: <FileText className="h-4 w-4" /> },
-  { label: "Membership & Billing", to: "/portal/membership", icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Digital Library", to: "/portal/library", icon: <BookOpen className="h-4 w-4" /> },
-];
-
 export default function SubmitPaper() {
   const { user } = useAuth();
+  const navItems = getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
@@ -31,86 +24,91 @@ export default function SubmitPaper() {
   const [keywords, setKeywords] = useState("");
   const [journal, setJournal] = useState("");
   const [coAuthors, setCoAuthors] = useState("");
-  const [institution, setInstitution] = useState(user?.profile?.institution || "");
+  const [institution, setInstitution] = useState(user?.institution || "");
+  const [manuscriptFile, setManuscriptFile] = useState<File | null>(null);
+  const [existingManuscriptUrl, setExistingManuscriptUrl] = useState("");
   const [submitting, setSub] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTemplate, setActiveTemplate] = useState<any>(null);
-  const [hasMembership, setHasMembership] = useState(false);
-  const [checkingMembership, setCheckingMembership] = useState(true);
 
   useEffect(() => {
-    // Load active workflow template
-    supabase.from("workflow_templates").select("id, name").eq("is_active", true).limit(1).maybeSingle().then(({ data }) => setActiveTemplate(data));
-    // If editing a returned submission, load its data
+    setInstitution(user?.institution || "");
+  }, [user?.institution]);
+
+  useEffect(() => {
     if (editId) {
-      supabase.from("content_items").select("*").eq("id", editId).single().then(({ data }) => {
-        if (data) {
-          setTitle(data.title || "");
-          setAbstract(data.summary || "");
-          setKeywords(data.body || "");
-          setJournal(data.type || "");
-        }
-      });
+      journalApi
+        .getMySubmissions()
+        .then((data: any) => {
+          const items = data?.items || data || [];
+          const item = items.find((row: any) => (row._id || row.id) === editId);
+          if (!item) return;
+          setTitle(item.title || "");
+          setAbstract(item.abstract || "");
+          setKeywords(Array.isArray(item.keywords) ? item.keywords.join(", ") : "");
+          setJournal(item.type || "article");
+          setCoAuthors(Array.isArray(item.coAuthors) ? item.coAuthors.join(", ") : "");
+          setInstitution(item.institution || user?.institution || "");
+          setExistingManuscriptUrl(item.manuscriptUrl || "");
+        })
+        .catch(() => {
+          toast.error("Failed to load submission for editing");
+        });
     }
-  }, [editId]);
+  }, [editId, user?.institution]);
 
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("memberships")
-      .select("id")
-      .eq("user_id", user.id)
-      .in("status", ["active", "renewal_due"])
-      .maybeSingle()
-      .then(({ data }) => {
-        setHasMembership(!!data || isAdmin(user.roles));
-        setCheckingMembership(false);
-      });
-  }, [user]);
-
-  function slugify(t: string) { return t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now(); }
+  function buildFormData() {
+    const form = new FormData();
+    form.append("title", title.trim());
+    form.append("abstract", abstract.trim());
+    form.append("body", abstract.trim());
+    form.append("institution", institution.trim());
+    form.append("keywords", keywords);
+    form.append("coAuthors", coAuthors);
+    if (journal) form.append("type", journal);
+    if (manuscriptFile) form.append("manuscript", manuscriptFile);
+    return form;
+  }
 
   async function handleSaveDraft() {
-    if (!hasMembership) { toast.error("Active membership is required to save or submit journals"); return; }
     if (!title.trim()) { toast.error("Please enter a title"); return; }
     setSaving(true);
-    const payload = { title, summary: abstract, body: keywords, type: journal || "article", status: "draft", workflow_status: "draft", author_user_id: user!.id, slug: slugify(title) };
-    const { error } = editId
-      ? await supabase.from("content_items").update(payload).eq("id", editId)
-      : await supabase.from("content_items").insert(payload);
-    setSaving(false);
-    if (error) { toast.error("Failed to save draft"); return; }
-    toast.success("Draft saved!");
+    try {
+      const payload = buildFormData();
+      if (editId) {
+        await journalApi.update(editId, payload);
+      } else {
+        await journalApi.createDraft(payload);
+      }
+      toast.success("Draft saved!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save draft");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!hasMembership) { toast.error("Only active members can submit journals"); return; }
     if (!title.trim() || !abstract.trim()) { toast.error("Title and abstract are required"); return; }
-    if (!user) { toast.error("You must be logged in"); return; }
-    setSub(true);
-    const wStatus = activeTemplate ? "submitted" : "submitted";
-    const payload = {
-      title, summary: abstract, body: keywords, type: journal || "article",
-      status: "in_review", workflow_status: wStatus,
-      workflow_template_id: activeTemplate?.id || null,
-      current_stage_index: 0,
-      author_user_id: user.id,
-      slug: slugify(title),
-    };
-    let contentId = editId;
-    if (editId) {
-      await supabase.from("content_items").update({ ...payload, workflow_status: "submitted" }).eq("id", editId);
-    } else {
-      const { data, error } = await supabase.from("content_items").insert(payload).select("id").single();
-      if (error) { toast.error("Submission failed: " + error.message); setSub(false); return; }
-      contentId = data.id;
+    if (!manuscriptFile && !existingManuscriptUrl) {
+      toast.error("Please upload manuscript PDF before submitting");
+      return;
     }
-    // Log the submission action
-    await supabase.from("workflow_logs").insert({ content_id: contentId, stage_index: 0, action: editId ? "resubmitted" : "submitted", comment: "Author submitted journal", acted_by: user.id });
-    setSub(false);
-    toast.success("Journal submitted successfully! It will now go through the review workflow.");
-    navigate("/author");
+    setSub(true);
+    try {
+      const payload = buildFormData();
+      if (editId) {
+        await journalApi.submitDraft(editId, payload);
+      } else {
+        await journalApi.submit(payload);
+      }
+      toast.success("Journal submitted successfully! It is now in review workflow.");
+      navigate("/author");
+    } catch (err: any) {
+      toast.error(err?.message || "Submission failed");
+    } finally {
+      setSub(false);
+    }
   }
 
   return (
@@ -131,29 +129,12 @@ export default function SubmitPaper() {
         <div className="lg:col-span-2 space-y-4">
         {editId && (
           <div className="rounded-xl border border-orange-300 bg-orange-50 dark:bg-orange-950/20 p-4 mb-4 flex items-center gap-3">
-            <span className="text-orange-700 dark:text-orange-400 text-sm font-medium">⚠️ Changes were requested. Please revise your submission and resubmit.</span>
-          </div>
-        )}
-        {activeTemplate && (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 mb-4 text-sm text-muted-foreground">
-            📋 Active workflow: <span className="font-semibold text-foreground">{activeTemplate.name}</span> — your submission will go through this review pipeline.
-          </div>
-        )}
-        {!checkingMembership && !hasMembership && !isAdmin(user?.roles || []) && (
-          <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 mb-4 text-sm">
-            <p className="font-medium">Membership required</p>
-            {user?.membershipStatus === "pending_verification" ? (
-              <p className="text-muted-foreground">Your membership payment is currently being verified. You will be able to submit once approved.</p>
-            ) : (
-              <>
-                <p className="text-muted-foreground">You can submit/publish journals only with an active membership.</p>
-                <Link to="/portal/membership" className="text-primary hover:underline font-medium">Activate membership</Link>
-              </>
-            )}
+            <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0" />
+            <span className="text-orange-700 dark:text-orange-400 text-sm font-medium">Changes were requested. Please revise your submission and resubmit.</span>
           </div>
         )}
         <div className="rounded-xl border bg-card p-8 card-shadow">
-          <h2 className="font-heading text-xl font-bold mb-6">{editId ? "Revise & Resubmit" : "Paper Submission Form"}</h2>
+          <h2 className="font-heading text-xl font-bold mb-6">{editId ? "Revise and Resubmit" : "Paper Submission Form"}</h2>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="title">Paper Title *</Label>
@@ -190,17 +171,27 @@ export default function SubmitPaper() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Upload Paper (PDF) — optional for now</Label>
+              <Label>Upload Paper (PDF) *</Label>
               <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors">
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Click to upload or drag and drop</span>
                 <span className="text-xs text-muted-foreground">PDF up to 50MB</span>
-                <input type="file" accept=".pdf" className="hidden" />
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={(e) => setManuscriptFile(e.target.files?.[0] || null)}
+                />
               </label>
+              {(manuscriptFile || existingManuscriptUrl) && (
+                <p className="text-xs text-muted-foreground">
+                  {manuscriptFile ? `Selected: ${manuscriptFile.name}` : "Existing manuscript is attached"}
+                </p>
+              )}
             </div>
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" size="lg" onClick={handleSaveDraft} disabled={saving || !hasMembership}>{saving ? "Saving..." : "Save Draft"}</Button>
-              <Button type="submit" size="lg" disabled={submitting || !hasMembership}>{submitting ? "Submitting..." : editId ? "Resubmit Journal" : "Submit Journal"}</Button>
+              <Button type="button" variant="outline" size="lg" onClick={handleSaveDraft} disabled={saving}>{saving ? "Saving..." : "Save Draft"}</Button>
+              <Button type="submit" size="lg" disabled={submitting}>{submitting ? "Submitting..." : editId ? "Resubmit Journal" : "Submit Journal"}</Button>
             </div>
           </form>
         </div>
@@ -233,7 +224,7 @@ export default function SubmitPaper() {
               Check our Author Guidelines for detailed information on the formatting, ethical standards, and review process.
             </p>
             <Button variant="link" className="p-0 h-auto text-xs" asChild>
-              <Link to="/standards">Author Guidelines →</Link>
+              <Link to="/standards">Author Guidelines -&gt;</Link>
             </Button>
           </div>
         </div>

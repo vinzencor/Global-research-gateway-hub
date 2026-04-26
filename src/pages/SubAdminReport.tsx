@@ -1,17 +1,10 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, ClipboardList, Settings, History, BarChart2, CheckCircle, XCircle, Clock, TrendingUp, Award, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { useAuth } from "@/contexts/AuthContext";
-
-const navItems = [
-  { label: "Dashboard", to: "/sub-admin", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Review Queue", to: "/reviewer/stage", icon: <ClipboardList className="h-4 w-4" /> },
-  { label: "Review History", to: "/sub-admin/history", icon: <History className="h-4 w-4" /> },
-  { label: "Reports", to: "/sub-admin/report", icon: <BarChart2 className="h-4 w-4" /> },
-  { label: "Settings", to: "/sub-admin/settings", icon: <Settings className="h-4 w-4" /> },
-];
+import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 
 const SCORE_APPROVED = 10;
 const SCORE_CHANGES = 5;
@@ -20,7 +13,7 @@ const SCORE_REJECTED = 3;
 function MonthlyBar({ month, count, max }: { month: string; count: number; max: number }) {
   const pct = max > 0 ? (count / max) * 100 : 0;
   return (
-    <div className="flex items-end gap-1.5 flex-col items-center">
+    <div className="flex flex-col items-center gap-1.5">
       <span className="text-xs font-bold text-muted-foreground">{count}</span>
       <div className="w-8 bg-secondary rounded-t-sm overflow-hidden" style={{ height: "80px" }}>
         <div
@@ -35,6 +28,7 @@ function MonthlyBar({ month, count, max }: { month: string; count: number; max: 
 
 export default function SubAdminReport() {
   const { user } = useAuth();
+  const navItems = getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<{ month: string; count: number }[]>([]);
@@ -43,7 +37,7 @@ export default function SubAdminReport() {
 
   async function loadReport() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await db
       .from("workflow_logs")
       .select("id, action, comment, acted_at, content_id, content_items(id, title, type)")
       .eq("acted_by", user!.id)
@@ -98,7 +92,7 @@ export default function SubAdminReport() {
             <h2 className="font-heading text-2xl font-bold">My Performance Report</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            {user?.profile?.full_name || user?.email} · All-time review statistics
+            {user?.profile?.full_name || user?.email} Â· All-time review statistics
           </p>
         </div>
 
@@ -164,7 +158,7 @@ export default function SubAdminReport() {
                       <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {Math.round(pct)}% of total · +{item.count * item.pts} pts
+                      {Math.round(pct)}% of total Â· +{item.count * item.pts} pts
                     </p>
                   </div>
                 );
@@ -199,7 +193,7 @@ export default function SubAdminReport() {
                 <tbody>
                   {logs.slice(0, 10).map(log => (
                     <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "—"}</td>
+                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "â€”"}</td>
                       <td className="p-4 hidden sm:table-cell">
                         <Badge variant="outline" className={`text-xs ${
                           log.action === "approved" ? "bg-success/10 text-success border-success/20" :
@@ -210,7 +204,7 @@ export default function SubAdminReport() {
                         </Badge>
                       </td>
                       <td className="p-4 text-muted-foreground hidden md:table-cell">
-                        <span className="line-clamp-1">{log.comment || "—"}</span>
+                        <span className="line-clamp-1">{log.comment || "â€”"}</span>
                       </td>
                       <td className="p-4 text-xs text-muted-foreground">
                         {new Date(log.acted_at).toLocaleDateString()}
@@ -226,3 +220,4 @@ export default function SubAdminReport() {
     </DashboardLayout>
   );
 }
+

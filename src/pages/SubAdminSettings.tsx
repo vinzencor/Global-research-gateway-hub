@@ -1,17 +1,18 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { toast } from "sonner";
-import { subAdminNavItems } from "./SubAdminPortal";
+import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 import { KeyRound, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function SubAdminSettings() {
   const { user } = useAuth();
+  const subAdminNavItems = getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,7 +31,7 @@ export default function SubAdminSettings() {
 
     setSaving(true);
     // Re-authenticate with current password first
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { error: signInError } = await db.auth.signInWithPassword({
       email: user?.email || "",
       password: currentPassword,
     });
@@ -41,7 +42,7 @@ export default function SubAdminSettings() {
     }
 
     // Update to new password
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await db.auth.updateUser({ password: newPassword });
     setSaving(false);
     if (error) {
       toast.error("Failed to update password: " + error.message);
@@ -85,7 +86,7 @@ export default function SubAdminSettings() {
           <div className="space-y-2 pt-4 border-t">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Full Name</span>
-              <span className="font-medium">{user?.profile?.full_name || "—"}</span>
+              <span className="font-medium">{user?.profile?.full_name || "â€”"}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Email</span>
@@ -151,4 +152,5 @@ export default function SubAdminSettings() {
     </DashboardLayout>
   );
 }
+
 

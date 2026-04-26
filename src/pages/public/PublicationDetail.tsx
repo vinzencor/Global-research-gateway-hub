@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { ArrowLeft, Calendar, FileText, BookOpen, Download, Library } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -19,7 +19,7 @@ export default function PublicationDetail() {
   useEffect(() => {
     async function load() {
       if (!slug) return;
-      const { data } = await supabase
+      const { data } = await db
         .from("content_items")
         .select("*")
         .eq("slug", slug)
@@ -48,13 +48,13 @@ export default function PublicationDetail() {
       }
 
       const [{ data: membership }, { data: ppv }] = await Promise.all([
-        supabase
+        db
           .from("memberships")
           .select("id")
           .eq("user_id", user.id)
           .in("status", ["active", "renewal_due"])
           .maybeSingle(),
-        supabase
+        db
           .from("pay_per_view_purchases")
           .select("id")
           .eq("user_id", user.id)
@@ -203,4 +203,5 @@ export default function PublicationDetail() {
     </div>
   );
 }
+
 

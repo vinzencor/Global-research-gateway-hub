@@ -1,9 +1,9 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, LogOut, User, ChevronDown, ExternalLink, ChevronRight, Home } from "lucide-react";
+import { Menu, X, LogOut, User, ChevronDown, ExternalLink, ChevronRight, Home, ShieldCheck, Bell } from "lucide-react";
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, isAdmin, isReviewer, isSubAdmin } from "@/contexts/AuthContext";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface NavItem {
@@ -111,6 +111,23 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
                 <DropdownMenuItem onClick={() => navigate("/portal/dashboard")}>
                   Dashboard
                 </DropdownMenuItem>
+
+                {user && (isAdmin(user.roles) || isSubAdmin(user.roles) || isReviewer(user.roles)) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {isAdmin(user.roles) && (
+                      <DropdownMenuItem onClick={() => navigate("/admin")}>
+                        <ShieldCheck className="h-4 w-4 mr-2" /> Admin Console
+                      </DropdownMenuItem>
+                    )}
+                    {(isSubAdmin(user.roles) || isReviewer(user.roles)) && (
+                      <DropdownMenuItem onClick={() => navigate("/sub-admin")}>
+                        <Bell className="h-4 w-4 mr-2" /> Reviewer Portal
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                   <LogOut className="h-4 w-4 mr-2" /> Sign Out

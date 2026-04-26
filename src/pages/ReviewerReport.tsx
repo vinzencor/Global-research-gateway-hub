@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, FileText, BarChart2, Settings, CheckCircle, XCircle, Clock, TrendingUp, Award, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
@@ -49,7 +49,7 @@ export default function ReviewerReport() {
 
   async function loadReport() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await db
       .from("reviews")
       .select("*, content_items(id, title, type)")
       .eq("reviewer_user_id", user!.id)
@@ -105,7 +105,7 @@ export default function ReviewerReport() {
             <BarChart2 className="h-6 w-6 text-primary" />
             <h2 className="font-heading text-2xl font-bold">My Review Report</h2>
           </div>
-          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} · Reviewer · All-time statistics</p>
+          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} Â· Reviewer Â· All-time statistics</p>
         </div>
 
         {/* KPIs */}
@@ -197,17 +197,17 @@ export default function ReviewerReport() {
                 <tbody>
                   {submittedReviews.map(r => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium max-w-[200px] truncate">{r.content_items?.title || "—"}</td>
-                      <td className="p-4 text-muted-foreground capitalize hidden sm:table-cell">{r.content_items?.type || "—"}</td>
+                      <td className="p-4 font-medium max-w-[200px] truncate">{r.content_items?.title || "â€”"}</td>
+                      <td className="p-4 text-muted-foreground capitalize hidden sm:table-cell">{r.content_items?.type || "â€”"}</td>
                       <td className="p-4">
                         {r.recommendation ? (
                           <Badge variant="outline" className={`text-xs ${RECOMMENDATION_COLORS[r.recommendation] || ""}`}>
                             {RECOMMENDATION_LABELS[r.recommendation] || r.recommendation}
                           </Badge>
-                        ) : "—"}
+                        ) : "â€”"}
                       </td>
                       <td className="p-4 text-xs text-muted-foreground hidden md:table-cell">
-                        {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : "—"}
+                        {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : "â€”"}
                       </td>
                     </tr>
                   ))}
@@ -220,3 +220,4 @@ export default function ReviewerReport() {
     </DashboardLayout>
   );
 }
+

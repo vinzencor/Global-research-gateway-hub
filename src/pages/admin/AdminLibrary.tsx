@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/lib/supabase";
+import { libraryApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, Search, Lock, Globe } from "lucide-react";
 
@@ -24,29 +24,42 @@ export default function AdminLibrary() {
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState({ ...defaultForm });
   const [saving, setSaving] = useState(false);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [tagInput, setTagInput] = useState("");
 
   useEffect(() => { loadItems(); }, []);
 
   async function loadItems() {
-    const { data, error } = await supabase.from("library_items").select("*").order("year", { ascending: false });
-    if (error) {
-      toast.error("Failed to load library items: " + error.message);
-      return;
+    try {
+      const res = await libraryApi.adminList({ limit: "500" });
+      const rows = Array.isArray((res as any)?.items)
+        ? (res as any).items
+        : Array.isArray((res as any)?.data?.items)
+        ? (res as any).data.items
+        : Array.isArray(res)
+        ? (res as any[])
+        : [];
+      setItems(rows || []);
+    } catch (err: any) {
+      toast.error("Failed to load library items: " + (err?.message || "Unknown error"));
+      setItems([]);
     }
-    setItems(data || []);
   }
 
-  function openCreate() { setForm({ ...defaultForm }); setEditItem(null); setTagInput(""); setShowForm(true); }
+  function openCreate() { setForm({ ...defaultForm }); setEditItem(null); setTagInput(""); setPdfFile(null); setShowForm(true); }
   function openEdit(item: any) {
     setForm({
-      title: item.title, authors_json: item.authors_json?.length ? item.authors_json : [{ name: "" }],
+      title: item.title,
+      authors_json: item.authors_json?.length
+        ? item.authors_json
+        : item.authorsJson?.length
+        ? item.authorsJson
+        : [{ name: "" }],
       abstract: item.abstract || "", venue: item.venue || "", year: item.year || new Date().getFullYear(),
-      doi: item.doi || "", pdf_url: item.pdf_url || "", access_type: item.access_type || "open",
+      doi: item.doi || "", pdf_url: item.pdf_url || item.pdfUrl || "", access_type: item.access_type || item.accessType || "open",
       tags: item.tags || [],
     });
-    setTagInput(""); setEditItem(item); setShowForm(true);
+    setTagInput(""); setPdfFile(null); setEditItem(item); setShowForm(true);
   }
 
   function updateAuthor(idx: number, val: string) {
@@ -62,91 +75,47 @@ export default function AdminLibrary() {
   }
   function removeTag(tag: string) { setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) })); }
 
-  function makeSlug(title: string): string {
-    const base = title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-    if (base) return base;
-    return `library-item-${Date.now()}`;
-  }
-
-  function getMissingColumn(error: any): string | null {
-    const message = String(error?.message || "");
-    const col = message.match(/Could not find the '([^']+)' column/i)?.[1];
-    return col || null;
-  }
-
-  async function upsertLibraryItem(payload: Record<string, any>, itemId?: string): Promise<{ error: any }> {
-    if (itemId) {
-      const res = await supabase.from("library_items").update(payload).eq("id", itemId);
-      if (!res.error) return res;
-
-      const missingCol = getMissingColumn(res.error);
-      if (missingCol === "tags") setSupportsTags(false);
-      if (missingCol && Object.prototype.hasOwnProperty.call(payload, missingCol)) {
-        const nextPayload = { ...payload };
-        delete nextPayload[missingCol];
-        return upsertLibraryItem(nextPayload, itemId);
-      }
-      return res;
-    }
-
-    const res = await supabase.from("library_items").insert(payload);
-    if (!res.error) return res;
-
-    const missingCol = getMissingColumn(res.error);
-    if (missingCol === "tags") setSupportsTags(false);
-    if (missingCol && Object.prototype.hasOwnProperty.call(payload, missingCol)) {
-      const nextPayload = { ...payload };
-      delete nextPayload[missingCol];
-      return upsertLibraryItem(nextPayload);
-    }
-    return res;
-  }
-
-  async function handlePdfUpload(file: File) {
-    if (!file) return;
-    setUploadingPdf(true);
-    const ext = file.name.split(".").pop() || "pdf";
-    const path = `library/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("library-pdfs").upload(path, file, { upsert: false });
-    if (error) {
-      toast.error("Upload failed: " + error.message + ". You can still paste a PDF URL manually.");
-      setUploadingPdf(false);
-      return;
-    }
-    const { data } = supabase.storage.from("library-pdfs").getPublicUrl(path);
-    setForm((f) => ({ ...f, pdf_url: data.publicUrl }));
-    setUploadingPdf(false);
-    toast.success("PDF uploaded and linked");
-  }
-
   async function handleSave() {
     if (!form.title) { toast.error("Title is required"); return; }
     setSaving(true);
-    const payload: Record<string, any> = {
-      ...form,
-      slug: editItem?.slug || makeSlug(form.title),
-      authors_json: form.authors_json.filter(a => a.name.trim()),
-    };
-    if (!supportsTags) delete payload.tags;
-    const { error } = await upsertLibraryItem(payload, editItem?.id);
-    setSaving(false);
-    if (error) { toast.error("Failed: " + error.message); return; }
-    if (!supportsTags) {
-      toast.info("Saved without tags because this database schema has no tags column.");
+    try {
+      const payload = new FormData();
+      payload.append("title", form.title);
+      payload.append("abstract", form.abstract || "");
+      payload.append("venue", form.venue || "");
+      payload.append("year", String(form.year || ""));
+      payload.append("accessType", form.access_type || "open");
+      payload.append("authorsJson", JSON.stringify(form.authors_json.filter(a => a.name.trim())));
+      if (form.pdf_url) payload.append("pdfUrl", form.pdf_url);
+      if (pdfFile) payload.append("pdf", pdfFile);
+
+      const id = String(editItem?._id || editItem?.id || "");
+      if (id) {
+        await libraryApi.update(id, payload);
+      } else {
+        await libraryApi.create(payload);
+      }
+
+      toast.success(editItem ? "Item updated!" : "Item added!");
+      setShowForm(false);
+      setPdfFile(null);
+      await loadItems();
+    } catch (err: any) {
+      toast.error("Failed: " + (err?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
     }
-    toast.success(editItem ? "Item updated!" : "Item added!"); setShowForm(false); loadItems();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this library item?")) return;
-    await supabase.from("library_items").delete().eq("id", id);
-    toast.success("Deleted"); loadItems();
+    try {
+      await libraryApi.delete(id);
+      toast.success("Deleted");
+      await loadItems();
+    } catch (err: any) {
+      toast.error("Delete failed: " + (err?.message || "Unknown error"));
+    }
   }
 
   const filtered = items.filter(item => {
@@ -197,18 +166,18 @@ export default function AdminLibrary() {
                     {item.venue && <div className="text-xs text-muted-foreground truncate">{item.venue}</div>}
                   </td>
                   <td className="p-4 text-muted-foreground hidden md:table-cell text-xs">
-                    {(item.authors_json || []).map((a: any) => a.name).join(", ") || "—"}
+                    {(item.authors_json || item.authorsJson || []).map((a: any) => a.name).join(", ") || "â€”"}
                   </td>
                   <td className="p-4 text-muted-foreground hidden sm:table-cell">{item.year}</td>
                   <td className="p-4">
-                    <Badge variant="outline" className={item.access_type === "open" ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}>
-                      {item.access_type === "open" ? <><Globe className="h-3 w-3 inline mr-1" />Open</> : <><Lock className="h-3 w-3 inline mr-1" />Members</>}
+                    <Badge variant="outline" className={(item.access_type || item.accessType) === "open" ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}>
+                      {(item.access_type || item.accessType) === "open" ? <><Globe className="h-3 w-3 inline mr-1" />Open</> : <><Lock className="h-3 w-3 inline mr-1" />Members</>}
                     </Badge>
                   </td>
                   <td className="p-4">
                     <div className="flex gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(item)}><Edit className="h-3 w-3" /></Button>
-                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(String(item._id || item.id))}><Trash2 className="h-3 w-3" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -245,9 +214,9 @@ export default function AdminLibrary() {
               <div className="space-y-1 col-span-2"><Label>PDF URL</Label><Input value={form.pdf_url} onChange={e => setForm(f => ({ ...f, pdf_url: e.target.value }))} placeholder="https://..." /></div>
               <div className="space-y-1 col-span-2">
                 <Label>Upload PDF</Label>
-                <Input type="file" accept="application/pdf" onChange={e => { const file = e.target.files?.[0]; if (file) handlePdfUpload(file); }} />
-                  <p className="text-xs text-muted-foreground">Uploads to Supabase storage bucket: `library-pdfs`.</p>
-                  {uploadingPdf && <p className="text-xs text-primary">Uploading PDF...</p>}
+                <Input type="file" accept="application/pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} />
+                  <p className="text-xs text-muted-foreground">Uploads to backend via /api/library using multipart form-data.</p>
+                  {pdfFile && <p className="text-xs text-primary">Selected: {pdfFile.name}</p>}
               </div>
             </div>
             <div className="space-y-1"><Label>Abstract</Label><Textarea value={form.abstract} onChange={e => setForm(f => ({ ...f, abstract: e.target.value }))} rows={3} /></div>
@@ -257,21 +226,22 @@ export default function AdminLibrary() {
                 <Input value={tagInput} disabled={!supportsTags} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }} placeholder={supportsTags ? "Add tag and press Enter" : "Tags unavailable in current DB schema"} />
                 <Button type="button" variant="outline" onClick={addTag} disabled={!supportsTags}>Add</Button>
               </div>
-              {!supportsTags && <p className="text-xs text-muted-foreground">Your current Supabase table does not have a tags column yet.</p>}
+              {!supportsTags && <p className="text-xs text-muted-foreground">Your current db table does not have a tags column yet.</p>}
               {form.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  {form.tags.map(t => <Badge key={t} variant="secondary" className="cursor-pointer" onClick={() => removeTag(t)}>{t} ×</Badge>)}
+                  {form.tags.map(t => <Badge key={t} variant="secondary" className="cursor-pointer" onClick={() => removeTag(t)}>{t} Ã—</Badge>)}
                 </div>
               )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving || uploadingPdf}>{saving ? "Saving..." : uploadingPdf ? "Uploading..." : editItem ? "Update" : "Add"}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? "Saving..." : editItem ? "Update" : "Add"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
 

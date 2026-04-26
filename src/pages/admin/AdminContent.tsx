@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
+import { contentApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 
@@ -21,26 +20,29 @@ const statusColor: Record<string, string> = {
 };
 
 export default function AdminContent() {
-  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
-  const [form, setForm] = useState({ title: "", type: "article", summary: "", body: "", status: "draft", featured: false, show_on_homepage: false, access_mode: "open_access", ppv_price: 9.99 });
+  const [form, setForm] = useState({ title: "", type: "article", summary: "", body: "", status: "draft", featured: false, showOnHomepage: false, accessMode: "open_access", ppvPrice: 9.99 });
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => { loadItems(); }, []);
 
   async function loadItems() {
-    let q = supabase.from("content_items").select("*").order("created_at", { ascending: false });
-    const { data } = await q;
-    setItems(data || []);
+    try {
+      const data: any = await contentApi.adminList({ limit: "200" });
+      setItems(data?.items || data || []);
+    } catch {
+      toast.error("Failed to load content");
+      setItems([]);
+    }
   }
 
   function openCreate() {
-    setForm({ title: "", type: "article", summary: "", body: "", status: "draft", featured: false, show_on_homepage: false, access_mode: "open_access", ppv_price: 9.99 });
+    setForm({ title: "", type: "article", summary: "", body: "", status: "draft", featured: false, showOnHomepage: false, accessMode: "open_access", ppvPrice: 9.99 });
     setEditItem(null);
     setShowCreate(true);
   }
@@ -51,10 +53,10 @@ export default function AdminContent() {
       summary: item.summary || "",
       body: item.body || "",
       status: item.status,
-      featured: item.featured,
-      show_on_homepage: item.show_on_homepage,
-      access_mode: item.access_mode || "open_access",
-      ppv_price: Number(item.ppv_price || 9.99),
+      featured: Boolean(item.featured),
+      showOnHomepage: Boolean(item.showOnHomepage),
+      accessMode: item.accessMode || "open_access",
+      ppvPrice: Number(item.ppvPrice || 9.99),
     });
     setEditItem(item);
     setShowCreate(true);
@@ -63,38 +65,57 @@ export default function AdminContent() {
   async function handleSave() {
     if (!form.title) { toast.error("Title is required"); return; }
     setSaving(true);
-    const slug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-    if (editItem) {
-      const { error } = await supabase.from("content_items").update({ ...form, visibility: form.access_mode, updated_by: user?.id, updated_at: new Date().toISOString() } as any).eq("id", editItem.id);
-      if (error) { toast.error("Update failed"); } else { toast.success("Content updated!"); }
-    } else {
-      const { error } = await supabase.from("content_items").insert({ ...form, visibility: form.access_mode, slug, created_by: user?.id } as any);
-      if (error) { toast.error("Create failed: " + error.message); } else { toast.success("Content created!"); }
+    const payload = {
+      title: form.title,
+      type: form.type,
+      summary: form.summary,
+      body: form.body,
+      status: form.status,
+      featured: form.featured,
+      showOnHomepage: form.showOnHomepage,
+      accessMode: form.accessMode,
+      ppvPrice: form.ppvPrice,
+    };
+    try {
+      if (editItem) {
+        await contentApi.update(editItem._id || editItem.id, payload);
+        toast.success("Content updated!");
+      } else {
+        await contentApi.create(payload);
+        toast.success("Content created!");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save content");
     }
     setSaving(false); setShowCreate(false); loadItems();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this item?")) return;
-    await supabase.from("content_items").delete().eq("id", id);
-    toast.success("Deleted"); loadItems();
+    try {
+      await contentApi.delete(id);
+      toast.success("Deleted");
+      loadItems();
+    } catch {
+      toast.error("Delete failed");
+    }
   }
 
   async function handleStatusChange(item: any, newStatus: string) {
-    setUpdatingId(item.id);
+    setUpdatingId(item._id || item.id);
     const payload: Record<string, any> = { status: newStatus };
     if (newStatus === "published") {
-      payload.access_mode = item.access_mode || "open_access";
-      payload.visibility = payload.access_mode;
+      payload.accessMode = item.accessMode || "open_access";
     }
-    const { error } = await supabase.from("content_items").update(payload).eq("id", item.id);
-    setUpdatingId(null);
-    if (error) {
-      toast.error("Failed to update status: " + error.message);
-      return;
+    try {
+      await contentApi.update(item._id || item.id, payload);
+      toast.success(`Status updated to ${newStatus}`);
+      loadItems();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update status");
+    } finally {
+      setUpdatingId(null);
     }
-    toast.success(`Status updated to ${newStatus}`);
-    loadItems();
   }
 
   const filtered = items.filter(i => {
@@ -137,18 +158,18 @@ export default function AdminContent() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No content found</td></tr>
               ) : filtered.map((item) => (
-                <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="p-4 font-medium max-w-[200px] truncate">{item.title}</td>
                   <td className="p-4 text-muted-foreground hidden sm:table-cell capitalize">{item.type}</td>
                   <td className="p-4"><Badge variant="outline" className={statusColor[item.status]}>{item.status}</Badge></td>
                   <td className="p-4 hidden lg:table-cell">
-                    <Badge variant="outline" className="capitalize">{(item.access_mode || "open_access").replace(/_/g, " ")}</Badge>
+                    <Badge variant="outline" className="capitalize">{(item.accessMode || "open_access").replace(/_/g, " ")}</Badge>
                   </td>
-                  <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(item.created_at).toLocaleDateString()}</td>
+                  <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(item.createdAt || item.created_at).toLocaleDateString()}</td>
                   <td className="p-4">
                     <div className="flex gap-1 flex-wrap">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(item)}><Edit className="h-3 w-3" /></Button>
-                      <Select value={item.status} onValueChange={(v) => handleStatusChange(item, v)} disabled={updatingId === item.id}>
+                      <Select value={item.status} onValueChange={(v) => handleStatusChange(item, v)} disabled={updatingId === (item._id || item.id)}>
                         <SelectTrigger className="h-8 w-[150px] text-xs">
                           <SelectValue placeholder="Change status" />
                         </SelectTrigger>
@@ -165,7 +186,7 @@ export default function AdminContent() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(item._id || item.id)}><Trash2 className="h-3 w-3" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -181,18 +202,18 @@ export default function AdminContent() {
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2"><Label>Title *</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Content title" /></div>
-              <div className="space-y-2"><Label>Type</Label><Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["article","publication","page","event","announcement"].map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>Type</Label><Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["article","review","letter","case_study"].map(t => <SelectItem key={t} value={t} className="capitalize">{t.replace("_", " ")}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["draft","in_review","approved","published"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2 col-span-2"><Label>Access Mode</Label><Select value={form.access_mode} onValueChange={v => setForm(f => ({ ...f, access_mode: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[{ value: "open_access", label: "Open Access" }, { value: "members_only", label: "Members Only" }, { value: "pay_per_view", label: "Pay-per-view" }].map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent></Select></div>
-              {form.access_mode === "pay_per_view" && (
-                <div className="space-y-2 col-span-2"><Label>Pay-per-view Price (USD)</Label><Input type="number" min={0} step={0.01} value={form.ppv_price} onChange={e => setForm(f => ({ ...f, ppv_price: Number(e.target.value) || 0 }))} /></div>
+              <div className="space-y-2 col-span-2"><Label>Access Mode</Label><Select value={form.accessMode} onValueChange={v => setForm(f => ({ ...f, accessMode: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[{ value: "open_access", label: "Open Access" }, { value: "members_only", label: "Members Only" }, { value: "pay_per_view", label: "Pay-per-view" }].map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent></Select></div>
+              {form.accessMode === "pay_per_view" && (
+                <div className="space-y-2 col-span-2"><Label>Pay-per-view Price (USD)</Label><Input type="number" min={0} step={0.01} value={form.ppvPrice} onChange={e => setForm(f => ({ ...f, ppvPrice: Number(e.target.value) || 0 }))} /></div>
               )}
             </div>
             <div className="space-y-2"><Label>Summary</Label><Textarea value={form.summary} onChange={e => setForm(f => ({ ...f, summary: e.target.value }))} placeholder="Brief description..." rows={2} /></div>
             <div className="space-y-2"><Label>Body</Label><Textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Full content..." rows={6} /></div>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={form.featured} onChange={e => setForm(f => ({ ...f, featured: e.target.checked }))} /> Featured</label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={form.show_on_homepage} onChange={e => setForm(f => ({ ...f, show_on_homepage: e.target.checked }))} /> Show on Homepage</label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={form.showOnHomepage} onChange={e => setForm(f => ({ ...f, showOnHomepage: e.target.checked }))} /> Show on Homepage</label>
             </div>
           </div>
           <DialogFooter>
@@ -204,4 +225,5 @@ export default function AdminContent() {
     </div>
   );
 }
+
 

@@ -1,24 +1,22 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { journalApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BarChart3, CheckCircle, XCircle, RotateCcw, Clock } from "lucide-react";
+import { BarChart3, CheckCircle, RotateCcw, Clock } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   submitted: "bg-blue-500/10 text-blue-600 border-blue-200",
   in_review: "bg-warning/10 text-warning border-warning/20",
   changes_requested: "bg-orange-500/10 text-orange-600 border-orange-200",
-  approved: "bg-success/10 text-success border-success/20",
+  accepted: "bg-success/10 text-success border-success/20",
   published: "bg-green-600/10 text-green-700 border-green-200",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 export default function AdminJournalPipeline() {
   const [journals, setJournals] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [logs, setLogs] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
@@ -26,48 +24,35 @@ export default function AdminJournalPipeline() {
 
   async function loadData() {
     setLoading(true);
-    const [jRes, tRes] = await Promise.all([
-      supabase.from("content_items").select("id,title,type,status,workflow_status,current_stage_index,workflow_template_id,author_user_id,created_at,access_mode").order("created_at", { ascending: false }),
-      supabase.from("workflow_templates").select("id, name, workflow_stages(id, stage_name, order_index, assigned_user_email, assigned_user_id)"),
-    ]);
-    const items = jRes.data || [];
-    setJournals(items);
-    setTemplates(tRes.data || []);
-    // Load recent logs for each item
-    if (items.length > 0) {
-      const ids = items.map((j: any) => j.id);
-      const { data: logData } = await supabase.from("workflow_logs").select("*").in("content_id", ids).order("acted_at", { ascending: false });
-      const grouped: Record<string, any[]> = {};
-      (logData || []).forEach((l: any) => { grouped[l.content_id] = grouped[l.content_id] || []; grouped[l.content_id].push(l); });
-      setLogs(grouped);
+    try {
+      const data: any = await journalApi.adminList({ limit: "500" });
+      setJournals(data?.items || data || []);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load journals");
+      setJournals([]);
     }
     setLoading(false);
   }
 
   async function publishJournal(id: string) {
-    const item = journals.find((j) => j.id === id);
-    const accessMode = item?.access_mode || "open_access";
-    const { error } = await supabase.from("content_items").update({ status: "published", workflow_status: "published", access_mode: accessMode, visibility: accessMode } as any).eq("id", id);
-    if (error) { toast.error("Failed to publish"); return; }
-    setJournals(prev => prev.map(j => j.id === id ? { ...j, status: "published", workflow_status: "published", access_mode: accessMode } : j));
-    toast.success("Journal published!");
+    try {
+      const form = new FormData();
+      form.append("status", "published");
+      await journalApi.update(id, form);
+      setJournals(prev => prev.map(j => (j._id || j.id) === id ? { ...j, status: "published" } : j));
+      toast.success("Journal published!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to publish");
+    }
   }
 
-  function getTemplate(id: string) { return templates.find(t => t.id === id); }
-  function getCurrentStage(j: any) {
-    const t = getTemplate(j.workflow_template_id);
-    if (!t) return null;
-    const sorted = [...(t.workflow_stages || [])].sort((a: any, b: any) => a.order_index - b.order_index);
-    return sorted[j.current_stage_index] || null;
-  }
-
-  const filtered = journals.filter(j => filter === "all" || j.workflow_status === filter || (!j.workflow_status && filter === "draft"));
+  const filtered = journals.filter(j => filter === "all" || j.status === filter || (!j.status && filter === "draft"));
   const stats = {
-    submitted: journals.filter(j => j.workflow_status === "submitted").length,
-    in_review: journals.filter(j => j.workflow_status === "in_review").length,
-    changes_requested: journals.filter(j => j.workflow_status === "changes_requested").length,
-    approved: journals.filter(j => j.workflow_status === "approved").length,
-    published: journals.filter(j => j.workflow_status === "published" || j.status === "published").length,
+    submitted: journals.filter(j => j.status === "submitted").length,
+    in_review: journals.filter(j => j.status === "in_review").length,
+    changes_requested: journals.filter(j => j.status === "changes_requested").length,
+    accepted: journals.filter(j => j.status === "accepted").length,
+    published: journals.filter(j => j.status === "published").length,
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
@@ -82,7 +67,7 @@ export default function AdminJournalPipeline() {
           { label: "Submitted", value: stats.submitted, icon: <Clock className="h-4 w-4 text-blue-500" /> },
           { label: "In Review", value: stats.in_review, icon: <RotateCcw className="h-4 w-4 text-warning" /> },
           { label: "Changes Req.", value: stats.changes_requested, icon: <RotateCcw className="h-4 w-4 text-orange-500" /> },
-          { label: "Approved", value: stats.approved, icon: <CheckCircle className="h-4 w-4 text-success" /> },
+          { label: "Accepted", value: stats.accepted, icon: <CheckCircle className="h-4 w-4 text-success" /> },
           { label: "Published", value: stats.published, icon: <CheckCircle className="h-4 w-4 text-green-700" /> },
         ].map(s => (
           <div key={s.label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
@@ -94,7 +79,7 @@ export default function AdminJournalPipeline() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "submitted", "in_review", "changes_requested", "approved", "published", "rejected"].map(f => (
+        {["all", "submitted", "in_review", "changes_requested", "accepted", "published", "rejected"].map(f => (
           <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize text-xs">{f.replace("_", " ")}</Button>
         ))}
       </div>
@@ -104,33 +89,53 @@ export default function AdminJournalPipeline() {
         <table className="w-full text-sm">
           <thead><tr className="border-b bg-muted/50">
             <th className="text-left p-4 font-medium text-muted-foreground">Journal Title</th>
-            <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Workflow Status</th>
-            <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Access</th>
-            <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Current Stage</th>
-            <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Last Action</th>
+            <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Institution</th>
+            <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+            <th className="text-left p-4 font-medium text-muted-foreground">Workflow Progress</th>
+            <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Created</th>
+            <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Author</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
           </tr></thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No journals found for this filter</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No journals found for this filter</td></tr>}
             {filtered.map(j => {
-              const stage = getCurrentStage(j);
-              const lastLog = (logs[j.id] || [])[0];
-              const ws = j.workflow_status || "draft";
+              const ws = j.status || "draft";
+              const jid = j._id || j.id;
+              
+              const currentStage = (j.currentStageIndex || 0) + 1;
+              const totalStages = j.totalStages || 0;
+              const progressPct = totalStages > 0 ? (j.status === 'published' ? 100 : (currentStage / (totalStages + 1)) * 100) : 0;
+              
               return (
-                <tr key={j.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="p-4 font-medium max-w-[200px]"><p className="truncate">{j.title}</p><p className="text-xs text-muted-foreground mt-0.5 capitalize">{j.type}</p></td>
-                  <td className="p-4 hidden md:table-cell"><Badge variant="outline" className={STATUS_COLORS[ws]}>{ws.replace("_", " ")}</Badge></td>
-                  <td className="p-4 hidden md:table-cell"><Badge variant="outline" className="capitalize">{(j.access_mode || "open_access").replace(/_/g, " ")}</Badge></td>
-                  <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">
-                    {stage ? <><span className="font-medium text-foreground">{stage.stage_name}</span><br />{stage.assigned_user_email || "Unassigned"}</> : <span>—</span>}
+                <tr key={jid} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="p-4 font-medium max-w-[200px]"><p className="truncate">{j.title}</p></td>
+                  <td className="p-4 hidden md:table-cell text-muted-foreground">{j.institution || "-"}</td>
+                  <td className="p-4"><Badge variant="outline" className={STATUS_COLORS[ws]}>{ws.replace("_", " ")}</Badge></td>
+                  <td className="p-4">
+                    {totalStages > 0 ? (
+                      <div className="space-y-1.5 min-w-[120px]">
+                        <div className="flex justify-between text-[10px] font-medium text-muted-foreground uppercase">
+                          <span>{j.status === 'published' ? 'Completed' : `Stage ${currentStage}/${totalStages}`}</span>
+                          <span>{Math.round(progressPct)}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${j.status === 'published' ? 'bg-green-500' : 'bg-primary'}`} 
+                            style={{ width: `${progressPct}%` }} 
+                          />
+                        </div>
+                        {j.workflowTemplate && <p className="text-[10px] text-muted-foreground truncate">{j.workflowTemplate.name}</p>}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">No workflow</span>
+                    )}
                   </td>
-                  <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">
-                    {lastLog ? <><span className="capitalize font-medium">{lastLog.action}</span><br />{new Date(lastLog.acted_at).toLocaleDateString()}</> : "—"}
-                  </td>
+                  <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{new Date(j.createdAt || j.created_at).toLocaleDateString()}</td>
+                  <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{j.authorUser?.fullName || j.authorUser?.email || "-"}</td>
                   <td className="p-4">
                     <div className="flex gap-1">
-                      {ws === "approved" && j.status !== "published" && (
-                        <Button size="sm" onClick={() => publishJournal(j.id)} className="text-xs"><CheckCircle className="h-3 w-3 mr-1" /> Publish</Button>
+                      {ws === "accepted" && (
+                        <Button size="sm" onClick={() => publishJournal(jid)} className="text-xs"><CheckCircle className="h-3 w-3 mr-1" /> Publish</Button>
                       )}
                     </div>
                   </td>
@@ -143,4 +148,5 @@ export default function AdminJournalPipeline() {
     </div>
   );
 }
+
 

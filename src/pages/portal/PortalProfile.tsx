@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, User, CreditCard, BookOpen, Save, PenSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,47 +7,72 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { featuredApi, usersApi } from "@/lib/api";
+import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
-
-const navItems = [
-  { label: "Dashboard", to: "/portal/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Profile", to: "/portal/profile", icon: <User className="h-4 w-4" /> },
-  { label: "Submit Journal", to: "/submit-paper", icon: <PenSquare className="h-4 w-4" /> },
-  { label: "My Submissions", to: "/author", icon: <FileText className="h-4 w-4" /> },
-  { label: "Membership & Billing", to: "/portal/membership", icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Digital Library", to: "/portal/library", icon: <BookOpen className="h-4 w-4" /> },
-];
 
 export default function PortalProfile() {
   const { user, refreshUser } = useAuth();
+  const navItems = getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [fullName, setFullName] = useState("");
   const [institution, setInstitution] = useState("");
   const [bio, setBio] = useState("");
+  const [requestNote, setRequestNote] = useState("");
+  const [requestStatus, setRequestStatus] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user?.profile) {
-      setFullName(user.profile.full_name || "");
-      setInstitution(user.profile.institution || "");
-      setBio(user.profile.bio || "");
-    }
+    if (!user) return;
+    setFullName(user.fullName || "");
+    setInstitution(user.institution || "");
+    setBio(user.bio || "");
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    featuredApi.getMyRequests().then((data: any) => {
+      const rows = Array.isArray(data) ? data : data?.items || [];
+      const latest = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+      setRequestStatus(latest?.status || null);
+      setRequestNote(latest?.note || "");
+    }).catch(() => {
+      setRequestStatus(null);
+    });
   }, [user]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({
-      full_name: fullName,
-      institution,
-      bio,
-      updated_at: new Date().toISOString(),
-    }).eq("id", user.id);
     setSaving(false);
-    if (error) { toast.error("Failed to save profile"); return; }
+    try {
+      await usersApi.updateProfile({
+        fullName,
+        institution,
+        bio,
+      });
+    } catch {
+      toast.error("Failed to save profile");
+      return;
+    }
     await refreshUser();
     toast.success("Profile updated successfully!");
+  }
+
+  async function handleFeaturedRequest() {
+    if (!user) return;
+    setRequesting(true);
+    try {
+      await featuredApi.submitRequest(requestNote || undefined);
+    } catch (err: any) {
+      setRequesting(false);
+      toast.error("Failed to submit featured request: " + (err?.message || "Unknown error"));
+      return;
+    }
+    setRequesting(false);
+    setRequestStatus("pending");
+    toast.success("Featured user request submitted for admin review");
   }
 
   return (
@@ -75,8 +100,8 @@ export default function PortalProfile() {
             </div>
           </div>
           <div className="mt-5 pt-4 border-t space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Full Name</span><span className="font-medium">{fullName || "—"}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Institution</span><span className="font-medium">{institution || "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Full Name</span><span className="font-medium">{fullName || "â€”"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Institution</span><span className="font-medium">{institution || "â€”"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span className="font-medium text-xs">{user?.email}</span></div>
           </div>
         </div>
@@ -108,9 +133,35 @@ export default function PortalProfile() {
             </Button>
           </form>
         </div>
+
+        <div className="lg:col-span-2 rounded-xl border bg-card p-6 card-shadow">
+          <h3 className="font-heading font-bold mb-3">Featured User Request</h3>
+          <p className="text-sm text-muted-foreground mb-3">Submit a request to be listed in Featured Users. Admin approval is required.</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={requestStatus === "approved" ? "bg-success/10 text-success border-success/20" : requestStatus === "rejected" ? "bg-destructive/10 text-destructive border-destructive/20" : requestStatus === "pending" ? "bg-warning/10 text-warning border-warning/20" : ""}>
+                {requestStatus || "not_requested"}
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="featuredRequestNote">Request Note (optional)</Label>
+              <Textarea
+                id="featuredRequestNote"
+                value={requestNote}
+                onChange={e => setRequestNote(e.target.value)}
+                placeholder="Tell admins why your profile should be featured..."
+                rows={3}
+              />
+            </div>
+            <Button onClick={handleFeaturedRequest} disabled={requesting || requestStatus === "pending"}>
+              {requesting ? "Submitting..." : requestStatus === "pending" ? "Request Pending" : "Request Featured Listing"}
+            </Button>
+          </div>
+        </div>
         </div>
       </div>
     </DashboardLayout>
   );
 }
+
 

@@ -39,6 +39,8 @@ import ReviewerPortal from "./pages/ReviewerPortal";
 import SubAdminReview from "./pages/SubAdminReview";
 import SubAdminPortal from "./pages/SubAdminPortal";
 import SubAdminSettings from "./pages/SubAdminSettings";
+import SubAdminHistory from "./pages/SubAdminHistory";
+import SubAdminReport from "./pages/SubAdminReport";
 
 const queryClient = new QueryClient();
 
@@ -48,7 +50,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
@@ -68,10 +70,10 @@ const App = () => (
             <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
 
             {/* Portal routes - any authenticated user */}
-            <Route path="/portal/dashboard" element={<ProtectedRoute><PortalDashboard /></ProtectedRoute>} />
-            <Route path="/portal/profile" element={<ProtectedRoute><PortalProfile /></ProtectedRoute>} />
-            <Route path="/portal/membership" element={<ProtectedRoute><PortalMembership /></ProtectedRoute>} />
-            <Route path="/portal/library" element={<ProtectedRoute><PortalLibrary /></ProtectedRoute>} />
+            <Route path="/portal/dashboard" element={<ProtectedRoute requiredModule="portal_dashboard"><PortalDashboard /></ProtectedRoute>} />
+            <Route path="/portal/profile" element={<ProtectedRoute requiredModule="portal_profile"><PortalProfile /></ProtectedRoute>} />
+            <Route path="/portal/membership" element={<ProtectedRoute requiredModule="portal_membership"><PortalMembership /></ProtectedRoute>} />
+            <Route path="/portal/library" element={<ProtectedRoute requiredModule="portal_library"><PortalLibrary /></ProtectedRoute>} />
             <Route path="/portal/pending" element={<ProtectedRoute><PendingVerification /></ProtectedRoute>} />
 
             {/* Admin routes */}
@@ -82,8 +84,8 @@ const App = () => (
             } />
 
             {/* Author routes — any logged-in user can submit journals */}
-            <Route path="/author" element={<ProtectedRoute requiredRoles={["registered_user","member","subscriber","author","sub_admin","reviewer","editor","content_admin","super_admin"]}><AuthorDashboard /></ProtectedRoute>} />
-            <Route path="/submit-paper" element={<ProtectedRoute requiredRoles={["registered_user","member","subscriber","author","sub_admin","reviewer","editor","content_admin","super_admin"]}><SubmitPaper /></ProtectedRoute>} />
+            <Route path="/author" element={<ProtectedRoute requiredModule="portal_submissions" requiredRoles={["registered_user","member","subscriber","author","sub_admin","reviewer","editor","content_admin","super_admin"]}><AuthorDashboard /></ProtectedRoute>} />
+            <Route path="/submit-paper" element={<ProtectedRoute requiredModule="portal_submit" requiredRoles={["registered_user","member","subscriber","author","sub_admin","reviewer","editor","content_admin","super_admin"]}><SubmitPaper /></ProtectedRoute>} />
 
             {/* Reviewer routes */}
             <Route path="/reviewer/*" element={
@@ -94,17 +96,27 @@ const App = () => (
 
             {/* Sub-admin portal + stage review */}
             <Route path="/sub-admin" element={
-              <ProtectedRoute requiredRoles={["sub_admin","super_admin"]}>
+              <ProtectedRoute requiredRoles={["sub_admin","super_admin"]} requiredModule="subadmin_dashboard">
                 <SubAdminPortal />
               </ProtectedRoute>
             } />
+            <Route path="/sub-admin/history" element={
+              <ProtectedRoute requiredRoles={["sub_admin","super_admin"]} requiredModule="subadmin_history">
+                <SubAdminHistory />
+              </ProtectedRoute>
+            } />
+            <Route path="/sub-admin/report" element={
+              <ProtectedRoute requiredRoles={["sub_admin","super_admin"]} requiredModule="subadmin_reports">
+                <SubAdminReport />
+              </ProtectedRoute>
+            } />
             <Route path="/sub-admin/settings" element={
-              <ProtectedRoute requiredRoles={["sub_admin","super_admin"]}>
+              <ProtectedRoute requiredRoles={["sub_admin","super_admin"]} requiredModule="subadmin_settings">
                 <SubAdminSettings />
               </ProtectedRoute>
             } />
             <Route path="/reviewer/stage" element={
-              <ProtectedRoute requiredRoles={["sub_admin","super_admin","editor"]}>
+              <ProtectedRoute requiredRoles={["sub_admin","super_admin","editor","reviewer"]} requiredModule="subadmin_review_queue">
                 <SubAdminReview />
               </ProtectedRoute>
             } />

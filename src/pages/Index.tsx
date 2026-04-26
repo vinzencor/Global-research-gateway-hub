@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/layout/Header";
@@ -30,7 +30,7 @@ import { Section1 } from "./Section1";
 import { ChairmanVoice } from "./ChairmanVoice";
 import { Separator } from "./Separator";
 import { Section2 } from "./Section2";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 
 const categoryStats = [
   { label: "Total Papers", value: "12,000+", icon: <FileText className="h-5 w-5" /> },
@@ -44,7 +44,7 @@ const heroSlides = [
     tag: "Knowledge. Credibility. Access.",
     heading: "Advancing Knowledge. Connecting Experts. Expanding Access.",
     description:
-      "A unified platform for publications, expert-led review, digital knowledge access, and professional membership—built for researchers, practitioners, authors, reviewers, and institutions.",
+      "A unified platform for publications, expert-led review, digital knowledge access, and professional membershipâ€”built for researchers, practitioners, authors, reviewers, and institutions.",
     buttonText: "Join as a Member",
     buttonLink: "/membership",
     secondaryText: "Explore the Digital Library",
@@ -133,7 +133,7 @@ export default function Index() {
 
   useEffect(() => {
     async function loadRecent() {
-      const { data } = await supabase
+      const { data } = await db
         .from("content_items")
         .select("id, title, slug, type, summary, cover_image_url, created_at, author_user_id")
         .eq("status", "published")
@@ -145,7 +145,7 @@ export default function Index() {
 
       const authorIds = Array.from(new Set(items.map((i: any) => i.author_user_id).filter(Boolean)));
       if (authorIds.length > 0) {
-        const { data: profiles } = await supabase
+        const { data: profiles } = await db
           .from("profiles")
           .select("id, full_name")
           .in("id", authorIds);
@@ -365,7 +365,7 @@ export default function Index() {
         <Separator className="opacity-10" />
       </div>
 
-      {/* Section Six — Publication Types */}
+      {/* Section Six â€” Publication Types */}
       <section className="container py-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-6">Diverse Publication Types</h2>
@@ -401,7 +401,7 @@ export default function Index() {
 
       <ChairmanVoice />
 
-      {/* Section Seven — Professional Membership */}
+      {/* Section Seven â€” Professional Membership */}
       <section className="bg-secondary/50 py-24 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
           <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-primary rounded-full blur-[150px]" />
@@ -538,7 +538,7 @@ export default function Index() {
                               <Calendar className="h-3 w-3" />
                               {new Date(pub.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                             </span>
-                            <span className="text-primary font-bold">Read More →</span>
+                            <span className="text-primary font-bold">Read More â†’</span>
                           </div>
                         </div>
                       </div>
@@ -671,6 +671,7 @@ export default function Index() {
               <Link to="/support">
                 <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-sm">
                   Contact Support
+
                 </Button>
               </Link>
             </div>

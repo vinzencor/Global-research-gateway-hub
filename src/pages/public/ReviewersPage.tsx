@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { Search, Crown, Star, Users, ArrowRight, CheckCircle } from "lucide-react";
 
 export default function ReviewersPage() {
@@ -15,10 +15,10 @@ export default function ReviewersPage() {
 
   useEffect(() => {
     async function fetchReviewers() {
-      const { data: roleData } = await supabase.from("roles").select("id").eq("name", "reviewer").single();
+      const { data: roleData } = await db.from("roles").select("id").eq("name", "reviewer").single();
       if (!roleData) { setLoading(false); return; }
       
-      const { data: userRoles } = await supabase.from("user_roles").select("user_id").eq("role_id", roleData.id);
+      const { data: userRoles } = await db.from("user_roles").select("user_id").eq("role_id", roleData.id);
       const reviewerIds = Array.from(new Set((userRoles || []).map((ur: any) => ur.user_id)));
       
       if (reviewerIds.length === 0) {
@@ -27,7 +27,7 @@ export default function ReviewersPage() {
         return;
       }
 
-      const { data: profiles } = await supabase
+      const { data: profiles } = await db
         .from("profiles")
         .select("id, full_name, institution, bio, photo_url, reviewer_category")
         .in("id", reviewerIds)
@@ -202,3 +202,4 @@ export default function ReviewersPage() {
     </div>
   );
 }
+

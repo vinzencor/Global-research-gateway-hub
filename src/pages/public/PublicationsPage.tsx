@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { Search, FileText, Calendar, Lock, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -19,7 +19,7 @@ export default function PublicationsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
+    db
       .from("content_items")
       .select("id, title, slug, type, summary, cover_image_url, created_at, access_mode, ppv_price")
       .eq("status", "published")
@@ -62,7 +62,7 @@ export default function PublicationsPage() {
               </div>
               <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">Advance Your Discovery</h1>
               <p className="text-xl text-muted-foreground leading-relaxed font-light">
-                Explore a curated collection of research papers, technical frameworks, and expert analyses—built on a foundation of quality and expert-led review.
+                Explore a curated collection of research papers, technical frameworks, and expert analysesâ€”built on a foundation of quality and expert-led review.
               </p>
             </motion.div>
           </div>
@@ -153,7 +153,7 @@ export default function PublicationsPage() {
                     {item.summary && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{item.summary}</p>}
                     
                     <div className="mt-8 pt-6 border-t flex items-center justify-between">
-                      <span className="text-primary font-bold text-sm tracking-wide">Read Publication →</span>
+                      <span className="text-primary font-bold text-sm tracking-wide">Read Publication â†’</span>
                       {item.access_mode === "pay_per_view" && (
                         <span className="text-xs font-bold bg-primary text-white px-2 py-1 rounded">
                           ${Number(item.ppv_price || 9.99).toFixed(2)}
@@ -203,4 +203,5 @@ export default function PublicationsPage() {
     </div>
   );
 }
+
 

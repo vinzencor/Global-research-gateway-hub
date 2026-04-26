@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { Search, Lock, Globe, Download, BookOpen, Plus, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { isAdmin, isMember } from "@/lib/supabase";
+import { isAdmin, isMember } from "@/lib/legacyDb";
 
 export default function DigitalLibraryPublic() {
   const { user } = useAuth();
@@ -23,7 +23,7 @@ export default function DigitalLibraryPublic() {
   useEffect(() => {
     async function load() {
       const queries: any[] = [
-        supabase
+        db
           .from("library_items")
           .select("*")
           .order("year", { ascending: false }),
@@ -31,7 +31,7 @@ export default function DigitalLibraryPublic() {
 
       if (user) {
         queries.push(
-          supabase
+          db
             .from("memberships")
             .select("id")
             .eq("user_id", user.id)
@@ -53,7 +53,7 @@ export default function DigitalLibraryPublic() {
     const raw = item?.pdf_url;
     if (!raw) return null;
     if (String(raw).startsWith("http://") || String(raw).startsWith("https://")) return raw;
-    const { data } = supabase.storage.from("library-pdfs").getPublicUrl(raw);
+    const { data } = db.storage.from("library-pdfs").getPublicUrl(raw);
     return data?.publicUrl || null;
   }
 
@@ -204,4 +204,5 @@ export default function DigitalLibraryPublic() {
     </div>
   );
 }
+
 

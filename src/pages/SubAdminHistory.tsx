@@ -1,17 +1,10 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, ClipboardList, Settings, History, CheckCircle, XCircle, RefreshCw, BarChart2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { useAuth } from "@/contexts/AuthContext";
-
-const navItems = [
-  { label: "Dashboard", to: "/sub-admin", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Review Queue", to: "/reviewer/stage", icon: <ClipboardList className="h-4 w-4" /> },
-  { label: "Review History", to: "/sub-admin/history", icon: <History className="h-4 w-4" /> },
-  { label: "Reports", to: "/sub-admin/report", icon: <BarChart2 className="h-4 w-4" /> },
-  { label: "Settings", to: "/sub-admin/settings", icon: <Settings className="h-4 w-4" /> },
-];
+import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 
 const ACTION_COLORS: Record<string, string> = {
   approved: "bg-success/10 text-success border-success/20",
@@ -21,6 +14,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function SubAdminHistory() {
   const { user } = useAuth();
+  const navItems = getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "approved" | "changes_requested" | "rejected">("all");
@@ -29,7 +23,7 @@ export default function SubAdminHistory() {
 
   async function loadHistory() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await db
       .from("workflow_logs")
       .select("id, action, comment, acted_at, content_id, stage_index, content_items(id, title, type)")
       .eq("acted_by", user!.id)
@@ -105,11 +99,11 @@ export default function SubAdminHistory() {
                     <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="font-medium max-w-[200px] truncate">
-                          {log.content_items?.title || "—"}
+                          {log.content_items?.title || "â€”"}
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground capitalize hidden sm:table-cell">
-                        {log.content_items?.type || "—"}
+                        {log.content_items?.type || "â€”"}
                       </td>
                       <td className="p-4">
                         <Badge variant="outline" className={`text-xs ${ACTION_COLORS[log.action] || ""}`}>
@@ -121,7 +115,7 @@ export default function SubAdminHistory() {
                         </Badge>
                       </td>
                       <td className="p-4 text-muted-foreground hidden md:table-cell">
-                        <span className="line-clamp-1 max-w-[200px]">{log.comment || "—"}</span>
+                        <span className="line-clamp-1 max-w-[200px]">{log.comment || "â€”"}</span>
                       </td>
                       <td className="p-4 text-muted-foreground text-xs">
                         Stage {(log.stage_index || 0) + 1}
@@ -156,3 +150,4 @@ export default function SubAdminHistory() {
     </DashboardLayout>
   );
 }
+

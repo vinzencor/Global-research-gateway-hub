@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+﻿import { useEffect, useState } from "react";
+import { db } from "@/lib/legacyDb";
 import { BarChart3, TrendingUp, CheckCircle, XCircle, Clock, Globe, RefreshCw, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,9 @@ export default function AdminAnalytics() {
   async function load() {
     setLoading(true);
     const [jRes, lRes, sRes] = await Promise.all([
-      supabase.from("content_items").select("id, title, type, status, workflow_status, created_at, author_user_id").order("created_at", { ascending: true }),
-      supabase.from("workflow_logs").select("*").order("acted_at", { ascending: false }),
-      supabase.from("workflow_stages").select("id, stage_name, template_id"),
+      db.from("content_items").select("id, title, type, status, workflow_status, created_at, author_user_id").order("created_at", { ascending: true }),
+      db.from("workflow_logs").select("*").order("acted_at", { ascending: false }),
+      db.from("workflow_stages").select("id, stage_name, template_id"),
     ]);
     setJournals(jRes.data || []);
     setLogs(lRes.data || []);
@@ -30,7 +30,7 @@ export default function AdminAnalytics() {
     setLoading(false);
   }
 
-  // ── Derived metrics ──────────────────────────────────────────────────────
+  // â”€â”€ Derived metrics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const total = journals.length;
   const published = journals.filter(j => j.workflow_status === "published" || j.status === "published").length;
   const inReview = journals.filter(j => ["submitted", "in_review"].includes(j.workflow_status)).length;
@@ -210,7 +210,7 @@ export default function AdminAnalytics() {
                   <Badge variant="outline" className={`text-xs shrink-0 capitalize ${actionColor}`}>{log.action?.replace("_", " ")}</Badge>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm">{log.comment || "No comment provided"}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Stage {(log.stage_index || 0) + 1} · {new Date(log.acted_at).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Stage {(log.stage_index || 0) + 1} Â· {new Date(log.acted_at).toLocaleString()}</p>
                   </div>
                 </div>
               );
@@ -221,4 +221,5 @@ export default function AdminAnalytics() {
     </div>
   );
 }
+
 

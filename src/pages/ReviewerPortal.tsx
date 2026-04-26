@@ -7,16 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { useAuth } from "@/contexts/AuthContext";
+import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
-
-const navItems = [
-  { label: "Dashboard", to: "/reviewer", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Reviews", to: "/reviewer", icon: <FileText className="h-4 w-4" /> },
-  { label: "Reports", to: "/reviewer/report", icon: <BarChart2 className="h-4 w-4" /> },
-  { label: "Settings", to: "/reviewer/settings", icon: <Settings className="h-4 w-4" /> },
-];
 
 const statusColor: Record<string, string> = {
   assigned: "bg-warning/10 text-warning border-warning/20",
@@ -27,6 +21,7 @@ const statusColor: Record<string, string> = {
 
 export default function ReviewerPortal() {
   const { user } = useAuth();
+  const navItems = getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState<any>(null);
@@ -39,7 +34,7 @@ export default function ReviewerPortal() {
 
   async function loadReviews() {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("reviews")
       .select("*, content_items(id, title, type, summary, status)")
       .eq("reviewer_user_id", user!.id)
@@ -49,12 +44,12 @@ export default function ReviewerPortal() {
   }
 
   async function handleAccept(reviewId: string) {
-    await supabase.from("reviews").update({ status: "accepted" }).eq("id", reviewId);
+    await db.from("reviews").update({ status: "accepted" }).eq("id", reviewId);
     toast.success("Review accepted!"); loadReviews();
   }
 
   async function handleDecline(reviewId: string) {
-    await supabase.from("reviews").update({ status: "declined" }).eq("id", reviewId);
+    await db.from("reviews").update({ status: "declined" }).eq("id", reviewId);
     toast.success("Review declined."); loadReviews();
   }
 
@@ -69,7 +64,7 @@ export default function ReviewerPortal() {
     if (!showReviewForm) return;
     if (!commentsEditor.trim()) { toast.error("Comments to editor are required"); return; }
     setSaving(true);
-    const { error } = await supabase.from("reviews").update({
+    const { error } = await db.from("reviews").update({
       status: "submitted",
       recommendation,
       comments_to_editor: commentsEditor,
@@ -134,14 +129,14 @@ export default function ReviewerPortal() {
                 {reviews.map((review) => (
                   <tr key={review.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="p-4">
-                      <div className="font-medium max-w-[200px] truncate">{review.content_items?.title || "—"}</div>
+                      <div className="font-medium max-w-[200px] truncate">{review.content_items?.title || "â€”"}</div>
                       {review.content_items?.summary && (
                         <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{review.content_items.summary}</div>
                       )}
                     </td>
-                    <td className="p-4 text-muted-foreground hidden sm:table-cell capitalize">{review.content_items?.type || "—"}</td>
+                    <td className="p-4 text-muted-foreground hidden sm:table-cell capitalize">{review.content_items?.type || "â€”"}</td>
                     <td className="p-4 text-muted-foreground hidden md:table-cell">
-                      {review.due_date ? new Date(review.due_date).toLocaleDateString() : "—"}
+                      {review.due_date ? new Date(review.due_date).toLocaleDateString() : "â€”"}
                     </td>
                     <td className="p-4">
                       <Badge variant="outline" className={statusColor[review.status] || ""}>{review.status}</Badge>
@@ -228,4 +223,5 @@ export default function ReviewerPortal() {
     </DashboardLayout>
   );
 }
+
 

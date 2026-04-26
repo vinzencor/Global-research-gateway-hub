@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/lib/supabase";
+﻿import { useEffect, useState, useCallback } from "react";
+import { usersApi, workflowApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ export default function AdminWorkflow() {
   const [selected, setSelected] = useState<any | null>(null);
   // localStages holds the editable state; only pushed to DB on save
   const [localStages, setLocalStages] = useState<any[]>([]);
-  const [subAdmins, setSubAdmins] = useState<any[]>([]);
+  const [assignees, setAssignees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -26,57 +26,93 @@ export default function AdminWorkflow() {
 
   async function loadData() {
     setLoading(true);
-    const { data: tData, error: tErr } = await supabase
-      .from("workflow_templates")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (tErr) toast.error("Failed to load workflows: " + tErr.message);
-    setTemplates(tData || []);
-
-    // Sub-admins: get role_id first, then filter user_roles
-    const { data: roleData } = await supabase.from("roles").select("id").eq("name", "sub_admin").single();
-    if (roleData?.id) {
-      const { data: saRows } = await supabase.from("user_roles").select("user_id").eq("role_id", roleData.id);
-      const ids = (saRows || []).map((u: any) => u.user_id);
-      if (ids.length > 0) {
-        const { data: profiles } = await supabase.from("profiles").select("id, full_name, institution").in("id", ids);
-        setSubAdmins(profiles || []);
-      } else {
-        setSubAdmins([]);
-      }
-    } else {
-      setSubAdmins([]);
+    try {
+      const tData = await workflowApi.listTemplates() as any[];
+      setTemplates((tData || []).map((t: any) => ({
+        id: t._id,
+        name: t.name,
+        description: t.description || null,
+        is_active: Boolean(t.isActive),
+      })));
+    } catch (err: any) {
+      toast.error("Failed to load workflows: " + (err?.message || "Unknown error"));
+      setTemplates([]);
     }
+
+    try {
+      const [subAdminRes, reviewerRes] = await Promise.all([
+        usersApi.list({ role: "sub_admin", limit: "300" }) as Promise<any>,
+        usersApi.list({ role: "reviewer", limit: "300" }) as Promise<any>,
+      ]);
+      const subAdminUsers = Array.isArray(subAdminRes?.users) ? subAdminRes.users : [];
+      const reviewerUsers = Array.isArray(reviewerRes?.users) ? reviewerRes.users : [];
+
+      const merged = [...subAdminUsers, ...reviewerUsers];
+      const byId = new Map<string, any>();
+      for (const u of merged) {
+        const id = String(u?._id || u?.id || "");
+        if (!id) continue;
+        if (byId.has(id)) continue;
+        byId.set(id, {
+          id,
+          full_name: u.fullName || "Unnamed user",
+          institution: u.institution || null,
+          roles: Array.isArray(u.roles) ? u.roles : [],
+        });
+      }
+      setAssignees(Array.from(byId.values()));
+    } catch {
+      setAssignees([]);
+    }
+
     setLoading(false);
   }
 
   async function selectTemplate(t: any) {
     setSelected(t);
-    const { data, error } = await supabase
-      .from("workflow_stages")
-      .select("*")
-      .eq("template_id", t.id)
-      .order("order_index");
-    if (error) toast.error("Failed to load stages");
-    setLocalStages(data || []);
+    try {
+      const data = await workflowApi.getStages(t.id) as any[];
+      setLocalStages((data || []).map((s: any) => ({
+        id: s._id,
+        template_id: t.id,
+        stage_name: s.stageName,
+        order_index: s.orderIndex,
+        assigned_user_id: s.assignedUser?._id || s.assignedUser || null,
+        assigned_user_email: s.assignedUser?.fullName || s.assignedUser?.email || null,
+      })));
+    } catch {
+      toast.error("Failed to load stages");
+      setLocalStages([]);
+    }
   }
 
   async function createWorkflow() {
     if (!newName.trim()) { toast.error("Please enter a workflow name"); return; }
     setCreating(true);
-    const { data, error } = await supabase
-      .from("workflow_templates")
-      .insert({ name: newName.trim(), description: newDesc.trim() || null })
-      .select()
-      .single();
+    let data: any = null;
+    let error: any = null;
+    try {
+      data = await workflowApi.createTemplate(newName.trim()) as any;
+      if (newDesc.trim()) {
+        data = await workflowApi.updateTemplate(data._id, { name: newName.trim(), description: newDesc.trim() }) as any;
+      }
+    } catch (err: any) {
+      error = err;
+    }
     setCreating(false);
     if (error) { toast.error("Failed to create workflow: " + error.message); return; }
-    toast.success(`Workflow "${data.name}" created!`);
-    setTemplates(prev => [data, ...prev]);
+    const normalized = {
+      id: data._id,
+      name: data.name,
+      description: data.description || null,
+      is_active: Boolean(data.isActive),
+    };
+    toast.success(`Workflow "${normalized.name}" created!`);
+    setTemplates(prev => [normalized, ...prev]);
     setNewName("");
     setNewDesc("");
     setShowCreate(false);
-    selectTemplate(data);
+    selectTemplate(normalized);
   }
 
   function addLocalStage() {
@@ -115,32 +151,38 @@ export default function AdminWorkflow() {
   const saveStages = useCallback(async () => {
     if (!selected) return;
     setSaving(true);
-    // Delete all existing stages for this template, then re-insert
-    const { error: delErr } = await supabase.from("workflow_stages").delete().eq("template_id", selected.id);
-    if (delErr) { toast.error("Save failed: " + delErr.message); setSaving(false); return; }
-
-    const toInsert = localStages.map((s, i) => ({
-      template_id: selected.id,
-      stage_name: s.stage_name || `Stage ${i + 1}`,
-      order_index: i,
-      assigned_user_id: s.assigned_user_id || null,
-      assigned_user_email: s.assigned_user_email || null,
+    const payload = localStages.map((s, i) => ({
+      stageName: s.stage_name || `Stage ${i + 1}`,
+      orderIndex: i,
+      assignedUser: s.assigned_user_id || null,
     }));
 
-    if (toInsert.length > 0) {
-      const { data: inserted, error: insErr } = await supabase.from("workflow_stages").insert(toInsert).select();
-      if (insErr) { toast.error("Save failed: " + insErr.message); setSaving(false); return; }
-      setLocalStages(inserted || []);
-    } else {
-      setLocalStages([]);
+    try {
+      const inserted = await workflowApi.upsertStages(selected.id, payload) as any[];
+      setLocalStages((inserted || []).map((s: any) => ({
+        id: s._id,
+        template_id: selected.id,
+        stage_name: s.stageName,
+        order_index: s.orderIndex,
+        assigned_user_id: s.assignedUser || null,
+        assigned_user_email: null,
+      })));
+    } catch (err: any) {
+      toast.error("Save failed: " + (err?.message || "Unknown error"));
+      setSaving(false);
+      return;
     }
     setSaving(false);
     toast.success("Workflow stages saved!");
   }, [selected, localStages]);
 
   async function toggleActive(t: any) {
-    const { error } = await supabase.from("workflow_templates").update({ is_active: !t.is_active }).eq("id", t.id);
-    if (error) { toast.error("Failed to update status"); return; }
+    try {
+      await workflowApi.updateTemplate(t.id, { isActive: !t.is_active, name: t.name });
+    } catch {
+      toast.error("Failed to update status");
+      return;
+    }
     const updated = { ...t, is_active: !t.is_active };
     setTemplates(prev => prev.map(x => x.id === t.id ? updated : x));
     if (selected?.id === t.id) setSelected(updated);
@@ -149,9 +191,12 @@ export default function AdminWorkflow() {
 
   async function deleteTemplate(t: any) {
     if (!window.confirm(`Delete workflow "${t.name}"? This will remove all its stages.`)) return;
-    await supabase.from("workflow_stages").delete().eq("template_id", t.id);
-    const { error } = await supabase.from("workflow_templates").delete().eq("id", t.id);
-    if (error) { toast.error("Delete failed: " + error.message); return; }
+    try {
+      await workflowApi.deleteTemplate(t.id);
+    } catch (err: any) {
+      toast.error("Delete failed: " + (err?.message || "Unknown error"));
+      return;
+    }
     setTemplates(prev => prev.filter(x => x.id !== t.id));
     if (selected?.id === t.id) { setSelected(null); setLocalStages([]); }
     toast.success("Workflow deleted");
@@ -285,18 +330,22 @@ export default function AdminWorkflow() {
                     <Select
                       value={s.assigned_user_id || "none"}
                       onValueChange={v => {
-                        const u = subAdmins.find(x => x.id === v);
+                        const u = assignees.find(x => x.id === v);
                         updateLocal(s.id, { assigned_user_id: v === "none" ? null : v, assigned_user_email: u?.full_name || null });
                       }}
                     >
                       <SelectTrigger className="h-8 text-sm flex-1">
-                        <SelectValue placeholder="Assign sub-admin..." />
+                        <SelectValue placeholder="Assign sub-admin or reviewer..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">— No assignment —</SelectItem>
-                        {subAdmins.length === 0 && <SelectItem value="__empty" disabled>No sub-admins yet</SelectItem>}
-                        {subAdmins.map(u => (
-                          <SelectItem key={u.id} value={u.id}>{u.full_name}{u.institution ? ` (${u.institution})` : ""}</SelectItem>
+                        <SelectItem value="none">â€” No assignment â€”</SelectItem>
+                        {assignees.length === 0 && <SelectItem value="__empty" disabled>No sub-admins or reviewers yet</SelectItem>}
+                        {assignees.map(u => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.full_name}
+                            {u.institution ? ` (${u.institution})` : ""}
+                            {u.roles?.includes("sub_admin") ? " [Sub-admin]" : u.roles?.includes("reviewer") ? " [Reviewer]" : ""}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -322,4 +371,5 @@ export default function AdminWorkflow() {
     </div>
   );
 }
+
 

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { membershipApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, ChevronRight, Check } from "lucide-react";
@@ -24,6 +24,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [institution, setInstitution] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [requestFeatured, setRequestFeatured] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -37,55 +38,35 @@ export default function Register() {
 
   async function loadPlans() {
     setPlansLoading(true);
+    try {
+      const data = await membershipApi.listPlans();
+      const rawPlans = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.plans)
+        ? (data as any).plans
+        : Array.isArray((data as any)?.items)
+        ? (data as any).items
+        : Array.isArray((data as any)?.data?.plans)
+        ? (data as any).data.plans
+        : [];
 
-    // Primary path: security-definer RPC, so signup can read active plans even with strict RLS.
-    const rpcRes = await supabase.rpc("get_public_membership_plans");
-    if (!rpcRes.error && Array.isArray(rpcRes.data) && rpcRes.data.length > 0) {
-      setPlans(rpcRes.data as Plan[]);
+      const normalizedPlans: Plan[] = (rawPlans as any[])
+        .map((p: any) => ({
+          id: String(p?._id || p?.id || p?.planId || ""),
+          name: String(p?.name || p?.plan_name || ""),
+          price: Number(p?.price ?? p?.amount ?? 0),
+          description: p?.description || p?.details || null,
+          billing_period: p?.billingPeriod || p?.billing_period || null,
+        }))
+        .filter((p) => !!p.id && !!p.name);
+
+      setPlans(normalizedPlans);
+    } catch {
+      setPlans([]);
+      toast.error("Could not load membership plans. Please contact support.");
+    } finally {
       setPlansLoading(false);
-      return;
     }
-
-    // Fallback path #1: direct select of active plans (works if table policy permits anon select).
-    const activeRes = await supabase
-      .from("membership_plans")
-      .select("id,name,price")
-      .eq("is_active", true)
-      .order("price", { ascending: true });
-
-    if (!activeRes.error && Array.isArray(activeRes.data) && activeRes.data.length > 0) {
-      setPlans((activeRes.data as any[]).map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: Number(p.price || 0),
-        description: null,
-        billing_period: null,
-      })));
-      setPlansLoading(false);
-      return;
-    }
-
-    // Fallback path #2: if is_active column or filter path is unavailable, try reading all plans.
-    const anyRes = await supabase
-      .from("membership_plans")
-      .select("id,name,price")
-      .order("price", { ascending: true });
-
-    if (!anyRes.error && Array.isArray(anyRes.data) && anyRes.data.length > 0) {
-      setPlans((anyRes.data as any[]).map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: Number(p.price || 0),
-        description: null,
-        billing_period: null,
-      })));
-      setPlansLoading(false);
-      return;
-    }
-
-    setPlans([]);
-    toast.error("Could not load membership plans. Please contact support.");
-    setPlansLoading(false);
   }
 
   async function handleRegisterStep1(e: React.FormEvent) {
@@ -108,49 +89,17 @@ export default function Register() {
     setLoading(true);
     try {
       // 1. SignUp
-      const { data, error: signUpError } = await signUp(email, password, fullName, institution);
+      const { error: signUpError } = await signUp(email, password, fullName, institution);
       if (signUpError) throw signUpError;
-      
-      const userId = data.user?.id;
-      if (!userId) throw new Error("Could not retrieve user ID");
 
-      // 2. Upload Screenshot
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Math.random()}.${fileExt}`;
-      const filePath = `verifications/${fileName}`;
+      // 2. Login to get token so we can call authenticated API
+      const { authApi } = await import("@/lib/api");
+      const loginRes = await authApi.login(email, password);
+      const { tokenStorage } = await import("@/lib/api");
+      tokenStorage.setTokens(loginRes.accessToken, loginRes.refreshToken);
 
-      const { error: uploadError } = await supabase.storage
-        .from("payment-proofs")
-        .upload(filePath, file);
-
-      if (uploadError) {
-          throw new Error("Screenshot upload failed: " + uploadError.message);
-      }
-
-      // 3. Create Membership Record (Pending Verification)
-      const membershipPayloadBase = {
-        user_id: userId,
-        plan_id: selectedPlanId,
-        screenshot_url: filePath,
-        starts_at: new Date().toISOString(),
-      };
-
-      const firstTry = await supabase.from("memberships").insert({
-        ...membershipPayloadBase,
-        status: "pending_verification",
-      } as any);
-
-      let memError = firstTry.error;
-      if (memError && String(memError.code || "") === "23514") {
-        // Backward-compatibility for projects where memberships_status_check still allows `pending` only.
-        const secondTry = await supabase.from("memberships").insert({
-          ...membershipPayloadBase,
-          status: "pending",
-        } as any);
-        memError = secondTry.error;
-      }
-
-      if (memError) throw memError;
+      // 3. Apply for membership with payment screenshot
+      await membershipApi.apply(selectedPlanId, file);
 
       toast.success(`Account created and payment submitted for ${selectedPlan.name} ($${selectedPlan.price}).`);
       navigate("/login");
@@ -260,6 +209,15 @@ export default function Register() {
                   )}
                 </div>
               </div>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={requestFeatured}
+                  onChange={e => setRequestFeatured(e.target.checked)}
+                />
+                Request to be listed in Featured Users after admin approval
+              </label>
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setStep(1)}>

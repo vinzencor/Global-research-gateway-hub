@@ -1,24 +1,17 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, User, CreditCard, BookOpen, Search, Heart, Download, Lock, PenSquare, FileText } from "lucide-react";
+import { Search, Heart, Download, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { libraryApi, membershipApi } from "@/lib/api";
+import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
-
-const navItems = [
-  { label: "Dashboard", to: "/portal/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Profile", to: "/portal/profile", icon: <User className="h-4 w-4" /> },
-  { label: "Submit Journal", to: "/submit-paper", icon: <PenSquare className="h-4 w-4" /> },
-  { label: "My Submissions", to: "/author", icon: <FileText className="h-4 w-4" /> },
-  { label: "Membership & Billing", to: "/portal/membership", icon: <CreditCard className="h-4 w-4" /> },
-  { label: "Digital Library", to: "/portal/library", icon: <BookOpen className="h-4 w-4" /> },
-];
 
 export default function PortalLibrary() {
   const { user } = useAuth();
+  const navItems = getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [items, setItems] = useState<any[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -34,37 +27,66 @@ export default function PortalLibrary() {
 
   async function loadData() {
     setLoading(true);
-    const queries: Promise<any>[] = [
-      supabase.from("library_items").select("*").order("year", { ascending: false }),
-    ];
-    if (user) {
-      queries.push(
-        supabase.from("saved_library_items").select("library_item_id").eq("user_id", user.id),
-        supabase
-          .from("memberships")
-          .select("id")
-          .eq("user_id", user.id)
-          .in("status", ["active", "renewal_due"])
-          .maybeSingle(),
+    try {
+      const [libraryRes, savedRes, membershipRes] = await Promise.all([
+        libraryApi.list({ limit: "500" }) as Promise<any>,
+        user ? (libraryApi.getMySaved() as Promise<any>) : Promise.resolve([]),
+        user ? (membershipApi.getMy() as Promise<any>).catch(() => null) : Promise.resolve(null),
+      ]);
+
+      const libraryItems = Array.isArray(libraryRes?.items)
+        ? libraryRes.items
+        : Array.isArray(libraryRes)
+        ? libraryRes
+        : [];
+
+      const normalizedItems = libraryItems.map((item: any) => ({
+        id: String(item?._id || item?.id),
+        title: item?.title || "Untitled",
+        abstract: item?.abstract || "",
+        authors_json: Array.isArray(item?.authorsJson) ? item.authorsJson : [],
+        venue: item?.venue || "",
+        year: item?.year,
+        access_type: item?.accessType || "open",
+        pdf_url: item?.pdfUrl || "",
+      }));
+
+      const savedItems = Array.isArray(savedRes) ? savedRes : Array.isArray(savedRes?.items) ? savedRes.items : [];
+      const nextSavedIds = new Set<string>(
+        savedItems.map((item: any) => String(item?._id || item?.id)).filter(Boolean)
       );
+
+      const membershipStatus = membershipRes?.status || null;
+      const roleBasedMember = (user?.roles || []).some((r: string) => ["member", "subscriber", "super_admin", "content_admin", "editor"].includes(r));
+      const statusBasedMember = ["active", "renewal_due"].includes(String(membershipStatus || ""));
+
+      setItems(normalizedItems);
+      setSavedIds(nextSavedIds);
+      setHasMembership(roleBasedMember || statusBasedMember);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load library items");
+      setItems([]);
+      setSavedIds(new Set());
+      setHasMembership(false);
+    } finally {
+      setLoading(false);
     }
-    const [libResult, savedResult, memResult] = await Promise.all(queries);
-    setItems(libResult.data || []);
-    setSavedIds(new Set((savedResult?.data || []).map((s: any) => s.library_item_id)));
-    setHasMembership(!!memResult?.data);
-    setLoading(false);
   }
 
   async function toggleSave(itemId: string) {
     if (!user) { toast.error("Please login to save items"); return; }
-    if (savedIds.has(itemId)) {
-      await supabase.from("saved_library_items").delete().eq("user_id", user.id).eq("library_item_id", itemId);
-      setSavedIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
-      toast.success("Removed from saved items");
-    } else {
-      await supabase.from("saved_library_items").insert({ user_id: user.id, library_item_id: itemId });
-      setSavedIds(prev => new Set([...prev, itemId]));
-      toast.success("Saved to your library!");
+    try {
+      if (savedIds.has(itemId)) {
+        await libraryApi.unsave(itemId);
+        setSavedIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+        toast.success("Removed from saved items");
+      } else {
+        await libraryApi.save(itemId);
+        setSavedIds(prev => new Set([...prev, itemId]));
+        toast.success("Saved to your library!");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update saved item");
     }
   }
 
@@ -117,7 +139,7 @@ export default function PortalLibrary() {
                       <Badge variant="outline" className={item.access_type === "open" ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}>
                         {item.access_type === "open" ? "Open Access" : "Members Only"}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">{item.venue} • {item.year}</span>
+                      <span className="text-xs text-muted-foreground">{item.venue} â€¢ {item.year}</span>
                     </div>
                     <h4 className="font-semibold text-sm leading-snug">{item.title}</h4>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -158,4 +180,5 @@ export default function PortalLibrary() {
     </DashboardLayout>
   );
 }
+
 

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/legacyDb";
 import { toast } from "sonner";
 import { Award, Search, Trophy } from "lucide-react";
 
@@ -15,7 +15,7 @@ export default function AdminAwards() {
 
   async function loadItems() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await db
       .from("content_items")
       .select("id, title, type, status, is_award_winning, created_at")
       .eq("status", "published")
@@ -25,7 +25,7 @@ export default function AdminAwards() {
   }
 
   async function toggleAward(id: string, current: boolean) {
-    const { error } = await supabase
+    const { error } = await db
       .from("content_items")
       .update({ is_award_winning: !current } as any)
       .eq("id", id);
@@ -33,7 +33,7 @@ export default function AdminAwards() {
       toast.error("Failed to update: " + error.message);
       return;
     }
-    toast.success(!current ? "Marked as Award Winning 🏆" : "Removed award status");
+    toast.success(!current ? "Marked as Award Winning ðŸ†" : "Removed award status");
     setItems(prev => prev.map(i => i.id === id ? { ...i, is_award_winning: !current } : i));
   }
 
@@ -94,7 +94,7 @@ export default function AdminAwards() {
                   <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(item.created_at).toLocaleDateString()}</td>
                   <td className="p-4">
                     {item.is_award_winning ? (
-                      <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">🏆 Award Winner</Badge>
+                      <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">ðŸ† Award Winner</Badge>
                     ) : (
                       <Badge variant="outline" className="text-xs text-muted-foreground">Not awarded</Badge>
                     )}
@@ -105,7 +105,7 @@ export default function AdminAwards() {
                       size="sm"
                       onClick={() => toggleAward(item.id, !!item.is_award_winning)}
                     >
-                      {item.is_award_winning ? "Remove Award" : "🏆 Award"}
+                      {item.is_award_winning ? "Remove Award" : "ðŸ† Award"}
                     </Button>
                   </td>
                 </tr>
@@ -117,3 +117,4 @@ export default function AdminAwards() {
     </div>
   );
 }
+

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -18,33 +17,46 @@ export default function Login() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) { toast.error("Please fill in all fields"); return; }
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) { toast.error("Please fill in all fields"); return; }
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(normalizedEmail, password);
+    let welcomed = false;
     setLoading(false);
-    if (error) { toast.error(error.message || "Invalid credentials"); return; }
-    toast.success("Welcome back!");
+    if (error) {
+      const code = String((error as any)?.code || "").toLowerCase();
+      if (code === "invalid_credentials") {
+        toast.error("Invalid email or password. Use exact email format and latest reset password.");
+      } else {
+        toast.error(error.message || "Invalid credentials");
+      }
+      return;
+    }
 
-    if (from) { navigate(from, { replace: true }); return; }
-
-    // Fetch roles right after sign-in so we can redirect to the right dashboard
+    // signIn already fetched the user; read from auth context via a quick local re-read
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (userId) {
-        const { data: roleRows } = await supabase
-          .from("user_roles")
-          .select("roles!inner(name)")
-          .eq("user_id", userId);
-        const roles = (roleRows || []).map((r: any) => r.roles?.name as string);
-        if (roles.includes("super_admin") || roles.includes("content_admin") || roles.includes("editor")) {
-          navigate("/admin", { replace: true }); return;
-        }
-        if (roles.includes("sub_admin")) {
-          navigate("/sub-admin", { replace: true }); return;
-        }
+      const { authApi } = await import("@/lib/api");
+      const meData = await authApi.getMe();
+      const roles: string[] = meData.user?.roles || [];
+      const membershipStatus = String(meData.membership?.status || "").toLowerCase();
+      if (membershipStatus === "pending_verification" || membershipStatus === "pending") {
+        toast.info("Your profile is under verification. Please hold on while we review your payment proof.");
+        navigate("/portal/pending", { replace: true });
+        return;
+      }
+
+      toast.success("Welcome back!");
+      welcomed = true;
+      if (roles.includes("super_admin") || roles.includes("content_admin") || roles.includes("editor")) {
+        navigate("/admin", { replace: true }); return;
+      }
+      if (roles.includes("sub_admin")) {
+        navigate("/sub-admin", { replace: true }); return;
       }
     } catch { /* fall through to default */ }
+
+    if (!welcomed) toast.success("Welcome back!");
+    if (from) { navigate(from, { replace: true }); return; }
     navigate("/portal/dashboard", { replace: true });
   }
 

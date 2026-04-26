@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+﻿import { useEffect, useState } from "react";
+import { db } from "@/lib/legacyDb";
 import { Badge } from "@/components/ui/badge";
 import { BarChart2, Users, FileText, CheckCircle, XCircle, Award, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,12 +44,12 @@ export default function AdminReport() {
     try {
     // Overall stats
     const [allContent, published, inReview, profiles, allWorkflowLogs, allReviews] = await Promise.all([
-      supabase.from("content_items").select("id", { count: "exact" }),
-      supabase.from("content_items").select("id", { count: "exact" }).eq("status", "published"),
-      supabase.from("content_items").select("id", { count: "exact" }).eq("status", "in_review"),
-      supabase.from("profiles").select("id", { count: "exact" }),
-      supabase.from("workflow_logs").select("id, action, acted_by, acted_at"),
-      supabase.from("reviews").select("id, status, recommendation, reviewer_user_id, submitted_at"),
+      db.from("content_items").select("id", { count: "exact" }),
+      db.from("content_items").select("id", { count: "exact" }).eq("status", "published"),
+      db.from("content_items").select("id", { count: "exact" }).eq("status", "in_review"),
+      db.from("profiles").select("id", { count: "exact" }),
+      db.from("workflow_logs").select("id, action, acted_by, acted_at"),
+      db.from("reviews").select("id, status, recommendation, reviewer_user_id, submitted_at"),
     ]);
 
     setOverallStats({
@@ -64,15 +64,15 @@ export default function AdminReport() {
     });
 
     // Sub-admin stats via workflow_logs
-    const { data: subAdminRole } = await supabase.from("roles").select("id").eq("name", "sub_admin").single();
-    const { data: editorRole } = await supabase.from("roles").select("id").eq("name", "editor").single();
+    const { data: subAdminRole } = await db.from("roles").select("id").eq("name", "sub_admin").maybeSingle();
+    const { data: editorRole } = await db.from("roles").select("id").eq("name", "editor").maybeSingle();
     const roleIds = [subAdminRole?.id, editorRole?.id].filter(Boolean);
     if (roleIds.length > 0) {
-      const { data: saRows } = await supabase.from("user_roles").select("user_id, roles(name)").in("role_id", roleIds);
+      const { data: saRows } = await db.from("user_roles").select("user_id, roles(name)").in("role_id", roleIds);
       const saIds = (saRows || []).map((u: any) => u.user_id);
       if (saIds.length > 0) {
-        const { data: saProfiles } = await supabase.from("profiles").select("id, full_name, institution").in("id", saIds);
-        const { data: saLogs } = await supabase.from("workflow_logs").select("action, acted_by").in("acted_by", saIds);
+        const { data: saProfiles } = await db.from("profiles").select("id, full_name, institution").in("id", saIds);
+        const { data: saLogs } = await db.from("workflow_logs").select("action, acted_by").in("acted_by", saIds);
         const roleMap: Record<string, string> = {};
         (saRows || []).forEach((r: any) => { roleMap[r.user_id] = r.roles?.name || "sub_admin"; });
 
@@ -90,12 +90,12 @@ export default function AdminReport() {
     }
 
     // Reviewer stats via reviews table
-    const { data: revRole } = await supabase.from("roles").select("id").eq("name", "reviewer").single();
+    const { data: revRole } = await db.from("roles").select("id").eq("name", "reviewer").maybeSingle();
     if (revRole?.id) {
-      const { data: revRows } = await supabase.from("user_roles").select("user_id").eq("role_id", revRole.id);
+      const { data: revRows } = await db.from("user_roles").select("user_id").eq("role_id", revRole.id);
       const revIds = (revRows || []).map((u: any) => u.user_id);
       if (revIds.length > 0) {
-        const { data: revProfiles } = await supabase.from("profiles").select("id, full_name, institution").in("id", revIds);
+        const { data: revProfiles } = await db.from("profiles").select("id, full_name, institution").in("id", revIds);
         const revMap: Record<string, any[]> = {};
         (allReviews.data || []).forEach((r: any) => {
           if (!revMap[r.reviewer_user_id]) revMap[r.reviewer_user_id] = [];
@@ -192,7 +192,7 @@ export default function AdminReport() {
                           {i + 1}
                         </div>
                         <div>
-                          <p className="font-medium">{sa.full_name || "—"}</p>
+                          <p className="font-medium">{sa.full_name || "â€”"}</p>
                           {sa.institution && <p className="text-xs text-muted-foreground">{sa.institution}</p>}
                         </div>
                       </div>
@@ -241,7 +241,7 @@ export default function AdminReport() {
                   <tr key={rv.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="p-4">
                       <div>
-                        <p className="font-medium">{rv.full_name || "—"}</p>
+                        <p className="font-medium">{rv.full_name || "â€”"}</p>
                         {rv.institution && <p className="text-xs text-muted-foreground">{rv.institution}</p>}
                       </div>
                     </td>
@@ -274,3 +274,4 @@ export default function AdminReport() {
     </div>
   );
 }
+
