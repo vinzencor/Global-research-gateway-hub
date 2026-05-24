@@ -23,7 +23,7 @@ type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: 
 
 const navItems: AdminNavItem[] = [
   { label: "Dashboard", to: "/admin", moduleKey: "dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "Journal Pipeline", to: "/admin/pipeline", moduleKey: "pipeline", icon: <BarChart3 className="h-4 w-4" /> },
+  { label: "Paper Pipeline", to: "/admin/pipeline", moduleKey: "pipeline", icon: <BarChart3 className="h-4 w-4" /> },
   { label: "Analytics", to: "/admin/analytics", moduleKey: "analytics", icon: <TrendingUp className="h-4 w-4" /> },
   { label: "Workflow Designer", to: "/admin/workflow", moduleKey: "workflow", icon: <GitBranch className="h-4 w-4" /> },
   { label: "Sub-Admins", to: "/admin/sub-admins", moduleKey: "sub_admins", icon: <UserCheck className="h-4 w-4" /> },

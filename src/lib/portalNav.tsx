@@ -50,14 +50,10 @@ function withRegisteredFallback(roles: UserRole[] = [], moduleAccess: Record<str
     } as Record<string, boolean>;
   }
 
-  if (roles.includes("reviewer")) {
+  if (roles.includes("reviewer") && !roles.includes("sub_admin")) {
     return {
       ...defaultAccess,
-      subadmin_dashboard: true,
       subadmin_review_queue: true,
-      subadmin_history: true,
-      subadmin_reports: true,
-      subadmin_settings: true,
     } as Record<string, boolean>;
   }
 
@@ -89,15 +85,16 @@ export function isModuleAllowed(moduleKey: string | undefined, moduleAccess: Rec
 
 export const BASE_PORTAL_NAV_ITEMS: PortalNavItem[] = [
   { label: "Dashboard", to: "/portal/dashboard", moduleKey: "portal_dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "My Profile", to: "/portal/profile", moduleKey: "portal_profile", icon: <User className="h-4 w-4" /> },
-  { label: "Submit Journal", to: "/submit-paper", moduleKey: "portal_submit", icon: <PenSquare className="h-4 w-4" /> },
+  { label: "Submit Paper", to: "/submit-paper", moduleKey: "portal_submit", icon: <PenSquare className="h-4 w-4" /> },
   { label: "My Submissions", to: "/author", moduleKey: "portal_submissions", icon: <FileText className="h-4 w-4" /> },
   { label: "Membership & Billing", to: "/portal/membership", moduleKey: "portal_membership", icon: <CreditCard className="h-4 w-4" /> },
   { label: "Digital Library", to: "/portal/library", moduleKey: "portal_library", icon: <BookOpen className="h-4 w-4" /> },
+  { label: "My Profile", to: "/portal/profile", moduleKey: "portal_profile", icon: <User className="h-4 w-4" /> },
 ];
 
 export const BASE_SUBADMIN_NAV_ITEMS: SubAdminNavItem[] = [
   { label: "Dashboard", to: "/sub-admin", moduleKey: "subadmin_dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Assigned Papers", to: "/reviewer", moduleKey: "subadmin_review_queue", icon: <FileText className="h-4 w-4" /> },
   { label: "My Review Queue", to: "/reviewer/stage", moduleKey: "subadmin_review_queue", icon: <FileText className="h-4 w-4" /> },
   { label: "Review History", to: "/sub-admin/history", moduleKey: "subadmin_history", icon: <Bell className="h-4 w-4" /> },
   { label: "Reports", to: "/sub-admin/report", moduleKey: "subadmin_reports", icon: <CreditCard className="h-4 w-4" /> },
@@ -112,13 +109,15 @@ export function getPortalNavItemsForRoles(roles: UserRole[] = [], moduleAccess: 
 
   const adminItems = isAdmin(roles) ? [{ label: "Admin Console", to: "/admin", icon: <ShieldCheck className="h-4 w-4" /> }] : [];
   
-  // Both sub_admin and reviewer should have the Reviewer Portal link in their main portal nav
+  // Reviewers and sub-admins get reviewer-specific links in their main portal nav
   const reviewerItems = (roles.includes("sub_admin") || roles.includes("reviewer") || isAdmin(roles)) 
-    ? [{ label: "Reviewer Portal", to: "/sub-admin", icon: <Bell className="h-4 w-4" /> }] 
+    ? [
+        { label: "Assigned Papers", to: "/reviewer", icon: <FileText className="h-4 w-4" /> },
+        { label: "My Review Queue", to: "/reviewer/stage", icon: <FileText className="h-4 w-4" /> }
+      ] 
     : [];
 
-  // Filter out the specialized portals from the main sidebar to keep it clean as requested
-  return [...baseItems];
+  return [...baseItems, ...reviewerItems, ...adminItems];
 }
 
 export function getSubAdminNavItemsForRoles(roles: UserRole[] = [], moduleAccess: Record<string, boolean> = {}): SubAdminNavItem[] {

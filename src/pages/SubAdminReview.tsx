@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { workflowApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
+import { getPortalNavItemsForRoles, getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
@@ -23,7 +23,9 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SubAdminReview() {
   const { user } = useAuth();
-  const navItems = getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
+  const navItems = user?.roles?.includes("sub_admin") || user?.roles?.includes("super_admin")
+    ? getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {})
+    : getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [accessMode, setAccessMode] = useState<Record<string, string>>({});

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -159,8 +159,8 @@ export default function AdminLibrary() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No library items found</td></tr>
-              ) : filtered.map((item) => (
-                <tr key={item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+              ) : filtered.map((item, index) => (
+                <tr key={item._id || item.id || index} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="p-4 font-medium max-w-[220px]">
                     <div className="truncate">{item.title}</div>
                     {item.venue && <div className="text-xs text-muted-foreground truncate">{item.venue}</div>}

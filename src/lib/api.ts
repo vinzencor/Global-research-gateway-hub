@@ -4,6 +4,7 @@
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+export const API_ORIGIN = BASE_URL.replace(/\/api\/?$/, "");
 
 // â”€â”€â”€ Token management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -206,6 +207,8 @@ export const journalApi = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return apiRequest(`/journals/admin/all${qs}`);
   },
+  adminUpload: (data: FormData) =>
+    apiRequest("/journals/admin/upload", { method: "POST", body: data, isFormData: true }),
   delete: (id: string) => apiRequest(`/journals/${id}`, { method: "DELETE" }),
 };
 
@@ -246,6 +249,7 @@ export const workflowApi = {
 export const reviewsApi = {
   getMyReviews: () => apiRequest("/reviews/my-reviews"),
   accept: (id: string) => apiRequest(`/reviews/${id}/accept`, { method: "PATCH" }),
+  selectPaper: (id: string) => apiRequest(`/reviews/${id}/select-paper`, { method: "PATCH" }),
   decline: (id: string) => apiRequest(`/reviews/${id}/decline`, { method: "PATCH" }),
   submit: (
     id: string,
@@ -259,6 +263,11 @@ export const reviewsApi = {
     apiRequest("/reviews/assign", {
       method: "POST",
       body: { contentId, reviewerUserId, dueDate },
+    }),
+  assignBucket: (reviewerUserId: string, paperIds: string[], dueDate?: string) =>
+    apiRequest("/reviews/assign-bucket", {
+      method: "POST",
+      body: { reviewerUserId, paperIds, dueDate },
     }),
   recordDecision: (contentId: string, decision: string, decisionNotes?: string) =>
     apiRequest("/reviews/decision", {

@@ -19,6 +19,7 @@ export default function AdminJournalPipeline() {
   const [journals, setJournals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [publishDates, setPublishDates] = useState<Record<string, string>>({});
 
   useEffect(() => { loadData(); }, []);
 
@@ -34,13 +35,19 @@ export default function AdminJournalPipeline() {
     setLoading(false);
   }
 
-  async function publishJournal(id: string) {
+  async function publishPaper(id: string) {
     try {
+      const selectedDate = publishDates[id];
+      if (!selectedDate) {
+        toast.error("Please set a manual publish date before publishing");
+        return;
+      }
       const form = new FormData();
       form.append("status", "published");
+      form.append("publishDate", selectedDate);
       await journalApi.update(id, form);
-      setJournals(prev => prev.map(j => (j._id || j.id) === id ? { ...j, status: "published" } : j));
-      toast.success("Journal published!");
+      setJournals(prev => prev.map(j => (j._id || j.id) === id ? { ...j, status: "published", publishDate: selectedDate } : j));
+      toast.success("Paper published!");
     } catch (err: any) {
       toast.error(err?.message || "Failed to publish");
     }
@@ -59,7 +66,7 @@ export default function AdminJournalPipeline() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><h2 className="font-heading text-xl font-bold">Journal Pipeline</h2></div>
+      <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><h2 className="font-heading text-xl font-bold">Paper Pipeline</h2></div>
 
       {/* Analytics Row */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -84,20 +91,21 @@ export default function AdminJournalPipeline() {
         ))}
       </div>
 
-      {/* Journal List */}
+      {/* Paper List */}
       <div className="rounded-xl border bg-card overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b bg-muted/50">
-            <th className="text-left p-4 font-medium text-muted-foreground">Journal Title</th>
+            <th className="text-left p-4 font-medium text-muted-foreground">Paper Title</th>
             <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Institution</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Workflow Progress</th>
             <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Created</th>
             <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Author</th>
+            <th className="text-left p-4 font-medium text-muted-foreground hidden xl:table-cell">Publish Date</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
           </tr></thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No journals found for this filter</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No papers found for this filter</td></tr>}
             {filtered.map(j => {
               const ws = j.status || "draft";
               const jid = j._id || j.id;
@@ -132,10 +140,19 @@ export default function AdminJournalPipeline() {
                   </td>
                   <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{new Date(j.createdAt || j.created_at).toLocaleDateString()}</td>
                   <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{j.authorUser?.fullName || j.authorUser?.email || "-"}</td>
+                  <td className="p-4 hidden xl:table-cell text-xs text-muted-foreground">{j.publishDate ? new Date(j.publishDate).toLocaleDateString() : "Not set"}</td>
                   <td className="p-4">
-                    <div className="flex gap-1">
+                    <div className="flex gap-2 flex-wrap items-center">
                       {ws === "accepted" && (
-                        <Button size="sm" onClick={() => publishJournal(jid)} className="text-xs"><CheckCircle className="h-3 w-3 mr-1" /> Publish</Button>
+                        <>
+                          <input
+                            type="date"
+                            className="h-8 rounded-md border px-2 text-xs bg-background"
+                            value={publishDates[jid] || ""}
+                            onChange={(e) => setPublishDates((prev) => ({ ...prev, [jid]: e.target.value }))}
+                          />
+                          <Button size="sm" onClick={() => publishPaper(jid)} className="text-xs"><CheckCircle className="h-3 w-3 mr-1" /> Publish</Button>
+                        </>
                       )}
                     </div>
                   </td>

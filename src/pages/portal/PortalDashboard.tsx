@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAdmin } from "@/contexts/AuthContext";
-import { authApi, libraryApi, membershipApi } from "@/lib/api";
+import { authApi, libraryApi, membershipApi, reviewsApi } from "@/lib/api";
 import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 
 export default function PortalDashboard() {
   const { user } = useAuth();
   const [membership, setMembership] = useState<any>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [assignedReviewCount, setAssignedReviewCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -23,6 +24,14 @@ export default function PortalDashboard() {
           authApi.getMe().catch(() => null),
           libraryApi.getMySaved().catch(() => []),
         ]);
+
+        if ((user?.roles || []).some((r) => ["reviewer", "sub_admin", "editor", "super_admin"].includes(String(r)))) {
+          const myReviews: any[] = await reviewsApi.getMyReviews().catch(() => []);
+          const assigned = (myReviews || []).filter((r: any) => r?.status === "assigned").length;
+          setAssignedReviewCount(assigned);
+        } else {
+          setAssignedReviewCount(0);
+        }
 
         const membershipsArray = Array.isArray((membershipRes as any)?.memberships)
           ? (membershipRes as any).memberships
@@ -99,6 +108,7 @@ export default function PortalDashboard() {
       } catch {
         setMembership(null);
         setSavedCount(0);
+        setAssignedReviewCount(0);
       }
     })();
   }, [user]);
@@ -139,6 +149,18 @@ export default function PortalDashboard() {
             </div>
           ))}
         </div>
+
+        {(user?.roles || []).some((r) => ["reviewer", "sub_admin", "editor", "super_admin"].includes(String(r))) && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="font-heading font-bold">Reviewer Assignments</h3>
+              <p className="text-sm text-muted-foreground">Assigned papers waiting for your selection: {assignedReviewCount}</p>
+            </div>
+            <Link to="/reviewer">
+              <Button className="font-bold">Open Reviewer Portal</Button>
+            </Link>
+          </div>
+        )}
 
         {/* Admin Access Card */}
         {isAdmin(user?.roles || []) && (

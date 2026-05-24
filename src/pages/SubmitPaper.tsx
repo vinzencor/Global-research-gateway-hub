@@ -102,7 +102,7 @@ export default function SubmitPaper() {
       } else {
         await journalApi.submit(payload);
       }
-      toast.success("Journal submitted successfully! It is now in review workflow.");
+      toast.success("Paper submitted successfully! It is now in review workflow.");
       navigate("/author");
     } catch (err: any) {
       toast.error(err?.message || "Submission failed");
@@ -112,7 +112,7 @@ export default function SubmitPaper() {
   }
 
   return (
-    <DashboardLayout navItems={navItems} title="Submit Journal">
+    <DashboardLayout navItems={navItems} title="Submit Paper">
       <div className="mb-6 flex items-center gap-4">
         <Link to="/author">
           <Button variant="ghost" size="sm" className="gap-2">
@@ -120,7 +120,7 @@ export default function SubmitPaper() {
           </Button>
         </Link>
         <div>
-          <h2 className="text-2xl font-bold font-heading">{editId ? "Revise Submission" : "Submit New Journal"}</h2>
+          <h2 className="text-2xl font-bold font-heading">{editId ? "Revise Submission" : "Submit New Paper"}</h2>
           <p className="text-sm text-muted-foreground italic">Prepare and submit your manuscript for peer review.</p>
         </div>
       </div>
@@ -149,12 +149,12 @@ export default function SubmitPaper() {
               <Input id="keywords" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="e.g. machine learning, NLP, deep learning" />
             </div>
             <div className="space-y-2">
-              <Label>Target Journal / Type</Label>
+              <Label>Paper Type</Label>
               <Select value={journal} onValueChange={setJournal}>
-                <SelectTrigger><SelectValue placeholder="Select a journal type" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select a paper type" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="article">Research Article</SelectItem>
-                  <SelectItem value="review">Review Paper</SelectItem>
+                  <SelectItem value="review">Research Paper</SelectItem>
                   <SelectItem value="letter">Research Letter</SelectItem>
                   <SelectItem value="case_study">Case Study</SelectItem>
                 </SelectContent>
@@ -171,11 +171,12 @@ export default function SubmitPaper() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Upload Paper (PDF) *</Label>
+              <Label>Upload Paper PDF *</Label>
               <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors">
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Click to upload or drag and drop</span>
                 <span className="text-xs text-muted-foreground">PDF up to 50MB</span>
+                <span className="text-xs text-muted-foreground">If you are unable to upload, please contact us.</span>
                 <input
                   type="file"
                   accept=".pdf"
@@ -191,7 +192,7 @@ export default function SubmitPaper() {
             </div>
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" size="lg" onClick={handleSaveDraft} disabled={saving}>{saving ? "Saving..." : "Save Draft"}</Button>
-              <Button type="submit" size="lg" disabled={submitting}>{submitting ? "Submitting..." : editId ? "Resubmit Journal" : "Submit Journal"}</Button>
+              <Button type="submit" size="lg" disabled={submitting}>{submitting ? "Submitting..." : editId ? "Resubmit Paper" : "Submit Paper"}</Button>
             </div>
           </form>
         </div>
@@ -213,7 +214,7 @@ export default function SubmitPaper() {
               </div>
               <div>
                 <p className="font-bold text-foreground mb-1">Processing Time</p>
-                <p>Initial screening usually takes 3-5 business days.</p>
+                <p>Initial screening usually takes 3-4 weeks.</p>
               </div>
             </div>
           </div>

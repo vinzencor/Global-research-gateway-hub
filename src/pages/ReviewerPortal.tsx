@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, ClipboardCheck, Clock, CheckCircle, XCircle, BarChart2, Settings } from "lucide-react";
+import { FileText, ClipboardCheck, Clock, CheckCircle, XCircle, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { db } from "@/lib/legacyDb";
+import { API_ORIGIN, reviewsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
+import { getPortalNavItemsForRoles, getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
 
 const statusColor: Record<string, string> = {
@@ -19,9 +19,21 @@ const statusColor: Record<string, string> = {
   declined: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
+const redactAuthor = (name: string) => {
+  if (!name) return "Redacted";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => (part.length <= 1 ? "*" : `${part[0]}${"*".repeat(Math.max(2, part.length - 1))}`))
+    .join(" ");
+};
+
 export default function ReviewerPortal() {
   const { user } = useAuth();
-  const navItems = getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
+  const navItems = user?.roles?.includes("sub_admin") || user?.roles?.includes("super_admin")
+    ? getSubAdminNavItemsForRoles(user?.roles || [], user?.moduleAccess || {})
+    : getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
+
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState<any>(null);
@@ -29,65 +41,95 @@ export default function ReviewerPortal() {
   const [commentsEditor, setCommentsEditor] = useState("");
   const [commentsAuthor, setCommentsAuthor] = useState("");
   const [saving, setSaving] = useState(false);
+  const [previewReview, setPreviewReview] = useState<any>(null);
 
-  useEffect(() => { if (user) loadReviews(); }, [user]);
+  useEffect(() => {
+    if (user) loadReviews();
+  }, [user]);
 
   async function loadReviews() {
     setLoading(true);
-    const { data, error } = await db
-      .from("reviews")
-      .select("*, content_items(id, title, type, summary, status)")
-      .eq("reviewer_user_id", user!.id)
-      .order("created_at", { ascending: false });
-    setReviews(data || []);
-    setLoading(false);
+    try {
+      const data: any = await reviewsApi.getMyReviews();
+      setReviews(data || []);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load assigned papers");
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function handleAccept(reviewId: string) {
-    await db.from("reviews").update({ status: "accepted" }).eq("id", reviewId);
-    toast.success("Review accepted!"); loadReviews();
+  async function handleSelectPaper(reviewId: string) {
+    try {
+      await reviewsApi.selectPaper(reviewId);
+      toast.success("Paper selected successfully");
+      await loadReviews();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to select this paper");
+    }
   }
 
   async function handleDecline(reviewId: string) {
-    await db.from("reviews").update({ status: "declined" }).eq("id", reviewId);
-    toast.success("Review declined."); loadReviews();
+    try {
+      await reviewsApi.decline(reviewId);
+      toast.success("Paper declined");
+      await loadReviews();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to decline");
+    }
   }
 
   function openReviewForm(review: any) {
     setShowReviewForm(review);
     setRecommendation(review.recommendation || "accept");
-    setCommentsEditor(review.comments_to_editor || "");
-    setCommentsAuthor(review.comments_to_author || "");
+    setCommentsEditor(review.commentsToEditor || "");
+    setCommentsAuthor(review.commentsToAuthor || "");
   }
 
   async function handleSubmitReview() {
     if (!showReviewForm) return;
-    if (!commentsEditor.trim()) { toast.error("Comments to editor are required"); return; }
+    if (!commentsEditor.trim()) {
+      toast.error("Comments to editor are required");
+      return;
+    }
+
     setSaving(true);
-    const { error } = await db.from("reviews").update({
-      status: "submitted",
-      recommendation,
-      comments_to_editor: commentsEditor,
-      comments_to_author: commentsAuthor,
-      submitted_at: new Date().toISOString(),
-    }).eq("id", showReviewForm.id);
-    setSaving(false);
-    if (error) { toast.error("Submission failed"); return; }
-    toast.success("Review submitted successfully!");
-    setShowReviewForm(null); loadReviews();
+    try {
+      await reviewsApi.submit(showReviewForm._id || showReviewForm.id, {
+        recommendation,
+        commentsToEditor: commentsEditor,
+        commentsToAuthor: commentsAuthor,
+      });
+      toast.success("Review submitted successfully");
+      setShowReviewForm(null);
+      await loadReviews();
+    } catch (err: any) {
+      toast.error(err?.message || "Submission failed");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const pending = reviews.filter(r => r.status === "assigned" || r.status === "accepted");
-  const submitted = reviews.filter(r => r.status === "submitted");
-  const declined = reviews.filter(r => r.status === "declined");
+  const pendingSelection = useMemo(() => reviews.filter((r) => r.status === "assigned"), [reviews]);
+  const activeReview = useMemo(() => reviews.filter((r) => r.status === "accepted"), [reviews]);
+  const submitted = useMemo(() => reviews.filter((r) => r.status === "submitted"), [reviews]);
+  const declined = useMemo(() => reviews.filter((r) => r.status === "declined"), [reviews]);
+
+  const getDisplayAuthor = (content: any) =>
+    content?.originalAuthorName || content?.authorUser?.fullName || "Unknown";
+
+  const getPreviewUrl = (content: any) => {
+    if (!content?.manuscriptUrl) return "";
+    return `${API_ORIGIN}${content.manuscriptUrl}#page=1&view=FitH&toolbar=0&navpanes=0&scrollbar=0`;
+  };
 
   return (
     <DashboardLayout navItems={navItems} title="Reviewer Portal">
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Assigned", value: reviews.length, icon: <FileText className="h-5 w-5 text-primary" /> },
-          { label: "Pending", value: pending.length, icon: <Clock className="h-5 w-5 text-warning" /> },
+          { label: "Assigned", value: pendingSelection.length, icon: <FileText className="h-5 w-5 text-primary" /> },
+          { label: "Selected", value: activeReview.length, icon: <Clock className="h-5 w-5 text-warning" /> },
           { label: "Submitted", value: submitted.length, icon: <CheckCircle className="h-5 w-5 text-success" /> },
           { label: "Declined", value: declined.length, icon: <XCircle className="h-5 w-5 text-destructive" /> },
         ].map((s) => (
@@ -101,71 +143,109 @@ export default function ReviewerPortal() {
         ))}
       </div>
 
-      {/* Reviews Table */}
+      <div className="rounded-xl border bg-card card-shadow overflow-hidden mb-6">
+        <div className="p-5 border-b flex items-center gap-2">
+          <ClipboardCheck className="h-4 w-4" />
+          <h2 className="font-heading font-bold">Assigned Papers: Select Only One</h2>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-10"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>
+        ) : pendingSelection.length === 0 ? (
+          <div className="p-10 text-center text-muted-foreground">
+            <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No papers waiting for selection</p>
+          </div>
+        ) : (
+          <div className="space-y-3 p-4">
+            {pendingSelection.map((review) => {
+              const content = review.content || {};
+              const reviewId = review._id || review.id;
+              return (
+                <div key={reviewId} className="rounded-lg border p-4 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold">{content.title || "Untitled"}</p>
+                    <Badge variant="outline" className={statusColor[review.status] || ""}>{review.status}</Badge>
+                    <Badge variant="secondary">{content.type || "paper"}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Author: {redactAuthor(getDisplayAuthor(content))}</p>
+                  <p className="text-sm text-muted-foreground">{content.abstract || content.summary || "No abstract available"}</p>
+                  <div className="flex gap-2 pt-1">
+                    {!!content.manuscriptUrl && (
+                      <Button size="sm" variant="outline" onClick={() => setPreviewReview(review)}>
+                        <Eye className="h-4 w-4 mr-1" /> Preview First Page
+                      </Button>
+                    )}
+                    <Button size="sm" onClick={() => handleSelectPaper(reviewId)}>Select This Paper</Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDecline(reviewId)}>Decline</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div className="rounded-xl border bg-card card-shadow overflow-hidden">
         <div className="p-5 border-b flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4" />
-          <h2 className="font-heading font-bold">My Assigned Reviews</h2>
+          <h2 className="font-heading font-bold">My Active And Submitted Reviews</h2>
         </div>
         {loading ? (
           <div className="flex justify-center py-10"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>
         ) : reviews.length === 0 ? (
-          <div className="p-10 text-center text-muted-foreground">
-            <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No reviews assigned yet</p>
-            <p className="text-sm mt-1">When an editor assigns you content to review, it will appear here.</p>
-          </div>
+          <div className="p-10 text-center text-muted-foreground">No review history found</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b bg-muted/50">
-                <th className="text-left p-4 font-medium text-muted-foreground">Content</th>
-                <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Type</th>
-                <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Due Date</th>
-                <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
-                <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
-              </tr></thead>
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-4 font-medium text-muted-foreground">Paper</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Type</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Due Date</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
               <tbody>
-                {reviews.map((review) => (
-                  <tr key={review.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="p-4">
-                      <div className="font-medium max-w-[200px] truncate">{review.content_items?.title || "â€”"}</div>
-                      {review.content_items?.summary && (
-                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{review.content_items.summary}</div>
-                      )}
-                    </td>
-                    <td className="p-4 text-muted-foreground hidden sm:table-cell capitalize">{review.content_items?.type || "â€”"}</td>
-                    <td className="p-4 text-muted-foreground hidden md:table-cell">
-                      {review.due_date ? new Date(review.due_date).toLocaleDateString() : "â€”"}
-                    </td>
-                    <td className="p-4">
-                      <Badge variant="outline" className={statusColor[review.status] || ""}>{review.status}</Badge>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-1 flex-wrap">
-                        {review.status === "assigned" && (
-                          <>
-                            <Button size="sm" variant="outline" className="text-success border-success/30" onClick={() => handleAccept(review.id)}>Accept</Button>
-                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDecline(review.id)}>Decline</Button>
-                          </>
-                        )}
-                        {review.status === "accepted" && (
-                          <Button size="sm" onClick={() => openReviewForm(review)}>Submit Review</Button>
-                        )}
-                        {review.status === "submitted" && (
-                          <Button size="sm" variant="ghost" onClick={() => openReviewForm(review)}>View Submission</Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {reviews
+                  .filter((r) => r.status !== "assigned")
+                  .map((review) => {
+                    const content = review.content || {};
+                    const reviewId = review._id || review.id;
+                    return (
+                      <tr key={reviewId} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-4">
+                          <div className="font-medium max-w-[220px] truncate">{content.title || "-"}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">Author: {redactAuthor(getDisplayAuthor(content))}</div>
+                        </td>
+                        <td className="p-4 text-muted-foreground hidden sm:table-cell capitalize">{content.type || "paper"}</td>
+                        <td className="p-4 text-muted-foreground hidden md:table-cell">
+                          {review.dueDate ? new Date(review.dueDate).toLocaleDateString() : "-"}
+                        </td>
+                        <td className="p-4"><Badge variant="outline" className={statusColor[review.status] || ""}>{review.status}</Badge></td>
+                        <td className="p-4">
+                          <div className="flex flex-wrap gap-2">
+                            {!!content.manuscriptUrl && (
+                              <Button size="sm" variant="outline" onClick={() => setPreviewReview(review)}>
+                                <Eye className="h-4 w-4 mr-1" /> Preview
+                              </Button>
+                            )}
+                            {(review.status === "accepted" || review.status === "submitted") && (
+                              <Button size="sm" onClick={() => openReviewForm(review)} variant={review.status === "submitted" ? "ghost" : "default"}>
+                                {review.status === "submitted" ? "View Submission" : "Submit Review"}
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Review Submission Dialog */}
       <Dialog open={!!showReviewForm} onOpenChange={() => setShowReviewForm(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -174,7 +254,7 @@ export default function ReviewerPortal() {
           <div className="space-y-4 py-2">
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Reviewing</p>
-              <p className="font-semibold">{showReviewForm?.content_items?.title}</p>
+              <p className="font-semibold">{showReviewForm?.content?.title}</p>
             </div>
             <div className="space-y-2">
               <Label>Recommendation *</Label>
@@ -192,7 +272,7 @@ export default function ReviewerPortal() {
               <Label>Comments to Editor *</Label>
               <Textarea
                 value={commentsEditor}
-                onChange={e => setCommentsEditor(e.target.value)}
+                onChange={(e) => setCommentsEditor(e.target.value)}
                 placeholder="Confidential comments for the editor only..."
                 rows={4}
                 disabled={showReviewForm?.status === "submitted"}
@@ -202,14 +282,14 @@ export default function ReviewerPortal() {
               <Label>Comments to Author (optional)</Label>
               <Textarea
                 value={commentsAuthor}
-                onChange={e => setCommentsAuthor(e.target.value)}
+                onChange={(e) => setCommentsAuthor(e.target.value)}
                 placeholder="Comments that will be shared with the author..."
                 rows={4}
                 disabled={showReviewForm?.status === "submitted"}
               />
             </div>
-            {showReviewForm?.submitted_at && (
-              <p className="text-xs text-muted-foreground">Submitted: {new Date(showReviewForm.submitted_at).toLocaleString()}</p>
+            {showReviewForm?.submittedAt && (
+              <p className="text-xs text-muted-foreground">Submitted: {new Date(showReviewForm.submittedAt).toLocaleString()}</p>
             )}
           </div>
           <DialogFooter>
@@ -220,8 +300,36 @@ export default function ReviewerPortal() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!previewReview} onOpenChange={() => setPreviewReview(null)}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Paper Preview (First Page Only)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {previewReview?.content?.title || "Untitled"}
+            </p>
+            <div className="rounded-lg border overflow-hidden">
+              {getPreviewUrl(previewReview?.content) ? (
+                <iframe
+                  title="paper-preview-first-page"
+                  src={getPreviewUrl(previewReview?.content)}
+                  className="w-full h-[75vh]"
+                />
+              ) : (
+                <div className="p-6 text-sm text-muted-foreground">No manuscript file available for preview.</div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Preview is restricted to the first page before selection.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewReview(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
-
-

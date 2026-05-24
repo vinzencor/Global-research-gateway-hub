@@ -67,9 +67,9 @@ export default function AuthorDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold font-heading">My Submissions</h2>
-              <p className="text-muted-foreground text-sm mt-1">Manage and track your journal submissions throughout the peer-review process.</p>
+              <p className="text-muted-foreground text-sm mt-1">Manage and track your paper submissions throughout the peer-review process.</p>
             </div>
-            <Link to="/submit-paper"><Button>+ Submit Journal</Button></Link>
+            <Link to="/submit-paper"><Button>+ Submit Paper</Button></Link>
           </div>
 
           {/* Stats */}
@@ -104,8 +104,8 @@ export default function AuthorDashboard() {
             <div className="rounded-xl border bg-card p-12 text-center text-muted-foreground card-shadow">
               <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="font-medium">No submissions yet</p>
-              <p className="text-sm">Submit your first journal to get started</p>
-              <Link to="/submit-paper"><Button size="sm" className="mt-3">Submit Journal</Button></Link>
+              <p className="text-sm">Submit your first paper to get started</p>
+              <Link to="/submit-paper"><Button size="sm" className="mt-3">Submit Paper</Button></Link>
             </div>
           ) : (
             <div className="space-y-4">

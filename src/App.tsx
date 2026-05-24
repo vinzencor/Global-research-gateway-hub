@@ -89,7 +89,7 @@ const App = () => (
 
             {/* Reviewer routes */}
             <Route path="/reviewer/*" element={
-              <ProtectedRoute requiredRoles={["reviewer","editor","super_admin"]}>
+              <ProtectedRoute requiredRoles={["reviewer","sub_admin","editor","super_admin"]}>
                 <ReviewerPortal />
               </ProtectedRoute>
             } />
