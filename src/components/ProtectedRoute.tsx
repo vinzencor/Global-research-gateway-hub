@@ -80,6 +80,10 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (user) {
+    if (user.membershipStatus === "pending_verification" || user.membershipStatus === "pending") {
+      return <Navigate to="/portal/pending" replace />;
+    }
+
     // Redirect based on role priority
     if (user.roles.includes("super_admin") || user.roles.includes("content_admin") || user.roles.includes("editor")) {
       return <Navigate to="/admin" replace />;

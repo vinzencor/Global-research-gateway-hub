@@ -120,6 +120,30 @@ export const authApi = {
     institution?: string;
   }) => apiRequest("/auth/register", { method: "POST", body: payload }),
 
+  registerWithMembership: (payload: {
+    email: string;
+    password: string;
+    fullName: string;
+    institution?: string;
+    planId: string;
+    requestFeatured?: boolean;
+    screenshotFile: File;
+  }) => {
+    const form = new FormData();
+    form.append("email", payload.email);
+    form.append("password", payload.password);
+    form.append("fullName", payload.fullName);
+    if (payload.institution) form.append("institution", payload.institution);
+    form.append("planId", payload.planId);
+    form.append("requestFeatured", String(!!payload.requestFeatured));
+    form.append("screenshot", payload.screenshotFile);
+    return apiRequest("/auth/register-with-membership", {
+      method: "POST",
+      body: form,
+      isFormData: true,
+    });
+  },
+
   login: (email: string, password: string) =>
     apiRequest<{ accessToken: string; refreshToken: string; user: unknown; membership: unknown }>(
       "/auth/login",

@@ -92,7 +92,7 @@ export default function AdminValidateUsers() {
             request_featured: !!m?.requestFeatured,
             plan_id: m?.plan?._id || m?.plan || m?.planId || null,
             created_at: m?.createdAt || new Date().toISOString(),
-            screenshot_url: m?.paymentScreenshotUrl || m?.screenshotUrl || null,
+            screenshot_url: m?.screenshotSignedUrl || m?.paymentScreenshotUrl || m?.screenshotUrl || null,
             starts_at: m?.startsAt || null,
             ends_at: m?.endsAt || null,
             email: m?.user?.email || userRow?.email || null,

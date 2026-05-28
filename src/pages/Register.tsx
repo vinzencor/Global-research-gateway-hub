@@ -3,8 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/contexts/AuthContext";
-import { membershipApi } from "@/lib/api";
+import { authApi, membershipApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, ChevronRight, Check } from "lucide-react";
@@ -29,7 +28,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,20 +86,17 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // 1. SignUp
-      const { error: signUpError } = await signUp(email, password, fullName, institution);
-      if (signUpError) throw signUpError;
+      await authApi.registerWithMembership({
+        email,
+        password,
+        fullName,
+        institution,
+        planId: selectedPlanId,
+        requestFeatured,
+        screenshotFile: file,
+      });
 
-      // 2. Login to get token so we can call authenticated API
-      const { authApi } = await import("@/lib/api");
-      const loginRes = await authApi.login(email, password);
-      const { tokenStorage } = await import("@/lib/api");
-      tokenStorage.setTokens(loginRes.accessToken, loginRes.refreshToken);
-
-      // 3. Apply for membership with payment screenshot
-      await membershipApi.apply(selectedPlanId, file);
-
-      toast.success(`Account created and payment submitted for ${selectedPlan.name} ($${selectedPlan.price}).`);
+      toast.success(`Registration submitted for ${selectedPlan.name} ($${selectedPlan.price}). You can log in after verification.`);
       navigate("/login");
     } catch (err: any) {
       toast.error(err.message || "Registration failed");
