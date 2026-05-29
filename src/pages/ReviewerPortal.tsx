@@ -126,27 +126,42 @@ export default function ReviewerPortal() {
 
   return (
     <DashboardLayout navItems={navItems} title="Reviewer Portal">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* Welcome banner */}
+      <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border p-5 mb-6 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-heading text-xl font-bold">Reviewer Dashboard</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your assigned papers and submit reviews below.</p>
+        </div>
+        <Badge variant="outline" className="text-xs px-3 py-1">
+          {user?.profile?.full_name || user?.email}
+        </Badge>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Assigned", value: pendingSelection.length, icon: <FileText className="h-5 w-5 text-primary" /> },
-          { label: "Selected", value: activeReview.length, icon: <Clock className="h-5 w-5 text-warning" /> },
-          { label: "Submitted", value: submitted.length, icon: <CheckCircle className="h-5 w-5 text-success" /> },
-          { label: "Declined", value: declined.length, icon: <XCircle className="h-5 w-5 text-destructive" /> },
+          { label: "Assigned", value: pendingSelection.length, icon: <FileText className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
+          { label: "Selected / Active", value: activeReview.length, icon: <Clock className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30" },
+          { label: "Submitted", value: submitted.length, icon: <CheckCircle className="h-5 w-5" />, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
+          { label: "Declined", value: declined.length, icon: <XCircle className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/30" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border bg-card p-5 card-shadow flex items-center gap-3">
-            {s.icon}
+          <div key={s.label} className="rounded-xl border bg-card p-4 card-shadow flex items-center gap-3 hover:shadow-md transition-shadow">
+            <div className={`p-2.5 rounded-lg ${s.bg} ${s.color} shrink-0`}>{s.icon}</div>
             <div>
+              <p className="text-2xl font-bold leading-tight">{s.value}</p>
               <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className="text-2xl font-bold">{s.value}</p>
             </div>
           </div>
         ))}
       </div>
 
       <div className="rounded-xl border bg-card card-shadow overflow-hidden mb-6">
-        <div className="p-5 border-b flex items-center gap-2">
-          <ClipboardCheck className="h-4 w-4" />
-          <h2 className="font-heading font-bold">Assigned Papers: Select Only One</h2>
+        <div className="p-5 border-b bg-muted/20 flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30">
+            <ClipboardCheck className="h-4 w-4 text-blue-600" />
+          </div>
+          <h2 className="font-heading font-bold">Assigned Papers</h2>
+          <span className="ml-auto text-xs text-muted-foreground">Select only one to review</span>
         </div>
         {loading ? (
           <div className="flex justify-center py-10"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>
@@ -186,9 +201,11 @@ export default function ReviewerPortal() {
       </div>
 
       <div className="rounded-xl border bg-card card-shadow overflow-hidden">
-        <div className="p-5 border-b flex items-center gap-2">
-          <ClipboardCheck className="h-4 w-4" />
-          <h2 className="font-heading font-bold">My Active And Submitted Reviews</h2>
+        <div className="p-5 border-b bg-muted/20 flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30">
+            <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+          </div>
+          <h2 className="font-heading font-bold">My Active & Submitted Reviews</h2>
         </div>
         {loading ? (
           <div className="flex justify-center py-10"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>

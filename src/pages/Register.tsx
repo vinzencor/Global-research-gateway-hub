@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { authApi, membershipApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, ChevronRight, Check } from "lucide-react";
+import { Upload, ChevronRight, Check, Eye, EyeOff } from "lucide-react";
 
 type Plan = {
   id: string;
@@ -21,6 +21,7 @@ export default function Register() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [institution, setInstitution] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [requestFeatured, setRequestFeatured] = useState(false);
@@ -131,7 +132,18 @@ export default function Register() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password *</Label>
-                <Input id="password" type="password" placeholder="Min. 6 characters" value={password} onChange={e => setPassword(e.target.value)} required />
+                <div className="relative">
+                  <Input id="password" type={showPassword ? "text" : "password"} placeholder="Min. 6 characters" value={password} onChange={e => setPassword(e.target.value)} required className="pr-10" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="institution">Institution</Label>

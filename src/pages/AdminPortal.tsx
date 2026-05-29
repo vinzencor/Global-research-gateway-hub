@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield } from "lucide-react";
+import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { contentApi, adminApi, journalApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import AdminContent from "@/pages/admin/AdminContent";
 import AdminPeople from "@/pages/admin/AdminPeople";
 import AdminReviews from "@/pages/admin/AdminReviews";
@@ -65,6 +66,7 @@ export default function AdminPortal() {
         setRecentJournals(journalItems.slice(0, 6));
       } catch (err) {
         console.error("Failed to load admin stats", err);
+        toast.error("Could not load dashboard data. Please refresh.");
       }
     })();
   }, []);
@@ -84,73 +86,127 @@ export default function AdminPortal() {
   const filteredNavItems = navItems.filter((n) => canAccess(n.moduleKey));
 
   const AccessDenied = (
-    <div className="rounded-xl border bg-card p-6 card-shadow">
-      <h3 className="font-heading font-bold mb-2">Access Restricted</h3>
-      <p className="text-sm text-muted-foreground">Your role does not have permission for this admin module.</p>
+    <div className="rounded-xl border bg-card p-8 card-shadow flex flex-col items-center text-center gap-3">
+      <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+        <Shield className="h-6 w-6 text-destructive" />
+      </div>
+      <div>
+        <h3 className="font-heading font-bold mb-1">Access Restricted</h3>
+        <p className="text-sm text-muted-foreground">Your role does not have permission for this admin module.</p>
+      </div>
     </div>
   );
+
+  const statCards = [
+    { label: "Total Content", value: stats.content, icon: <Layers className="h-5 w-5" />, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30", action: () => navigate("/admin/content") },
+    { label: "Submitted Journals", value: stats.submittedJournals, icon: <FileText className="h-5 w-5" />, color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-950/30", action: () => navigate("/admin/pipeline") },
+    { label: "In Review", value: stats.inReview, icon: <Eye className="h-5 w-5" />, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/30", action: () => navigate("/admin/reviews") },
+    { label: "Published", value: stats.published, icon: <CheckCircle className="h-5 w-5" />, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30", action: () => navigate("/admin/content") },
+    { label: "Featured Users", value: stats.featuredUsers, icon: <Star className="h-5 w-5" />, color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30", action: () => navigate("/admin/people") },
+    { label: "Active Members", value: stats.members, icon: <Users className="h-5 w-5" />, color: "text-cyan-600", bg: "bg-cyan-50 dark:bg-cyan-950/30", action: () => navigate("/admin/billing") },
+    { label: "Pending Approvals", value: stats.pendingApprovals, icon: <Clock className="h-5 w-5" />, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/30", action: () => navigate("/admin/validate-users") },
+  ];
 
   return (
     <DashboardLayout navItems={filteredNavItems} title="Admin Console">
       <Routes>
         <Route path="/" element={canAccess("dashboard") ?
           <div className="space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { label: "Total Content", value: stats.content, action: () => navigate("/admin/content") },
-                { label: "Submitted Journals", value: stats.submittedJournals, action: () => navigate("/admin/pipeline") },
-                { label: "In Review", value: stats.inReview, action: () => navigate("/admin/reviews") },
-                { label: "Published", value: stats.published, action: () => navigate("/admin/content") },
-                { label: "Featured Users", value: stats.featuredUsers, action: () => navigate("/admin/people") },
-                { label: "Active Members", value: stats.members, action: () => navigate("/admin/billing") },
-                { label: "Pending Approvals", value: stats.pendingApprovals, action: () => navigate("/admin/validate-users") },
-              ].map((s) => (
-                <button key={s.label} onClick={s.action} className="rounded-xl border bg-card p-5 card-shadow text-left hover:border-primary/40 transition-colors">
-                  <p className="text-sm text-muted-foreground mb-1">{s.label}</p>
-                  <p className="text-3xl font-bold">{s.value}</p>
+            {/* Welcome banner */}
+            <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border p-6 flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="font-heading text-2xl font-bold">Welcome, {user?.profile?.full_name?.split(" ")[0] || "Admin"} 👋</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Here's an overview of your platform activity.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigate("/admin/analytics")} className="gap-1.5">
+                  <TrendingUp className="h-4 w-4" /> Analytics
+                </Button>
+                <Button size="sm" onClick={() => navigate("/admin/validate-users")} className="gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" /> {stats.pendingApprovals > 0 ? `${stats.pendingApprovals} Pending` : "Validations"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+              {statCards.map((s) => (
+                <button key={s.label} onClick={s.action} className="rounded-xl border bg-card p-4 card-shadow text-left hover:border-primary/40 hover:shadow-md transition-all group">
+                  <div className={`inline-flex p-2 rounded-lg ${s.bg} ${s.color} mb-3 group-hover:scale-110 transition-transform`}>
+                    {s.icon}
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{s.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{s.label}</p>
                 </button>
               ))}
             </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                { title: "Create Content", desc: "Add new articles, publications, pages", action: () => navigate("/admin/content"), btn: "Create" },
-                { title: "Review Queue", desc: "Review pending content submissions", action: () => navigate("/admin/reviews"), btn: "View Queue" },
-                { title: "Validate New Users", desc: `Approve pending memberships and upgrades (${stats.pendingApprovals} pending).`, action: () => navigate("/admin/validate-users"), btn: "Open Validation" },
-                { title: "Manage Featured Users", desc: "Feature published users for the public authors page", action: () => navigate("/admin/people"), btn: "Manage" },
-                { title: "Digital Library", desc: "Upload and manage library papers", action: () => navigate("/admin/library"), btn: "Manage" },
-              ].map((c) => (
-                <div key={c.title} className="rounded-xl border bg-card p-5 card-shadow">
-                  <h3 className="font-heading font-bold mb-1">{c.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{c.desc}</p>
-                  <Button size="sm" onClick={c.action}>{c.btn}</Button>
-                </div>
-              ))}
+
+            {/* Quick actions */}
+            <div>
+              <h3 className="font-heading font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3 px-0.5">Quick Actions</h3>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { title: "Create Content", desc: "Add new articles, publications, pages", action: () => navigate("/admin/content"), btn: "Create", icon: <FileText className="h-5 w-5 text-blue-500" />, color: "border-blue-200 dark:border-blue-900" },
+                  { title: "Review Queue", desc: "Review pending content submissions", action: () => navigate("/admin/reviews"), btn: "View Queue", icon: <ClipboardList className="h-5 w-5 text-amber-500" />, color: "border-amber-200 dark:border-amber-900" },
+                  { title: "Validate New Users", desc: `Approve pending memberships (${stats.pendingApprovals} pending)`, action: () => navigate("/admin/validate-users"), btn: "Open", icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />, color: "border-emerald-200 dark:border-emerald-900" },
+                  { title: "Featured Users", desc: "Feature published users for the public page", action: () => navigate("/admin/people"), btn: "Manage", icon: <Star className="h-5 w-5 text-orange-500" />, color: "border-orange-200 dark:border-orange-900" },
+                  { title: "Digital Library", desc: "Upload and manage library papers", action: () => navigate("/admin/library"), btn: "Manage", icon: <BookOpen className="h-5 w-5 text-violet-500" />, color: "border-violet-200 dark:border-violet-900" },
+                  { title: "Sub-Admins", desc: "Manage sub-admin accounts and permissions", action: () => navigate("/admin/sub-admins"), btn: "Manage", icon: <UserCheck className="h-5 w-5 text-cyan-500" />, color: "border-cyan-200 dark:border-cyan-900" },
+                ].map((c) => (
+                  <div key={c.title} className={`rounded-xl border ${c.color} bg-card p-5 card-shadow hover:shadow-md transition-all`}>
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="p-2 rounded-lg bg-muted/60">{c.icon}</div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm leading-tight">{c.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{c.desc}</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={c.action} className="w-full">{c.btn}</Button>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Recent journals table */}
             <div className="rounded-xl border bg-card card-shadow overflow-hidden">
-              <div className="p-5 border-b flex items-center justify-between">
-                <h2 className="font-heading font-bold">Recent Journal Submissions</h2>
-                <Button size="sm" variant="ghost" onClick={() => navigate("/admin/pipeline")}>View all</Button>
+              <div className="p-5 border-b flex items-center justify-between bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-primary" />
+                  <h2 className="font-heading font-bold">Recent Journal Submissions</h2>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => navigate("/admin/pipeline")} className="text-xs gap-1">
+                  View all <TrendingUp className="h-3 w-3" />
+                </Button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b bg-muted/50">
-                    <th className="text-left p-4 font-medium text-muted-foreground">Title</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Institution</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
-                    <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Date</th>
-                  </tr></thead>
-                  <tbody>
-                    {recentJournals.map((item) => (
-                      <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="p-4 font-medium max-w-[200px] truncate">{item.title}</td>
-                        <td className="p-4 text-muted-foreground hidden sm:table-cell">{item.institution || "-"}</td>
-                        <td className="p-4"><Badge variant="outline" className={statusColor[item.status]}>{item.status}</Badge></td>
-                        <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(item.createdAt || item.created_at).toLocaleDateString()}</td>
+              {recentJournals.length === 0 ? (
+                <div className="p-10 text-center text-muted-foreground">
+                  <FileText className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">No journal submissions yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        <th className="text-left px-5 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Title</th>
+                        <th className="text-left px-5 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden sm:table-cell">Institution</th>
+                        <th className="text-left px-5 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">Status</th>
+                        <th className="text-left px-5 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider hidden md:table-cell">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {recentJournals.map((item) => (
+                        <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                          <td className="px-5 py-3.5 font-medium max-w-[200px] truncate">{item.title}</td>
+                          <td className="px-5 py-3.5 text-muted-foreground hidden sm:table-cell text-sm">{item.institution || "—"}</td>
+                          <td className="px-5 py-3.5"><Badge variant="outline" className={`text-xs ${statusColor[item.status]}`}>{item.status}</Badge></td>
+                          <td className="px-5 py-3.5 text-muted-foreground hidden md:table-cell text-xs">{new Date(item.createdAt || item.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         : AccessDenied} />
