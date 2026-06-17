@@ -9,8 +9,7 @@ const blogPosts = [
     title: "Deep Learning Breakthroughs in Medical Imaging",
     excerpt:
       "Recent advances in convolutional neural networks are enabling faster and more accurate diagnosis from MRI and CT scans.",
-    // image: "/images/blog/medical-imaging.jpg", // replace with actual path
-    image: "https://picsum.photos/id/1043/400/200",
+    image: "https://images.unsplash.com/photo-1530026405186-ed1ea00d28a5?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     date: "March 15, 2026",
     author: "Dr. Sarah Chen",
     category: "AI & Healthcare",
@@ -21,7 +20,7 @@ const blogPosts = [
     title: "Open Access Publishing: What Researchers Need to Know",
     excerpt:
       "A comprehensive guide to open access options, article processing charges, and maximizing the impact of your research.",
-    image: "https://picsum.photos/id/24/400/200",
+    image: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     date: "March 10, 2026",
     author: "Prof. Michael Okafor",
     category: "Publishing",
@@ -32,7 +31,7 @@ const blogPosts = [
     title: "5G and Beyond: The Future of Wireless Communication",
     excerpt:
       "Exploring the potential of 6G networks, terahertz frequencies, and AI-driven network optimization.",
-    image: "https://picsum.photos/id/20/400/200",
+    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     date: "March 5, 2026",
     author: "Dr. Elena Voss",
     category: "Communications",
@@ -43,7 +42,7 @@ const blogPosts = [
     title: "Ethics in Artificial Intelligence: A Framework for Researchers",
     excerpt:
       "As AI systems become more powerful, understanding bias, fairness, and transparency is essential for responsible innovation.",
-    image: "https://picsum.photos/id/84/400/200",
+    image: "https://images.unsplash.com/photo-1677442136019-21780efad99a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     date: "February 28, 2026",
     author: "Prof. James Okonkwo",
     category: "Ethics",
@@ -54,7 +53,7 @@ const blogPosts = [
     title: "Quantum Computing: From Theory to Practical Hardware",
     excerpt:
       "An update on the latest quantum processors, error correction techniques, and near-term applications.",
-    image: "https://picsum.photos/id/119/400/200",
+    image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     date: "February 20, 2026",
     author: "Dr. Anita Desai",
     category: "Quantum",
@@ -65,7 +64,7 @@ const blogPosts = [
     title: "How to Write a Compelling Research Paper Abstract",
     excerpt:
       "Tips and examples to help you craft an abstract that gets your paper noticed and cited.",
-    image: "https://picsum.photos/id/26/400/200",
+    image: "https://images.unsplash.com/photo-1455390582262-044cdead277a?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     date: "February 14, 2026",
     author: "Dr. Robert Liu",
     category: "Writing",

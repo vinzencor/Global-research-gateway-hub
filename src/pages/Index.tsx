@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/layout/Header";
@@ -346,7 +346,7 @@ export default function Index() {
             className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border"
           >
             <img 
-              src="main2.webp" 
+              src="main2.png" 
               alt="Knowledge Innovation" 
               className="w-full h-full object-cover aspect-[4/3] transition-transform duration-700 hover:scale-105" 
             />
@@ -356,14 +356,6 @@ export default function Index() {
       </section>
 
       <HappeningAcross />
-
-      <div className="container px-4">
-        <Separator className="opacity-10" />
-      </div>
-
-      <div className="container px-4">
-        <Separator className="opacity-10" />
-      </div>
 
       {/* Section Six â€” Publication Types */}
       <section className="container py-24">

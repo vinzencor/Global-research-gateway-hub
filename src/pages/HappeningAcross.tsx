@@ -2,7 +2,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import heroBanner from "@/assets/new.jpeg"; // placeholder – replace with your images
+import heroBanner from "@/assets/new.png"; // placeholder – replace with your images
 
 const happenings = [
   {

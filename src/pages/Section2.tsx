@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import heroBanner from "@/assets/new.jpeg"; // or any suitable background image
+import heroBanner from "@/assets/new.png"; // or any suitable background image
 
 export function Section2() {
   return (
