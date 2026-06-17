@@ -24,7 +24,7 @@ import {
   Star,
   CreditCard,
 } from "lucide-react";
-import heroBanner from "@/assets/videoo.mp4";
+import heroBg from "@/assets/hero_bg.png";
 import { HappeningAcross } from "./HappeningAcross";
 import { Section1 } from "./Section1";
 import { ChairmanVoice } from "./ChairmanVoice";
@@ -163,13 +163,11 @@ export default function Index() {
 
       {/* Premium Hero Section */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-        {/* Background Video with Dark Overlay */}
+        {/* Background Image with Dark Overlay */}
         <div className="absolute inset-0 z-0">
-          <video
-            src={heroBanner}
-            autoPlay
-            loop
-            muted
+          <img
+            src={heroBg}
+            alt="Library of journals"
             className="w-full h-full object-cover scale-[1.02]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
@@ -357,7 +355,7 @@ export default function Index() {
 
       <HappeningAcross />
 
-      {/* Section Six â€” Publication Types */}
+""      {/* Section Six â€” Publication Types */}
       <section className="container py-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-6">Diverse Publication Types</h2>
