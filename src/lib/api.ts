@@ -384,6 +384,22 @@ export const featuredApi = {
     apiRequest(`/featured/admin/${userId}`, { method: "DELETE" }),
 };
 
+// ─── Happenings API ────────────────────────────────────────────────────────────────
+
+export const happeningsApi = {
+  list: () => apiRequest("/happenings"),
+  create: (data: Record<string, unknown>) =>
+    apiRequest("/happenings", { method: "POST", body: data }),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiRequest(`/happenings/${id}`, { method: "PUT", body: data }),
+  delete: (id: string) => apiRequest(`/happenings/${id}`, { method: "DELETE" }),
+  uploadImage: (file: File) => {
+    const form = new FormData();
+    form.append("image", file);
+    return apiRequest<{ url: string }>("/happenings/upload", { method: "POST", body: form, isFormData: true });
+  },
+};
+
 // â”€â”€â”€ Admin API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const adminApi = {

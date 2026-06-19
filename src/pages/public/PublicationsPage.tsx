@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { db } from "@/lib/legacyDb";
 import { Search, FileText, Calendar, Lock, ArrowRight } from "lucide-react";
+import { contentApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function PublicationsPage() {
@@ -19,12 +19,16 @@ export default function PublicationsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    db
-      .from("content_items")
-      .select("id, title, slug, type, summary, cover_image_url, created_at, access_mode, ppv_price")
-      .eq("status", "published")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => { setItems(data || []); setLoading(false); });
+    contentApi.list({ limit: "50" })
+      .then((data: any) => {
+        const items = data?.items || data || [];
+        setItems(items);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load content", err);
+        setLoading(false);
+      });
   }, []);
 
   const types = ["all", ...Array.from(new Set(items.map(i => i.type)))];
@@ -132,9 +136,9 @@ export default function PublicationsPage() {
                   to={`/publications/${item.slug}`} 
                   className="flex flex-col h-full rounded-[2rem] border bg-card hover:border-primary/40 hover:shadow-2xl transition-all group overflow-hidden"
                 >
-                  {item.cover_image_url ? (
+                  {item.coverImageUrl ? (
                     <div className="relative aspect-video overflow-hidden">
-                      <img src={item.cover_image_url} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
                   ) : (
                     <div className="w-full aspect-video bg-gradient-to-br from-primary/10 to-secondary/30 flex items-center justify-center">
@@ -146,17 +150,17 @@ export default function PublicationsPage() {
                       <Badge variant="secondary" className="capitalize text-[10px] font-bold tracking-widest rounded-full px-3 py-1">{item.type}</Badge>
                       <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                         <Calendar className="h-3 w-3" />
-                        {new Date(item.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                        {new Date(item.createdAt || item.created_at || new Date()).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                       </span>
                     </div>
                     <h3 className="font-heading font-bold text-xl leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-4">{item.title}</h3>
                     {item.summary && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{item.summary}</p>}
                     
                     <div className="mt-8 pt-6 border-t flex items-center justify-between">
-                      <span className="text-primary font-bold text-sm tracking-wide">Read Publication â†’</span>
-                      {item.access_mode === "pay_per_view" && (
+                      <span className="text-primary font-bold text-sm tracking-wide">Read Publication →</span>
+                      {item.accessMode === "pay_per_view" && (
                         <span className="text-xs font-bold bg-primary text-white px-2 py-1 rounded">
-                          ${Number(item.ppv_price || 9.99).toFixed(2)}
+                          ${Number(item.ppvPrice || 9.99).toFixed(2)}
                         </span>
                       )}
                     </div>

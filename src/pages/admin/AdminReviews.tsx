@@ -386,6 +386,11 @@ export default function AdminReviews() {
             Manage Reviewers
             <Badge variant="secondary" className="ml-1 text-[10px]">{reviewers.length}</Badge>
           </TabsTrigger>
+          <TabsTrigger value="all_papers" className="gap-2">
+            <FileText className="h-4 w-4" />
+            All Papers
+            <Badge variant="secondary" className="ml-1 text-[10px]">{allPapers.length}</Badge>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="queue" className="space-y-4 mt-4">
@@ -643,6 +648,97 @@ export default function AdminReviews() {
                 </table>
               </div>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="all_papers" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading font-semibold text-lg">All Papers</h3>
+            <p className="text-sm text-muted-foreground">Directly publish or feature any paper across the entire system.</p>
+          </div>
+          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-4 font-medium text-muted-foreground">Paper Title</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Author</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground text-center">Featured</th>
+                    <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allPapers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-muted-foreground">No papers found</td>
+                    </tr>
+                  ) : (
+                    allPapers.map((paper) => (
+                      <tr key={paper._id || paper.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-4 font-medium max-w-[320px] truncate">{paper.title}</td>
+                        <td className="p-4 text-muted-foreground">{paper.originalAuthorName || paper.authorUser?.fullName || "Unknown"}</td>
+                        <td className="p-4">
+                          <Badge variant="outline" className={STATUS_COLORS[paper.status] || ""}>
+                            {String(paper.status || "").replace("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="p-4 text-center">
+                          {paper.featured ? (
+                            <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Featured</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant={paper.featured ? "outline" : "secondary"}
+                              onClick={async () => {
+                                try {
+                                  const formData = new FormData();
+                                  formData.append("featured", String(!paper.featured));
+                                  await journalApi.update(paper._id || paper.id, formData);
+                                  toast.success(`Paper ${!paper.featured ? 'featured' : 'unfeatured'} successfully`);
+                                  loadData();
+                                } catch (err: any) {
+                                  toast.error(err.message || "Failed to toggle feature");
+                                }
+                              }}
+                            >
+                              {paper.featured ? "Unfeature" : "Feature"}
+                            </Button>
+                            {paper.status !== "published" && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={async () => {
+                                  if (!confirm("Are you sure you want to directly publish this paper?")) return;
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append("status", "published");
+                                    if (!paper.publishDate) formData.append("publishDate", new Date().toISOString());
+                                    await journalApi.update(paper._id || paper.id, formData);
+                                    toast.success("Paper published successfully");
+                                    loadData();
+                                  } catch (err: any) {
+                                    toast.error(err.message || "Failed to publish paper");
+                                  }
+                                }}
+                              >
+                                Publish Now
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </TabsContent>
       </Tabs>

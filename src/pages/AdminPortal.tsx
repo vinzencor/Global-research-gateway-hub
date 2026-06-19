@@ -19,6 +19,8 @@ import AdminJournalPipeline from "@/pages/admin/AdminJournalPipeline";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminValidateUsers from "@/pages/admin/AdminValidateUsers";
 import AdminRoles from "@/pages/admin/AdminRoles";
+import AdminHappenings from "@/pages/admin/AdminHappenings";
+import { Megaphone } from "lucide-react";
 
 type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: string };
 
@@ -29,6 +31,7 @@ const navItems: AdminNavItem[] = [
   { label: "Workflow Designer", to: "/admin/workflow", moduleKey: "workflow", icon: <GitBranch className="h-4 w-4" /> },
   { label: "Sub-Admins", to: "/admin/sub-admins", moduleKey: "sub_admins", icon: <UserCheck className="h-4 w-4" /> },
   { label: "Content", to: "/admin/content", moduleKey: "content", icon: <FileText className="h-4 w-4" /> },
+  { label: "Happenings", to: "/admin/happenings", moduleKey: "happenings", icon: <Megaphone className="h-4 w-4" /> },
   { label: "Review Queue", to: "/admin/reviews", moduleKey: "reviews", icon: <ClipboardList className="h-4 w-4" /> },
   { label: "Featured Users", to: "/admin/people", moduleKey: "people", icon: <Star className="h-4 w-4" /> },
   { label: "Digital Library", to: "/admin/library", moduleKey: "library", icon: <BookOpen className="h-4 w-4" /> },
@@ -151,6 +154,7 @@ export default function AdminPortal() {
                   { title: "Validate New Users", desc: `Approve pending memberships (${stats.pendingApprovals} pending)`, action: () => navigate("/admin/validate-users"), btn: "Open", icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />, color: "border-emerald-200 dark:border-emerald-900" },
                   { title: "Featured Users", desc: "Feature published users for the public page", action: () => navigate("/admin/people"), btn: "Manage", icon: <Star className="h-5 w-5 text-orange-500" />, color: "border-orange-200 dark:border-orange-900" },
                   { title: "Digital Library", desc: "Upload and manage library papers", action: () => navigate("/admin/library"), btn: "Manage", icon: <BookOpen className="h-5 w-5 text-violet-500" />, color: "border-violet-200 dark:border-violet-900" },
+                  { title: "Manage Happenings", desc: "Update news and events on homepage", action: () => navigate("/admin/happenings"), btn: "Manage", icon: <Megaphone className="h-5 w-5 text-pink-500" />, color: "border-pink-200 dark:border-pink-900" },
                   { title: "Sub-Admins", desc: "Manage sub-admin accounts and permissions", action: () => navigate("/admin/sub-admins"), btn: "Manage", icon: <UserCheck className="h-5 w-5 text-cyan-500" />, color: "border-cyan-200 dark:border-cyan-900" },
                 ].map((c) => (
                   <div key={c.title} className={`rounded-xl border ${c.color} bg-card p-5 card-shadow hover:shadow-md transition-all`}>
@@ -216,6 +220,7 @@ export default function AdminPortal() {
         <Route path="/sub-admins" element={canAccess("sub_admins") ? <AdminSubAdmins /> : AccessDenied} />
         <Route path="/content" element={canAccess("content") ? <AdminContent /> : AccessDenied} />
         <Route path="/content/*" element={canAccess("content") ? <AdminContent /> : AccessDenied} />
+        <Route path="/happenings" element={canAccess("happenings") ? <AdminHappenings /> : AccessDenied} />
         <Route path="/reviews" element={canAccess("reviews") ? <AdminReviews /> : AccessDenied} />
         <Route path="/people" element={canAccess("people") ? <AdminPeople /> : AccessDenied} />
         <Route path="/library" element={canAccess("library") ? <AdminLibrary /> : AccessDenied} />

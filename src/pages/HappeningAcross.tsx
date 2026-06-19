@@ -4,21 +4,14 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import heroBanner from "@/assets/new.png"; // placeholder – replace with your images
 
-const happenings = [
-  {
-    category: "ResearchJournal CORPORATE AWARDS",
-    title: "2026 ResearchJournal Medal of Honor Recipient Announced",
-  },
-  {
-    category: "EEF Foundation",
-    title: "Fueling the Future",
-  },
-  {
-    title: "New ResearchJournal Website Launched",
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { happeningsApi } from "@/lib/api";
 
 export function HappeningAcross() {
+  const { data: happenings = [], isLoading } = useQuery<any[]>({
+    queryKey: ["happenings"],
+    queryFn: happeningsApi.list,
+  });
   return (
     <section className="container py-24">
       {/* Header with "View all" link */}
@@ -52,8 +45,8 @@ export function HappeningAcross() {
             {/* Image area */}
             <div className="relative h-64 overflow-hidden">
               <img
-                src={heroBanner}
-                alt=""
+                src={item.imageUrl || heroBanner}
+                alt={item.title}
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -77,9 +70,24 @@ export function HappeningAcross() {
                 </div>
               </div>
             </div>
+            {item.link && (
+              <a href={item.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10" />
+            )}
           </motion.div>
         ))}
       </div>
+      
+      {happenings.length === 0 && !isLoading && (
+        <div className="text-center py-12 text-muted-foreground">
+          No happenings to display at the moment.
+        </div>
+      )}
+      
+      {isLoading && (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      )}
     </section>
   );
 }

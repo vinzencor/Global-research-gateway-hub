@@ -131,73 +131,90 @@ export default function CompactPolicyCard({ policy, accentColor = "from-primary 
   }
 
   return (
-    <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-xs">
-          <FileText className="h-3 w-3" />
-          {policy.badge || "Policy Document"}
-        </div>
-        <Button onClick={handleDownloadPDF} disabled={downloading} size="sm" className="rounded-full font-bold gap-2 h-8 text-xs">
-          {downloading ? <><Loader2 className="h-3 w-3 animate-spin" />Generating...</> : <><Download className="h-3 w-3" />Download PDF</>}
-        </Button>
-      </div>
-
-      {/* Card */}
-      <div ref={cardRef} className="rounded-2xl border bg-white text-foreground shadow-lg overflow-hidden" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+    <>
+      {/* Visible Small Card UI */}
+      <div className="flex flex-col rounded-2xl border bg-white shadow-md overflow-hidden h-[240px] hover:shadow-xl transition-all group">
         {/* Header */}
-        <div className={`bg-gradient-to-r ${accentColor} p-6 text-white`}>
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">Official Policy Document</p>
-              <h2 className="font-bold text-xl leading-tight">{policy.title}</h2>
-              {policy.subtitle && <p className="text-white/70 text-xs mt-1 leading-relaxed">{policy.subtitle}</p>}
-            </div>
+        <div className={`bg-gradient-to-br ${accentColor} p-6 text-white flex-1 flex flex-col justify-center relative overflow-hidden`}>
+          <div className="absolute top-0 right-0 p-4 opacity-10 transform group-hover:scale-110 transition-transform duration-500">
+            <Shield className="h-24 w-24" />
           </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-medium">{policy.sections.length} Sections</span>
-            {policy.lastUpdated && <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-medium">Updated: {policy.lastUpdated}</span>}
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-widest mb-3 backdrop-blur-sm w-fit border border-white/10">
+              <FileText className="h-3 w-3" />
+              {policy.badge || "Policy Document"}
+            </div>
+            <h2 className="font-heading font-bold text-xl md:text-2xl leading-tight mb-2 line-clamp-2">{policy.title}</h2>
+            {policy.subtitle && <p className="text-white/80 text-xs leading-relaxed line-clamp-2">{policy.subtitle}</p>}
           </div>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-0 divide-y divide-border/40">
-          {policy.sections.map((section) => (
-            <div key={section.number} className="py-4 first:pt-2 last:pb-2">
-              {/* Section header */}
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-[10px] font-bold text-primary/50 uppercase tracking-widest shrink-0">{section.number}.</span>
-                <h3 className="font-bold text-sm leading-snug">{section.title}</h3>
-              </div>
-              {/* Section content */}
-              <div className="pl-5">
-                <SectionBlock section={section} />
-                {/* Subsections */}
-                {section.subsections && (
-                  <div className="mt-2 space-y-3">
-                    {section.subsections.map((sub, si) => (
-                      <div key={si} className="pl-2 border-l-2 border-primary/20">
-                        <p className="text-[10px] font-bold text-primary/70 uppercase tracking-wide mb-1">{sub.title}</p>
-                        <SectionBlock section={sub} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 pb-4 pt-2 border-t text-center">
-          <p className="text-[10px] text-muted-foreground/50">
-            Official policy document. For queries, contact the editorial team via the Support page.
-          </p>
+        {/* Footer / Actions */}
+        <div className="p-4 bg-muted/10 border-t flex items-center justify-between shrink-0 h-[72px]">
+          <div className="flex flex-col">
+             <span className="text-xs font-bold text-foreground">Complete Handbook</span>
+             <span className="text-[10px] text-muted-foreground">{policy.sections.length} Sections</span>
+          </div>
+          <Button onClick={handleDownloadPDF} disabled={downloading} size="sm" className="rounded-full font-bold gap-2 shadow-sm transition-transform hover:-translate-y-0.5">
+            {downloading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...</> : <><Download className="h-3.5 w-3.5" /> Download PDF</>}
+          </Button>
         </div>
       </div>
-    </div>
+
+      {/* Hidden container for PDF generation ONLY */}
+      <div style={{ position: "absolute", top: "-9999px", left: "-9999px", width: "900px", zIndex: -1 }}>
+        <div ref={cardRef} className="rounded-xl border bg-white text-black overflow-hidden shadow-none" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+          {/* Header */}
+          <div className={`bg-gradient-to-r ${accentColor} p-8 text-white`}>
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Official Policy Document</p>
+                <h2 className="font-bold text-3xl leading-tight mt-1">{policy.title}</h2>
+                {policy.subtitle && <p className="text-white/80 text-sm mt-2 leading-relaxed">{policy.subtitle}</p>}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-6">
+              <span className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-medium">{policy.sections.length} Sections</span>
+              {policy.lastUpdated && <span className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-medium">Updated: {policy.lastUpdated}</span>}
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-8 space-y-0 divide-y divide-border/40 bg-white">
+            {policy.sections.map((section) => (
+              <div key={section.number} className="py-6 first:pt-2 last:pb-2">
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-xs font-bold text-primary uppercase tracking-widest shrink-0">{section.number}.</span>
+                  <h3 className="font-bold text-lg leading-snug">{section.title}</h3>
+                </div>
+                <div className="pl-6">
+                  <SectionBlock section={section} />
+                  {section.subsections && (
+                    <div className="mt-4 space-y-4">
+                      {section.subsections.map((sub, si) => (
+                        <div key={si} className="pl-3 border-l-2 border-primary/20">
+                          <p className="text-xs font-bold text-primary/80 uppercase tracking-wide mb-1.5">{sub.title}</p>
+                          <SectionBlock section={sub} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 pb-6 pt-4 border-t text-center bg-white">
+            <p className="text-xs text-muted-foreground/60">
+              Official policy document. For queries, contact the editorial team via the Support page.
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
