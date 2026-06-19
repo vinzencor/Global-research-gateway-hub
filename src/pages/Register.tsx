@@ -42,12 +42,12 @@ export default function Register() {
       const rawPlans = Array.isArray(data)
         ? data
         : Array.isArray((data as any)?.plans)
-        ? (data as any).plans
-        : Array.isArray((data as any)?.items)
-        ? (data as any).items
-        : Array.isArray((data as any)?.data?.plans)
-        ? (data as any).data.plans
-        : [];
+          ? (data as any).plans
+          : Array.isArray((data as any)?.items)
+            ? (data as any).items
+            : Array.isArray((data as any)?.data?.plans)
+              ? (data as any).data.plans
+              : [];
 
       const normalizedPlans: Plan[] = (rawPlans as any[])
         .map((p: any) => ({
@@ -111,7 +111,7 @@ export default function Register() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-8">
-            <img src="/Logo.png" alt="KnowledgeHub" className="h-20 w-auto mx-auto object-contain" />
+            <img src="/Logo.png" alt="Global Research Gateway" className="h-20 w-auto mx-auto object-contain" />
           </Link>
           <h1 className="font-heading text-3xl font-bold tracking-tight">Join the Hub</h1>
           <p className="text-muted-foreground text-sm mt-2 max-w-xs mx-auto">
@@ -197,10 +197,10 @@ export default function Register() {
               <div className="space-y-2">
                 <Label>Payment Screenshot *</Label>
                 <div className="relative border-2 border-dashed rounded-xl p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer group">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
                     onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
                   />
                   {file ? (

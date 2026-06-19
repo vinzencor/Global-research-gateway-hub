@@ -44,7 +44,7 @@ const heroSlides = [
     tag: "Knowledge. Credibility. Access.",
     heading: "Advancing Knowledge. Connecting Experts. Expanding Access.",
     description:
-      "A unified platform for publications, expert-led review, digital knowledge access, and professional membershipâ€”built for researchers, practitioners, authors, reviewers, and institutions.",
+      "A unified platform for publications, expert-led review, digital knowledge access, and professional membership - built for researchers, practitioners, authors, reviewers, and institutions.",
     buttonText: "Join as a Member",
     buttonLink: "/membership",
     secondaryText: "Explore the Digital Library",
@@ -168,7 +168,7 @@ export default function Index() {
           <img
             src={heroBg}
             alt="Library of journals"
-            className="w-full h-full object-cover scale-[1.02]"
+            className="w-full h-full object-cover scale-[1.02] opacity-80"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/20" />
@@ -206,7 +206,7 @@ export default function Index() {
                     </Button>
                   </Link>
                   <Link to={heroSlides[currentSlide].secondaryLink}>
-                    <Button variant="outline" size="lg" className="h-14 px-8 rounded-full font-bold text-lg text-white border-white/20 hover:bg-white/10 backdrop-blur-sm">
+                    <Button variant="outline" size="lg" className="h-14 px-8 rounded-full font-bold text-lg text-white border-white/20 bg-transparent hover:bg-white/10 backdrop-blur-sm">
                       {heroSlides[currentSlide].secondaryText}
                     </Button>
                   </Link>
@@ -346,7 +346,7 @@ export default function Index() {
             <img 
               src="main2.png" 
               alt="Knowledge Innovation" 
-              className="w-full h-full object-cover aspect-[4/3] transition-transform duration-700 hover:scale-105" 
+              className="w-full h-full object-cover aspect-[4/3] transition-transform duration-700 hover:scale-105 opacity-80" 
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           </motion.div>
@@ -405,7 +405,7 @@ export default function Index() {
               viewport={{ once: true }}
               className="relative rounded-[3rem] overflow-hidden shadow-2xl h-[400px]"
             >
-              <img src="membership_promo.png" alt="Collaborative Community" className="w-full h-full object-cover" />
+              <img src="membership_promo.png" alt="Collaborative Community" className="w-full h-full object-cover opacity-80" />
               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
             </motion.div>
 
@@ -455,7 +455,7 @@ export default function Index() {
             viewport={{ once: true }}
             className="lg:order-1 relative rounded-[3rem] overflow-hidden shadow-2xl h-[500px]"
           >
-            <img src="library_feature.png" alt="Digital Library Interface" className="w-full h-full object-cover" />
+            <img src="library_feature.png" alt="Digital Library Interface" className="w-full h-full object-cover opacity-80" />
           </motion.div>
         </div>
       </section>
@@ -607,7 +607,7 @@ export default function Index() {
                 Membership gives you access to premium content, billing history, invoices, and an expanded digital experience tailored to your plan. Choose the level that fits your goals and unlock more value from the platform.
               </p>
               <Link to="/membership">
-                <Button size="lg" className="h-14 px-8 rounded-full font-bold text-lg group">
+                <Button size="lg" className="h-14 px-8 rounded-full font-bold text-lg group text-white">
                   View Membership Plans
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
@@ -659,9 +659,8 @@ export default function Index() {
                 </Button>
               </Link>
               <Link to="/support">
-                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-sm">
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-black bg-white hover:bg-white/90 backdrop-blur-sm">
                   Contact Support
-
                 </Button>
               </Link>
             </div>

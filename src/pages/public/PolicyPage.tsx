@@ -171,7 +171,6 @@ export default function PolicyPage() {
             <div key={i} className="space-y-3">
               <h2 className="font-heading text-xl font-bold">{section.heading}</h2>
               <p className="text-muted-foreground leading-relaxed">{section.body}</p>
-              {i < policy.sections.length - 1 && <div className="h-px bg-border mt-6" />}
             </div>
           ))}
         </div>
@@ -185,7 +184,7 @@ export default function PolicyPage() {
             <p className="text-sm text-muted-foreground">Our support team is here to help clarify any policy details.</p>
           </div>
           <Link to="/support">
-            <Button className="rounded-full px-6 font-bold shrink-0">
+            <Button className="rounded-full px-6 font-bold shrink-0 text-black bg-white hover:bg-white/90">
               Contact Support <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>

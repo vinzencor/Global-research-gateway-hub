@@ -75,9 +75,9 @@ export default function PendingVerification() {
       <div className="w-full max-w-md text-center">
         <div className="mb-8">
           <Link to="/" className="inline-block mb-8">
-            <img src="/Logo.png" alt="KnowledgeHub" className="h-20 w-auto mx-auto object-contain" />
+            <img src="/Logo.png" alt="Global Research Gateway" className="h-20 w-auto mx-auto object-contain" />
           </Link>
-          
+
           <div className="relative inline-block mb-6">
             <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto ring-8 ring-primary/5">
               <Clock className="h-10 w-10 text-primary animate-pulse" />
@@ -86,7 +86,7 @@ export default function PendingVerification() {
               <ShieldCheck className="h-5 w-5 text-success" />
             </div>
           </div>
-          
+
           <h1 className="font-heading text-3xl font-bold tracking-tight mb-3">Your Profile Is Under Verification</h1>
           <p className="text-muted-foreground leading-relaxed">
             Hello <span className="text-foreground font-bold">{user?.fullName || "Member"}</span>, your account is currently in

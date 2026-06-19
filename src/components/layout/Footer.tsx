@@ -29,9 +29,9 @@ export function Footer() {
           {/* Brand block */}
           <div className="space-y-6">
             <Link to="/" className="flex items-center gap-3 group">
-              <img src="/Logo.png" alt="KnowledgeHub Logo" className="h-10 w-auto object-contain transition-transform group-hover:scale-110" />
+              <img src="/Logo.png" alt="Global Research Gateway Logo" className="h-10 w-auto object-contain transition-transform group-hover:scale-110" />
               <span className="font-heading text-xl font-bold tracking-tight">
-                KnowledgeHub
+                Global Research Gateway
               </span>
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed font-light">
@@ -92,7 +92,7 @@ export function Footer() {
 
         <div className="mt-20 pt-10 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-sm text-muted-foreground font-medium">
-            © {currentYear} KnowledgeHub. All rights reserved.
+            © {currentYear} Global Research Gateway. All rights reserved.
           </div>
           <div className="flex flex-wrap gap-6 text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
             <Link to="/policy/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>

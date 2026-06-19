@@ -84,16 +84,22 @@ export default function SupportPage() {
       </section>
 
       {/* Intro */}
-      <section className="container py-16 max-w-3xl mx-auto text-center">
+      <section className="container py-16 max-w-3xl mx-auto text-center space-y-6">
         <p className="text-lg text-muted-foreground leading-relaxed">
           Whether you need help with your account, have a billing question, want support with library access, or need assistance navigating the platform, our team is here to assist you.
+        </p>
+        <p className="text-lg text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Articles and News</strong> are items that the journal publishes for marketing purposes, either from our own archives, or new content that is intended to engage our audience.
+        </p>
+        <p className="text-lg text-muted-foreground leading-relaxed">
+          <strong className="text-foreground">Publications</strong> are items that go through the portal and vetting process, submitted by our patrons or researchers.
         </p>
       </section>
 
       {/* Contact Categories */}
       <section className="bg-secondary/30 py-24">
         <div className="container">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             {contactCategories.map((cat, i) => (
               <motion.div
                 key={i}
@@ -101,13 +107,13 @@ export default function SupportPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group rounded-3xl border bg-card p-6 hover:shadow-lg transition-all hover:border-primary/20"
+                className="group rounded-3xl border bg-card p-12 hover:shadow-2xl transition-all hover:border-primary/30 flex flex-col items-center text-center h-full min-h-[280px]"
               >
-                <div className={`h-12 w-12 rounded-2xl ${cat.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                <div className={`h-16 w-16 rounded-2xl ${cat.color} flex items-center justify-center mb-6 transition-transform group-hover:scale-110`}>
                   {cat.icon}
                 </div>
-                <h3 className="font-heading font-bold text-base mb-2 group-hover:text-primary transition-colors">{cat.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{cat.description}</p>
+                <h3 className="font-heading font-bold text-xl mb-3 group-hover:text-primary transition-colors">{cat.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{cat.description}</p>
               </motion.div>
             ))}
           </div>

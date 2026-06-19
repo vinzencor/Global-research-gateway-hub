@@ -15,6 +15,7 @@ import {
   Zap,
   Lock,
   Shield,
+  Users,
 } from "lucide-react";
 
 const benefits = [
@@ -47,6 +48,12 @@ const benefits = [
     title: "Priority Communication",
     description: "Receive relevant updates, reminders, and important notifications related to your account and plan.",
     color: "bg-rose-500/10 text-rose-600",
+  },
+  {
+    icon: <Users className="h-6 w-6" />,
+    title: "Networking",
+    description: "Gain access to the top minds in your field. Become part of an elite group that are pursuing the frontiers of research to share knowledge and innovation with the world.",
+    color: "bg-purple-500/10 text-purple-600",
   },
 ];
 
@@ -283,7 +290,7 @@ export default function MembershipPage() {
                 </Button>
               </Link>
               <Link to="/support">
-                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-black bg-white hover:bg-white/90 backdrop-blur-md">
                   Contact Support
                 </Button>
               </Link>

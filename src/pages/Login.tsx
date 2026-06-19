@@ -67,7 +67,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-8">
-            <img src="/Logo.png" alt="KnowledgeHub" className="h-20 w-auto mx-auto object-contain" />
+            <img src="/Logo.png" alt="Global Research Gateway" className="h-20 w-auto mx-auto object-contain" />
           </Link>
           <h1 className="font-heading text-3xl font-bold tracking-tight">Welcome Back</h1>
           <p className="text-muted-foreground text-sm mt-2">Log in to access your account, membership, and digital library experience.</p>

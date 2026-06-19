@@ -38,24 +38,23 @@ export function Header() {
 
   const dashboardPath = user
     ? isAdmin(user.roles) ? "/admin"
-    : user.roles.includes("sub_admin") ? "/reviewer/stage"
-    : user.roles.includes("reviewer") ? "/reviewer"
-    : user.roles.includes("author") ? "/author"
-    : "/portal/dashboard"
+      : user.roles.includes("sub_admin") ? "/reviewer/stage"
+        : user.roles.includes("reviewer") ? "/reviewer"
+          : user.roles.includes("author") ? "/author"
+            : "/portal/dashboard"
     : "/login";
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 bg-background/95 backdrop-blur-xl border-b ${
-        scrolled ? "shadow-md border-border/60 py-3" : "shadow-sm border-border/30 py-4"
-      }`}
+      className={`sticky top-0 z-50 transition-all duration-300 bg-background/95 backdrop-blur-xl border-b ${scrolled ? "shadow-md border-border/60 py-3" : "shadow-sm border-border/30 py-4"
+        }`}
     >
       <div className="container flex h-12 items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-3 shrink-0 group">
-          <img 
-            src="/Logo.png" 
-            alt="KnowledgeHub Logo" 
-            className="h-14 w-auto object-contain transition-transform group-hover:scale-105" 
+          <img
+            src="/Logo.png"
+            alt="Global Research Gateway Logo"
+            className="h-14 w-auto object-contain transition-transform group-hover:scale-105"
           />
         </Link>
 
@@ -107,13 +106,13 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <Link to="/login">
-                <Button
-                    variant="default"
-                    size="sm"
-                    className="h-9 px-5 rounded-full font-bold shadow-sm"
-                >
-                    Login
-                </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-9 px-5 rounded-full font-bold shadow-sm"
+              >
+                Login
+              </Button>
             </Link>
           )}
 
@@ -130,32 +129,32 @@ export function Header() {
 
       <AnimatePresence>
         {mobileOpen && (
-            <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="lg:hidden border-t bg-background overflow-hidden"
-            >
-                <div className="container py-6 space-y-2">
-                    {navLinks.map((link) => (
-                        <Link 
-                            key={link.label} 
-                            to={link.to} 
-                            className="block px-4 py-3 text-lg font-bold text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all" 
-                            onClick={() => setMobileOpen(false)}
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
-                    <div className="pt-4 flex gap-4">
-                        {user ? (
-                        <Button className="flex-1 h-12 rounded-xl font-bold" onClick={() => { setMobileOpen(false); navigate(dashboardPath); }}>Dashboard</Button>
-                        ) : (
-                        <Link to="/login" className="flex-1"><Button className="w-full h-12 rounded-xl font-bold">Login</Button></Link>
-                        )}
-                    </div>
-                </div>
-            </motion.div>
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="lg:hidden border-t bg-background overflow-hidden"
+          >
+            <div className="container py-6 space-y-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  to={link.to}
+                  className="block px-4 py-3 text-lg font-bold text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="pt-4 flex gap-4">
+                {user ? (
+                  <Button className="flex-1 h-12 rounded-xl font-bold" onClick={() => { setMobileOpen(false); navigate(dashboardPath); }}>Dashboard</Button>
+                ) : (
+                  <Link to="/login" className="flex-1"><Button className="w-full h-12 rounded-xl font-bold">Login</Button></Link>
+                )}
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </header>
