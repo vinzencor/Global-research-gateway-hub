@@ -16,6 +16,7 @@ import AuthorsPage from "./pages/public/AuthorsPage";
 import ReviewersPage from "./pages/public/ReviewersPage";
 import PublicationsPage from "./pages/public/PublicationsPage";
 import PublicationDetail from "./pages/public/PublicationDetail";
+import JournalDetail from "./pages/public/JournalDetail";
 import DigitalLibraryPublic from "./pages/public/DigitalLibraryPublic";
 import About from "./pages/public/About";
 import MembershipPage from "./pages/public/MembershipPage";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/reviewers" element={<ReviewersPage />} />
             <Route path="/publications" element={<PublicationsPage />} />
             <Route path="/publications/:slug" element={<PublicationDetail />} />
+            <Route path="/journals/:slug" element={<JournalDetail />} />
             <Route path="/library" element={<DigitalLibraryPublic />} />
 
             {/* Auth routes - redirect if already logged in */}

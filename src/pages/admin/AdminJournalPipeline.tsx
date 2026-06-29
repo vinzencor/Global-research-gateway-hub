@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { journalApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { BarChart3, CheckCircle, RotateCcw, Clock } from "lucide-react";
+import { BarChart3, CheckCircle, RotateCcw, Clock, Eye, FileText, Download, User, Calendar, Building } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -13,6 +14,7 @@ const STATUS_COLORS: Record<string, string> = {
   accepted: "bg-success/10 text-success border-success/20",
   published: "bg-green-600/10 text-green-700 border-green-200",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
+  withdrawn: "bg-gray-500/10 text-gray-600 border-gray-200",
 };
 
 export default function AdminJournalPipeline() {
@@ -20,6 +22,8 @@ export default function AdminJournalPipeline() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [publishDates, setPublishDates] = useState<Record<string, string>>({});
+  const [showView, setShowView] = useState(false);
+  const [viewItem, setViewItem] = useState<any>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -34,6 +38,8 @@ export default function AdminJournalPipeline() {
     }
     setLoading(false);
   }
+
+  function openView(j: any) { setViewItem(j); setShowView(true); }
 
   async function publishPaper(id: string) {
     try {
@@ -60,6 +66,8 @@ export default function AdminJournalPipeline() {
     changes_requested: journals.filter(j => j.status === "changes_requested").length,
     accepted: journals.filter(j => j.status === "accepted").length,
     published: journals.filter(j => j.status === "published").length,
+    withdrawn: journals.filter(j => j.status === "withdrawn").length,
+    rejected: journals.filter(j => j.status === "rejected").length,
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
@@ -69,13 +77,15 @@ export default function AdminJournalPipeline() {
       <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><h2 className="font-heading text-xl font-bold">Paper Pipeline</h2></div>
 
       {/* Analytics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         {[
           { label: "Submitted", value: stats.submitted, icon: <Clock className="h-4 w-4 text-blue-500" /> },
           { label: "In Review", value: stats.in_review, icon: <RotateCcw className="h-4 w-4 text-warning" /> },
           { label: "Changes Req.", value: stats.changes_requested, icon: <RotateCcw className="h-4 w-4 text-orange-500" /> },
           { label: "Accepted", value: stats.accepted, icon: <CheckCircle className="h-4 w-4 text-success" /> },
           { label: "Published", value: stats.published, icon: <CheckCircle className="h-4 w-4 text-green-700" /> },
+          { label: "Withdrawn", value: stats.withdrawn, icon: <RotateCcw className="h-4 w-4 text-gray-500" /> },
+          { label: "Rejected", value: stats.rejected, icon: <RotateCcw className="h-4 w-4 text-red-500" /> },
         ].map(s => (
           <div key={s.label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
             {s.icon}
@@ -86,7 +96,7 @@ export default function AdminJournalPipeline() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "submitted", "in_review", "changes_requested", "accepted", "published", "rejected"].map(f => (
+        {["all", "submitted", "in_review", "changes_requested", "accepted", "published", "rejected", "withdrawn"].map(f => (
           <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize text-xs">{f.replace("_", " ")}</Button>
         ))}
       </div>
@@ -99,24 +109,29 @@ export default function AdminJournalPipeline() {
             <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Institution</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Workflow Progress</th>
+            <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Views</th>
+            <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Copies</th>
             <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Created</th>
             <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Author</th>
             <th className="text-left p-4 font-medium text-muted-foreground hidden xl:table-cell">Publish Date</th>
             <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
           </tr></thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No papers found for this filter</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">No papers found for this filter</td></tr>}
             {filtered.map(j => {
               const ws = j.status || "draft";
               const jid = j._id || j.id;
-              
               const currentStage = (j.currentStageIndex || 0) + 1;
               const totalStages = j.totalStages || 0;
               const progressPct = totalStages > 0 ? (j.status === 'published' ? 100 : (currentStage / (totalStages + 1)) * 100) : 0;
-              
+
               return (
-                <tr key={jid} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="p-4 font-medium max-w-[200px]"><p className="truncate">{j.title}</p></td>
+                <tr
+                  key={jid}
+                  className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => openView(j)}
+                >
+                  <td className="p-4 font-medium max-w-[200px]"><p className="truncate hover:text-primary transition-colors">{j.title}</p></td>
                   <td className="p-4 hidden md:table-cell text-muted-foreground">{j.institution || "-"}</td>
                   <td className="p-4"><Badge variant="outline" className={STATUS_COLORS[ws]}>{ws.replace("_", " ")}</Badge></td>
                   <td className="p-4">
@@ -127,9 +142,9 @@ export default function AdminJournalPipeline() {
                           <span>{Math.round(progressPct)}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${j.status === 'published' ? 'bg-green-500' : 'bg-primary'}`} 
-                            style={{ width: `${progressPct}%` }} 
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${j.status === 'published' ? 'bg-green-500' : 'bg-primary'}`}
+                            style={{ width: `${progressPct}%` }}
                           />
                         </div>
                         {j.workflowTemplate && <p className="text-[10px] text-muted-foreground truncate">{j.workflowTemplate.name}</p>}
@@ -138,11 +153,14 @@ export default function AdminJournalPipeline() {
                       <span className="text-xs text-muted-foreground italic">No workflow</span>
                     )}
                   </td>
-                  <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{new Date(j.createdAt || j.created_at).toLocaleDateString()}</td>
-                  <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{j.authorUser?.fullName || j.authorUser?.email || "-"}</td>
-                  <td className="p-4 hidden xl:table-cell text-xs text-muted-foreground">{j.publishDate ? new Date(j.publishDate).toLocaleDateString() : "Not set"}</td>
-                  <td className="p-4">
+                   <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{j.viewCount || 0}</td>
+                   <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{j.copyCount || 0}</td>
+                   <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{new Date(j.createdAt || j.created_at).toLocaleDateString()}</td>
+                   <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground">{j.authorUser?.fullName || j.authorUser?.email || "-"}</td>
+                   <td className="p-4 hidden xl:table-cell text-xs text-muted-foreground">{j.publishDate ? new Date(j.publishDate).toLocaleDateString() : "Not set"}</td>
+                  <td className="p-4" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-2 flex-wrap items-center">
+                      <Button variant="ghost" size="sm" onClick={() => openView(j)} title="View Details"><Eye className="h-3 w-3" /></Button>
                       {ws === "accepted" && (
                         <>
                           <input
@@ -154,6 +172,11 @@ export default function AdminJournalPipeline() {
                           <Button size="sm" onClick={() => publishPaper(jid)} className="text-xs"><CheckCircle className="h-3 w-3 mr-1" /> Publish</Button>
                         </>
                       )}
+                      {ws === "withdrawn" && j.withdrawalReason && (
+                        <span className="text-xs text-muted-foreground italic max-w-[160px] truncate" title={j.withdrawalReason}>
+                          Reason: {j.withdrawalReason}
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -162,8 +185,128 @@ export default function AdminJournalPipeline() {
           </tbody>
         </table>
       </div>
+
+      {/* ─── View Details Modal ─── */}
+      <Dialog open={showView} onOpenChange={setShowView}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl leading-tight pr-6">{viewItem?.title}</DialogTitle>
+          </DialogHeader>
+          {viewItem && (
+            <div className="space-y-5 py-2">
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4 bg-muted/50 p-3 rounded-lg text-sm">
+                <div>
+                  <span className="text-muted-foreground font-semibold mr-1">Views:</span>
+                  <span className="font-bold">{viewItem.viewCount || 0}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground font-semibold mr-1">Copies:</span>
+                  <span className="font-bold">{viewItem.copyCount || 0}</span>
+                </div>
+              </div>
+
+              {/* Status badges */}
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className={`capitalize ${STATUS_COLORS[viewItem.status || "draft"]}`}>
+                  {(viewItem.status || "draft").replace(/_/g, " ")}
+                </Badge>
+                {viewItem.category && <Badge variant="secondary" className="capitalize">{viewItem.category}</Badge>}
+              </div>
+
+              {/* Author */}
+              {viewItem.authorUser && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1"><User className="h-3 w-3" />Author</p>
+                  <p className="text-sm">{viewItem.authorUser.fullName || viewItem.authorUser.email}</p>
+                  {viewItem.authorUser.email && <p className="text-xs text-muted-foreground">{viewItem.authorUser.email}</p>}
+                </div>
+              )}
+
+              {/* Institution */}
+              {viewItem.institution && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1"><Building className="h-3 w-3" />Institution</p>
+                  <p className="text-sm">{viewItem.institution}</p>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                {(viewItem.createdAt || viewItem.created_at) && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1"><Calendar className="h-3 w-3" />Submitted</p>
+                    <p className="text-sm">{new Date(viewItem.createdAt || viewItem.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  </div>
+                )}
+                {viewItem.publishDate && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Publish Date</p>
+                    <p className="text-sm">{new Date(viewItem.publishDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Workflow */}
+              {viewItem.workflowTemplate && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Workflow</p>
+                  <p className="text-sm">{viewItem.workflowTemplate.name}</p>
+                  {(viewItem.totalStages || 0) > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Stage {(viewItem.currentStageIndex || 0) + 1} of {viewItem.totalStages}</span>
+                        <span>{viewItem.status === "published" ? "100" : Math.round(((viewItem.currentStageIndex || 0) + 1) / ((viewItem.totalStages || 1) + 1) * 100)}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${viewItem.status === "published" ? "bg-green-500" : "bg-primary"}`}
+                          style={{ width: viewItem.status === "published" ? "100%" : `${Math.round(((viewItem.currentStageIndex || 0) + 1) / ((viewItem.totalStages || 1) + 1) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Abstract */}
+              {viewItem.abstract && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Abstract</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground bg-muted/30 rounded-lg p-3 whitespace-pre-wrap">{viewItem.abstract}</p>
+                </div>
+              )}
+
+              {/* Withdrawal Reason */}
+              {viewItem.withdrawalReason && (
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-destructive mb-1">Withdrawal Reason</p>
+                  <p className="text-sm text-destructive">{viewItem.withdrawalReason}</p>
+                </div>
+              )}
+
+              {/* PDF */}
+              {(viewItem.pdfUrl || viewItem.pdf_url) && (
+                <div className="flex gap-2">
+                  <Button asChild size="sm">
+                    <a href={viewItem.pdfUrl || viewItem.pdf_url} target="_blank" rel="noopener noreferrer">
+                      <FileText className="h-4 w-4 mr-2" />Read Paper
+                    </a>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <a href={viewItem.pdfUrl || viewItem.pdf_url} target="_blank" rel="noopener noreferrer" download>
+                      <Download className="h-4 w-4 mr-2" />Download
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowView(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-

@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { FileText, MessageSquare, AlertTriangle, ExternalLink, Edit3 } from "lucide-react";
+import { FileText, MessageSquare, AlertTriangle, ExternalLink, Edit3, X, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { journalApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
   accepted: "bg-success/10 text-success border-success/20",
   published: "bg-green-600/10 text-green-700 border-green-200",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
+  withdrawn: "bg-gray-500/10 text-gray-600 border-gray-200",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -29,6 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
   accepted: "Accepted",
   published: "Published",
   rejected: "Rejected",
+  withdrawn: "Withdrawn",
 };
 
 export default function AuthorDashboard() {
@@ -37,6 +42,9 @@ export default function AuthorDashboard() {
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [withdrawTarget, setWithdrawTarget] = useState<any | null>(null);
+  const [withdrawReason, setWithdrawReason] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
 
   useEffect(() => { if (user) loadSubmissions(); }, [user]);
 
@@ -47,6 +55,23 @@ export default function AuthorDashboard() {
       setSubmissions(data.items || data || []);
     } catch { toast.error("Failed to load submissions"); }
     setLoading(false);
+  }
+
+  async function handleWithdraw() {
+    if (!withdrawReason.trim()) { toast.error("Please provide a reason for withdrawal"); return; }
+    if (!withdrawTarget) return;
+    setWithdrawing(true);
+    try {
+      await journalApi.withdraw(withdrawTarget._id || withdrawTarget.id, withdrawReason.trim());
+      toast.success("Journal withdrawn successfully.");
+      setWithdrawTarget(null);
+      setWithdrawReason("");
+      await loadSubmissions();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to withdraw journal");
+    } finally {
+      setWithdrawing(false);
+    }
   }
 
   const stats = [
@@ -113,6 +138,7 @@ export default function AuthorDashboard() {
                 const ds = displayStatus(s);
                 const needsEdit = ds === "changes_requested";
                 const isPublished = ds === "published";
+                const isTerminal = ["withdrawn", "published", "rejected"].includes(ds);
                 const sid = s._id || s.id;
                 const manuscriptFullUrl = s.manuscriptUrl
                   ? (s.manuscriptUrl.startsWith("http") ? s.manuscriptUrl : `${API_BASE}${s.manuscriptUrl}`)
@@ -128,6 +154,14 @@ export default function AuthorDashboard() {
                             Submitted {new Date(s.createdAt || s.created_at).toLocaleDateString()}
                             {s.institution && ` - ${s.institution}`}
                           </p>
+                          <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1" title="Total Views">
+                              <Eye className="h-3 w-3" /> {s.viewCount || 0} Views
+                            </span>
+                            <span className="flex items-center gap-1" title="Total Copies">
+                              <FileText className="h-3 w-3" /> {s.copyCount || 0} Copies
+                            </span>
+                          </div>
                         </div>
                         <Badge variant="outline" className={`shrink-0 ${STATUS_COLORS[ds]}`}>
                           {STATUS_LABELS[ds] || ds.replace(/_/g, " ")}
@@ -173,6 +207,16 @@ export default function AuthorDashboard() {
                             </Link>
                           </Button>
                         )}
+                        {!isTerminal && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs gap-1 ml-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => { setWithdrawTarget(s); setWithdrawReason(""); }}
+                          >
+                            <X className="h-3 w-3" /> Withdraw
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -216,6 +260,41 @@ export default function AuthorDashboard() {
           </div>
         </div>
       </div>
+      {/* Withdrawal Dialog */}
+      <Dialog open={!!withdrawTarget} onOpenChange={(open) => { if (!open) setWithdrawTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Withdraw Submission</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              You are about to withdraw <span className="font-bold text-foreground">"{withdrawTarget?.title}"</span>.
+              This will immediately stop any active review process.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="withdraw-reason">Reason for withdrawal *</Label>
+              <Textarea
+                id="withdraw-reason"
+                placeholder="Please explain why you are withdrawing this submission..."
+                rows={4}
+                value={withdrawReason}
+                onChange={(e) => setWithdrawReason(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">This reason will be sent to the admin.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWithdrawTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleWithdraw}
+              disabled={withdrawing || !withdrawReason.trim()}
+            >
+              {withdrawing ? "Withdrawing..." : "Confirm Withdrawal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

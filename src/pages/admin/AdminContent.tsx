@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { contentApi } from "@/lib/api";
 import { toast } from "sonner";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Calendar, FileText, Globe, Lock } from "lucide-react";
 
 const statusColor: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -24,6 +24,8 @@ export default function AdminContent() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
+  const [showView, setShowView] = useState(false);
+  const [viewItem, setViewItem] = useState<any>(null);
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState({ title: "", type: "article", summary: "", body: "", status: "draft", featured: false, showOnHomepage: false, accessMode: "open_access", ppvPrice: 9.99 });
   const [saving, setSaving] = useState(false);
@@ -41,6 +43,7 @@ export default function AdminContent() {
     }
   }
 
+  function openView(item: any) { setViewItem(item); setShowView(true); }
   function openCreate() {
     setForm({ title: "", type: "article", summary: "", body: "", status: "draft", featured: false, showOnHomepage: false, accessMode: "open_access", ppvPrice: 9.99 });
     setEditItem(null);
@@ -143,6 +146,7 @@ export default function AdminContent() {
           </SelectContent>
         </Select>
       </div>
+
       <div className="rounded-xl border bg-card card-shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -151,37 +155,39 @@ export default function AdminContent() {
               <th className="text-left p-4 font-medium text-muted-foreground hidden sm:table-cell">Type</th>
               <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
               <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Access</th>
+              <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Views</th>
+              <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Copies</th>
               <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Date</th>
               <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
             </tr></thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No content found</td></tr>
+                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">No content found</td></tr>
               ) : filtered.map((item) => (
-                <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                  <td className="p-4 font-medium max-w-[200px] truncate">{item.title}</td>
+                <tr
+                  key={item._id || item.id}
+                  className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => openView(item)}
+                >
+                  <td className="p-4 font-medium max-w-[200px] truncate hover:text-primary transition-colors">{item.title}</td>
                   <td className="p-4 text-muted-foreground hidden sm:table-cell capitalize">{item.type}</td>
                   <td className="p-4"><Badge variant="outline" className={statusColor[item.status]}>{item.status}</Badge></td>
                   <td className="p-4 hidden lg:table-cell">
                     <Badge variant="outline" className="capitalize">{(item.accessMode || "open_access").replace(/_/g, " ")}</Badge>
                   </td>
+                  <td className="p-4 hidden lg:table-cell">{item.viewCount || 0}</td>
+                  <td className="p-4 hidden lg:table-cell">{item.copyCount || 0}</td>
                   <td className="p-4 text-muted-foreground hidden md:table-cell">{new Date(item.createdAt || item.created_at).toLocaleDateString()}</td>
-                  <td className="p-4">
+                  <td className="p-4" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1 flex-wrap">
+                      <Button variant="ghost" size="sm" onClick={() => openView(item)} title="View Details"><Eye className="h-3 w-3" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(item)}><Edit className="h-3 w-3" /></Button>
                       <Select value={item.status} onValueChange={(v) => handleStatusChange(item, v)} disabled={updatingId === (item._id || item.id)}>
                         <SelectTrigger className="h-8 w-[150px] text-xs">
                           <SelectValue placeholder="Change status" />
                         </SelectTrigger>
                         <SelectContent>
-                          {[
-                            "draft",
-                            "in_review",
-                            "approved",
-                            "published",
-                            "changes_requested",
-                            "archived",
-                          ].map((s) => (
+                          {["draft","in_review","approved","published","changes_requested","archived"].map((s) => (
                             <SelectItem key={s} value={s} className="capitalize">{s.replace("_", " ")}</SelectItem>
                           ))}
                         </SelectContent>
@@ -196,6 +202,97 @@ export default function AdminContent() {
         </div>
       </div>
 
+      {/* ─── View Details Modal ─── */}
+      <Dialog open={showView} onOpenChange={setShowView}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl leading-tight pr-6">{viewItem?.title}</DialogTitle>
+          </DialogHeader>
+          {viewItem && (
+            <div className="space-y-5 py-2">
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4 bg-muted/50 p-3 rounded-lg text-sm">
+                <div>
+                  <span className="text-muted-foreground font-semibold mr-1">Views:</span>
+                  <span className="font-bold">{viewItem.viewCount || 0}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground font-semibold mr-1">Copies:</span>
+                  <span className="font-bold">{viewItem.copyCount || 0}</span>
+                </div>
+              </div>
+
+              {/* Badges row */}
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className={`capitalize ${statusColor[viewItem.status]}`}>{viewItem.status}</Badge>
+                <Badge variant="outline" className="capitalize">{viewItem.type?.replace(/_/g, " ")}</Badge>
+                <Badge variant="outline" className="capitalize">
+                  {viewItem.accessMode === "open_access"
+                    ? <><Globe className="h-3 w-3 mr-1" />Open Access</>
+                    : viewItem.accessMode === "members_only"
+                    ? <><Lock className="h-3 w-3 mr-1" />Members Only</>
+                    : `Pay-per-view $${Number(viewItem.ppvPrice || 9.99).toFixed(2)}`
+                  }
+                </Badge>
+                {viewItem.featured && <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">Featured</Badge>}
+                {viewItem.showOnHomepage && <Badge variant="secondary">On Homepage</Badge>}
+              </div>
+
+              {/* Date */}
+              {(viewItem.createdAt || viewItem.created_at) && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Created: {new Date(viewItem.createdAt || viewItem.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                </p>
+              )}
+
+              {/* Summary */}
+              {viewItem.summary && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Summary</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground border-l-2 border-primary pl-3">{viewItem.summary}</p>
+                </div>
+              )}
+
+              {/* Body */}
+              {viewItem.body && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Content Body</p>
+                  <div className="text-sm leading-relaxed bg-muted/30 rounded-lg p-3 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                    {viewItem.body}
+                  </div>
+                </div>
+              )}
+
+              {/* PDF */}
+              {(viewItem.pdfUrl || viewItem.pdf_url) && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">PDF</p>
+                  <a href={viewItem.pdfUrl || viewItem.pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                    <FileText className="h-4 w-4" />{viewItem.pdfUrl || viewItem.pdf_url}
+                  </a>
+                </div>
+              )}
+
+              {/* Slug */}
+              {viewItem.slug && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Slug</p>
+                  <code className="text-xs bg-muted px-2 py-1 rounded">{viewItem.slug}</code>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowView(false)}>Close</Button>
+            <Button onClick={() => { setShowView(false); openEdit(viewItem); }}>
+              <Edit className="h-4 w-4 mr-2" />Edit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Create / Edit Form Modal ─── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editItem ? "Edit Content" : "Create Content"}</DialogTitle></DialogHeader>
@@ -225,5 +322,3 @@ export default function AdminContent() {
     </div>
   );
 }
-
-

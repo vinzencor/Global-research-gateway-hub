@@ -30,7 +30,7 @@ import { Section1 } from "./Section1";
 import { ChairmanVoice } from "./ChairmanVoice";
 import { Separator } from "./Separator";
 import { Section2 } from "./Section2";
-import { db } from "@/lib/legacyDb";
+import { contentApi, journalApi } from "@/lib/api";
 
 const categoryStats = [
   { label: "Total Papers", value: "12,000+", icon: <FileText className="h-5 w-5" /> },
@@ -121,7 +121,7 @@ const membershipPlans = [
 export default function Index() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [recentPubs, setRecentPubs] = useState<any[]>([]);
-  const [authorMap, setAuthorMap] = useState<Record<string, string>>({});
+  const [featuredPubs, setFeaturedPubs] = useState<any[]>([]);
 
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
@@ -132,29 +132,44 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    async function loadRecent() {
-      const { data } = await db
-        .from("content_items")
-        .select("id, title, slug, type, summary, cover_image_url, created_at, author_user_id")
-        .eq("status", "published")
-        .order("created_at", { ascending: false })
-        .limit(3);
+    async function loadContent() {
+      try {
+        const [latestData, homepageData, featuredJournalsData, latestJournalsData] = await Promise.all([
+          contentApi.listPublished({ limit: "3" }),
+          contentApi.getHomepage(),
+          journalApi.getFeatured(),
+          journalApi.listPublished({ limit: "3" }),
+        ]);
 
-      const items = data || [];
-      setRecentPubs(items);
+        const latestContentItems: any[] = (latestData as any)?.items || (latestData as any) || [];
+        const featuredJournals: any[] = (featuredJournalsData as any)?.items || [];
+        const latestJournals: any[] = (latestJournalsData as any)?.items || [];
 
-      const authorIds = Array.from(new Set(items.map((i: any) => i.author_user_id).filter(Boolean)));
-      if (authorIds.length > 0) {
-        const { data: profiles } = await db
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", authorIds);
-        const map: Record<string, string> = {};
-        (profiles || []).forEach((p: any) => { map[p.id] = p.full_name; });
-        setAuthorMap(map);
+        // Latest section: merge content + published journals, sort by date, take top 3
+        const mergedLatest = [
+          ...latestContentItems,
+          ...latestJournals.map((j: any) => ({ ...j, _isJournal: true })),
+        ].sort((a, b) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        ).slice(0, 3);
+        setRecentPubs(mergedLatest);
+
+        // Featured section: prefer explicitly featured items (content homepage + featured journals)
+        const homepageItems: any[] = Array.isArray(homepageData)
+          ? homepageData
+          : (homepageData as any)?.items || [];
+        const allFeatured = [
+          ...homepageItems,
+          ...featuredJournals.map((j: any) => ({ ...j, _isJournal: true })),
+        ];
+        setFeaturedPubs(
+          allFeatured.length > 0 ? allFeatured.slice(0, 3) : mergedLatest.slice(0, 3)
+        );
+      } catch {
+        // silently fail — sections will show empty state
       }
     }
-    loadRecent();
+    loadContent();
   }, []);
 
   return (
@@ -484,36 +499,48 @@ export default function Index() {
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
               {recentPubs.map((pub, i) => {
-                const authorName = pub.author_user_id ? authorMap[pub.author_user_id] : null;
+                const authorName = pub.authorUser?.fullName || pub.originalAuthorName || null;
+                const coverImg = pub.coverImageUrl || pub.cover_image_url || null;
+                const pubDate = pub.createdAt || pub.created_at;
+                const pubId = pub._id || pub.id;
+                const isJournal = pub._isJournal;
+                const linkTo = isJournal ? `/journals/${pub.slug}` : `/publications/${pub.slug}`;
+                const typeLabel = isJournal ? "Journal" : pub.type;
+                const description = pub.summary || pub.abstract || null;
                 return (
                   <motion.div
-                    key={pub.id}
+                    key={pubId}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                   >
                     <Link
-                      to={`/publications/${pub.slug}`}
+                      to={linkTo}
                       className="group flex flex-col h-full bg-card rounded-3xl border border-border/50 overflow-hidden hover:border-primary/30 transition-all hover:shadow-2xl"
                     >
                       <div className="relative aspect-video overflow-hidden">
-                        {pub.cover_image_url ? (
-                          <img src={pub.cover_image_url} alt={pub.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        {coverImg ? (
+                          <img src={coverImg} alt={pub.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         ) : (
                           <div className="w-full h-full bg-gradient-to-br from-primary/10 to-indigo-500/10 flex items-center justify-center">
                             <BookOpen className="h-10 w-10 text-primary/30" />
                           </div>
                         )}
-                        <div className="absolute top-4 left-4">
-                          <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-widest border border-white/10">
-                            {pub.type}
-                          </span>
-                        </div>
+                        {typeLabel && (
+                          <div className="absolute top-4 left-4">
+                            <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-bold text-white uppercase tracking-widest border border-white/10">
+                              {typeLabel}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="p-8 flex flex-col flex-1">
                         <h3 className="font-heading font-bold text-xl mb-4 text-foreground group-hover:text-primary transition-colors line-clamp-2">
                           {pub.title}
                         </h3>
+                        {description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{description}</p>
+                        )}
                         <div className="mt-auto space-y-4">
                           {authorName && (
                             <div className="flex items-center gap-3">
@@ -526,9 +553,9 @@ export default function Index() {
                           <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-4 border-t">
                             <span className="flex items-center gap-2 tracking-wide uppercase">
                               <Calendar className="h-3 w-3" />
-                              {new Date(pub.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                              {pubDate ? new Date(pubDate).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}
                             </span>
-                            <span className="text-primary font-bold">Read More â†’</span>
+                            <span className="text-primary font-bold">Read More</span>
                           </div>
                         </div>
                       </div>
@@ -558,7 +585,7 @@ export default function Index() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {recentPubs.length === 0 ? (
+          {featuredPubs.length === 0 ? (
             [1, 2, 3].map(i => (
               <div key={i} className="rounded-3xl border bg-card p-8 space-y-4 animate-pulse">
                 <div className="h-40 rounded-2xl bg-secondary" />
@@ -567,28 +594,38 @@ export default function Index() {
               </div>
             ))
           ) : (
-            recentPubs.map((pub, i) => (
-              <motion.div key={pub.id} whileHover={{ y: -8 }} className="group relative rounded-3xl border bg-card overflow-hidden transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)]">
-                <div className="aspect-video overflow-hidden">
-                  {pub.cover_image_url ? (
-                    <img src={pub.cover_image_url} alt={pub.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/10 to-indigo-500/10 flex items-center justify-center">
-                      <BookOpen className="h-10 w-10 text-primary/30" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-6">
-                  <h3 className="font-heading font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">{pub.title}</h3>
-                  {pub.summary && <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{pub.summary}</p>}
-                  <Link to={`/publications/${pub.slug}`}>
-                    <Button size="sm" variant="outline" className="rounded-full w-full font-bold">
-                      View Publication <ArrowRight className="ml-2 h-3 w-3" />
-                    </Button>
-                  </Link>
-                </div>
-              </motion.div>
-            ))
+            featuredPubs.map((pub) => {
+              const pubId = pub._id || pub.id;
+              const coverImg = pub.coverImageUrl || pub.cover_image_url || null;
+              const isJournal = pub._isJournal;
+              const linkTo = isJournal ? `/journals/${pub.slug}` : `/publications/${pub.slug}`;
+              const description = pub.summary || pub.abstract || null;
+              return (
+                <motion.div key={pubId} whileHover={{ y: -8 }} className="group relative rounded-3xl border bg-card overflow-hidden transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)]">
+                  <div className="aspect-video overflow-hidden">
+                    {coverImg ? (
+                      <img src={coverImg} alt={pub.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/10 to-indigo-500/10 flex items-center justify-center">
+                        <BookOpen className="h-10 w-10 text-primary/30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6">
+                    {isJournal && (
+                      <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded-full mb-2">Journal</span>
+                    )}
+                    <h3 className="font-heading font-bold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">{pub.title}</h3>
+                    {description && <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{description}</p>}
+                    <Link to={linkTo}>
+                      <Button size="sm" variant="outline" className="rounded-full w-full font-bold">
+                        View Publication <ArrowRight className="ml-2 h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })
           )}
         </div>
       </section>
@@ -607,7 +644,7 @@ export default function Index() {
                 Membership gives you access to premium content, billing history, invoices, and an expanded digital experience tailored to your plan. Choose the level that fits your goals and unlock more value from the platform.
               </p>
               <Link to="/membership">
-                <Button size="lg" className="h-14 px-8 rounded-full font-bold text-lg group text-white">
+                <Button size="lg" className="h-14 px-8  rounded-full font-bold text-lg group text-white">
                   View Membership Plans
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>

@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { usersApi, journalApi, reviewsApi } from "@/lib/api";
 import { toast } from "sonner";
-import { CheckCircle, Clock, FileText, Pencil, Plus, Search, Trash2, Upload, User } from "lucide-react";
+import { CheckCircle, Clock, Eye, FileText, Pencil, Plus, Search, Trash2, Upload, User, Building, Calendar, Download } from "lucide-react";
 
 type Reviewer = {
   id: string;
@@ -82,6 +82,7 @@ export default function AdminReviews() {
   const [editSaving, setEditSaving] = useState(false);
   const [deletePaper, setDeletePaper] = useState<any>(null);
   const [deleteSaving, setDeleteSaving] = useState(false);
+  const [viewPaper, setViewPaper] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -436,8 +437,8 @@ export default function AdminReviews() {
                     </tr>
                   ) : (
                     queue.map((item) => (
-                      <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="p-4 font-medium max-w-[280px] truncate">{item.title}</td>
+                      <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewPaper(item)}>
+                        <td className="p-4 font-medium max-w-[280px] truncate hover:text-primary transition-colors">{item.title}</td>
                         <td className="p-4 text-muted-foreground hidden md:table-cell">
                           {redactAuthor(item.originalAuthorName || item.authorUser?.fullName || "Unknown")}
                         </td>
@@ -449,8 +450,9 @@ export default function AdminReviews() {
                         <td className="p-4 text-xs text-muted-foreground hidden lg:table-cell max-w-[420px]">
                           <p className="line-clamp-2">{item.abstract || "No abstract"}</p>
                         </td>
-                        <td className="p-4">
+                        <td className="p-4" onClick={e => e.stopPropagation()}>
                           <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => setViewPaper(item)} title="View Details"><Eye className="h-4 w-4" /></Button>
                             <Button size="sm" variant="outline" onClick={() => openEditPaper(item)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -925,6 +927,108 @@ export default function AdminReviews() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletePaper(null)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDeletePaper} disabled={deleteSaving}>{deleteSaving ? "Deleting..." : "Delete"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── View Paper Details Modal ─── */}
+      <Dialog open={!!viewPaper} onOpenChange={(o) => { if (!o) setViewPaper(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl leading-tight pr-6">{viewPaper?.title}</DialogTitle>
+          </DialogHeader>
+          {viewPaper && (
+            <div className="space-y-5 py-2">
+              {/* Status */}
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className={`capitalize ${STATUS_COLORS[viewPaper.status || "submitted"] || ""}`}>
+                  {String(viewPaper.status || "submitted").replace(/_/g, " ")}
+                </Badge>
+                {viewPaper.uploadedBySuperAdmin && <Badge variant="secondary">Admin Upload</Badge>}
+                {viewPaper.featured && <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">Featured</Badge>}
+              </div>
+
+              {/* Author */}
+              {(viewPaper.originalAuthorName || viewPaper.authorUser) && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <User className="h-3 w-3" />Author
+                  </p>
+                  <p className="text-sm">{viewPaper.originalAuthorName || viewPaper.authorUser?.fullName || "—"}</p>
+                  {viewPaper.authorUser?.email && <p className="text-xs text-muted-foreground">{viewPaper.authorUser.email}</p>}
+                </div>
+              )}
+
+              {/* Institution */}
+              {viewPaper.institution && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <Building className="h-3 w-3" />Institution
+                  </p>
+                  <p className="text-sm">{viewPaper.institution}</p>
+                </div>
+              )}
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                {(viewPaper.createdAt || viewPaper.created_at) && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />Submitted
+                    </p>
+                    <p className="text-sm">{new Date(viewPaper.createdAt || viewPaper.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  </div>
+                )}
+                {viewPaper.publishDate && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Publish Date</p>
+                    <p className="text-sm">{new Date(viewPaper.publishDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Keywords */}
+              {viewPaper.keywords && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Keywords</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(Array.isArray(viewPaper.keywords) ? viewPaper.keywords : String(viewPaper.keywords).split(",")).map((k: string, i: number) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{k.trim()}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Abstract */}
+              {viewPaper.abstract && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Abstract</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground bg-muted/30 rounded-lg p-3 whitespace-pre-wrap max-h-48 overflow-y-auto">{viewPaper.abstract}</p>
+                </div>
+              )}
+
+              {/* PDF */}
+              {(viewPaper.pdfUrl || viewPaper.pdf_url) && (
+                <div className="flex gap-2">
+                  <Button asChild size="sm">
+                    <a href={viewPaper.pdfUrl || viewPaper.pdf_url} target="_blank" rel="noopener noreferrer">
+                      <FileText className="h-4 w-4 mr-2" />Read Paper
+                    </a>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <a href={viewPaper.pdfUrl || viewPaper.pdf_url} target="_blank" rel="noopener noreferrer" download>
+                      <Download className="h-4 w-4 mr-2" />Download
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewPaper(null)}>Close</Button>
+            <Button onClick={() => { setViewPaper(null); openEditPaper(viewPaper); }}>
+              <Pencil className="h-4 w-4 mr-2" />Edit
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

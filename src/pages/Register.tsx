@@ -199,9 +199,17 @@ export default function Register() {
                 <div className="relative border-2 border-dashed rounded-xl p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer group">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                    onChange={e => {
+                      const f = e.target.files ? e.target.files[0] : null;
+                      if (f && f.size > 5 * 1024 * 1024) {
+                        toast.error("File too large. Please upload an image or PDF under 5MB.");
+                        e.target.value = "";
+                        return;
+                      }
+                      setFile(f);
+                    }}
                   />
                   {file ? (
                     <div className="flex items-center justify-center gap-2 text-primary font-bold">
@@ -211,7 +219,7 @@ export default function Register() {
                     <div className="space-y-2">
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
                       <p className="text-sm font-medium">Click or drag to upload screenshot</p>
-                      <p className="text-xs text-muted-foreground">JPG, PNG or PDF up to 5MB</p>
+                      <p className="text-xs text-muted-foreground">JPG, PNG, or PDF — max 5MB</p>
                     </div>
                   )}
                 </div>

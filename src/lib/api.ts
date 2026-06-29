@@ -210,9 +210,12 @@ export const contentApi = {
     return apiRequest(`/content/admin/all${qs}`);
   },
   delete: (id: string) => apiRequest(`/content/${id}`, { method: "DELETE" }),
+  track: (id: string, type: "view" | "copy") =>
+    apiRequest(`/content/${id}/track`, { method: "POST", body: { type } }),
 };
 
 export const journalApi = {
+  getFeatured: () => apiRequest("/journals/featured"),
   listPublished: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return apiRequest(`/journals/published${qs}`);
@@ -234,6 +237,29 @@ export const journalApi = {
   adminUpload: (data: FormData) =>
     apiRequest("/journals/admin/upload", { method: "POST", body: data, isFormData: true }),
   delete: (id: string) => apiRequest(`/journals/${id}`, { method: "DELETE" }),
+  withdraw: (id: string, reason: string) =>
+    apiRequest(`/journals/${id}/withdraw`, { method: "PATCH", body: { reason } }),
+  verifyPayment: (id: string, approve: boolean) =>
+    apiRequest(`/journals/${id}/verify-payment`, { method: "PATCH", body: { approve } }),
+  track: (id: string, type: "view" | "copy") =>
+    apiRequest(`/journals/${id}/track`, { method: "POST", body: { type } }),
+};
+
+// ─── Notifications API ────────────────────────────────────────────────────────
+
+export const notificationsApi = {
+  list: (params?: { unreadOnly?: boolean; limit?: number }) => {
+    const qs = params
+      ? "?" + new URLSearchParams(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined)
+            .map(([k, v]) => [k, String(v)])
+        ).toString()
+      : "";
+    return apiRequest(`/notifications${qs}`);
+  },
+  markRead: (id: string) => apiRequest(`/notifications/${id}/read`, { method: "PATCH" }),
+  markAllRead: () => apiRequest("/notifications/mark-all-read", { method: "PATCH" }),
 };
 
 // â”€â”€â”€ Workflow API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -364,6 +390,8 @@ export const libraryApi = {
   reviewSubmission: (id: string, action: "approve" | "reject" | "request_changes", note?: string) =>
     apiRequest(`/library/admin/${id}/review`, { method: "PATCH", body: { action, note } }),
   delete: (id: string) => apiRequest(`/library/${id}`, { method: "DELETE" }),
+  track: (id: string, type: "view" | "copy") =>
+    apiRequest(`/library/${id}/track`, { method: "POST", body: { type } }),
 };
 
 // â”€â”€â”€ Featured Users API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

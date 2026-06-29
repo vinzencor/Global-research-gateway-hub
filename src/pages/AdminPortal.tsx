@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers } from "lucide-react";
+import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers, Bell, BellOff, Banknote, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { contentApi, adminApi, journalApi } from "@/lib/api";
+import { contentApi, adminApi, journalApi, notificationsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import AdminContent from "@/pages/admin/AdminContent";
@@ -20,6 +20,8 @@ import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminValidateUsers from "@/pages/admin/AdminValidateUsers";
 import AdminRoles from "@/pages/admin/AdminRoles";
 import AdminHappenings from "@/pages/admin/AdminHappenings";
+import AdminJournalPayments from "@/pages/admin/AdminJournalPayments";
+import AdminWithdrawals from "@/pages/admin/AdminWithdrawals";
 import { Megaphone } from "lucide-react";
 
 type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: string };
@@ -27,6 +29,8 @@ type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: 
 const navItems: AdminNavItem[] = [
   { label: "Dashboard", to: "/admin", moduleKey: "dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: "Paper Pipeline", to: "/admin/pipeline", moduleKey: "pipeline", icon: <BarChart3 className="h-4 w-4" /> },
+  { label: "Journal Payments", to: "/admin/journal-payments", moduleKey: "pipeline", icon: <Banknote className="h-4 w-4" /> },
+  { label: "Withdrawals", to: "/admin/withdrawals", moduleKey: "pipeline", icon: <LogOut className="h-4 w-4" /> },
   { label: "Analytics", to: "/admin/analytics", moduleKey: "analytics", icon: <TrendingUp className="h-4 w-4" /> },
   { label: "Workflow Designer", to: "/admin/workflow", moduleKey: "workflow", icon: <GitBranch className="h-4 w-4" /> },
   { label: "Sub-Admins", to: "/admin/sub-admins", moduleKey: "sub_admins", icon: <UserCheck className="h-4 w-4" /> },
@@ -46,14 +50,17 @@ export default function AdminPortal() {
   const { user } = useAuth();
   const [stats, setStats] = useState({ content: 0, inReview: 0, published: 0, featuredUsers: 0, users: 0, members: 0, pendingApprovals: 0, submittedJournals: 0 });
   const [recentJournals, setRecentJournals] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
       try {
-        const [analytics, journals] = await Promise.all([
+        const [analytics, journals, notifData] = await Promise.all([
           adminApi.getAnalytics(),
           journalApi.adminList({ limit: "200" }),
+          notificationsApi.list({ limit: 20 }).catch(() => null),
         ]);
         const journalItems = journals?.items || journals || [];
         setStats({
@@ -67,6 +74,10 @@ export default function AdminPortal() {
           submittedJournals: journalItems.filter((j: any) => j.status === "submitted").length,
         });
         setRecentJournals(journalItems.slice(0, 6));
+        if (notifData) {
+          setNotifications((notifData as any).notifications || []);
+          setUnreadCount((notifData as any).unreadCount || 0);
+        }
       } catch (err) {
         console.error("Failed to load admin stats", err);
         toast.error("Could not load dashboard data. Please refresh.");
@@ -78,6 +89,7 @@ export default function AdminPortal() {
     draft: "bg-muted text-muted-foreground", in_review: "bg-warning/10 text-warning border-warning/20",
     approved: "bg-info/10 text-info border-info/20", published: "bg-success/10 text-success border-success/20",
     archived: "bg-destructive/10 text-destructive border-destructive/20", changes_requested: "bg-orange-500/10 text-orange-600 border-orange-200",
+    withdrawn: "bg-gray-500/10 text-gray-600 border-gray-200", rejected: "bg-destructive/10 text-destructive border-destructive/20",
   };
 
   function canAccess(moduleKey?: string) {
@@ -171,6 +183,74 @@ export default function AdminPortal() {
               </div>
             </div>
 
+            {/* Notifications panel */}
+            <div className="rounded-xl border bg-card card-shadow overflow-hidden">
+              <div className="p-5 border-b flex items-center justify-between bg-muted/20">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary" />
+                  <h2 className="font-heading font-bold">Recent Notifications</h2>
+                  {unreadCount > 0 && (
+                    <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-destructive text-white text-xs font-bold">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs gap-1"
+                    onClick={async () => {
+                      await notificationsApi.markAllRead().catch(() => null);
+                      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                      setUnreadCount(0);
+                    }}
+                  >
+                    <BellOff className="h-3 w-3" /> Mark all read
+                  </Button>
+                )}
+              </div>
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">No notifications</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {notifications.map((n: any) => (
+                    <div
+                      key={n._id}
+                      className={`flex items-start gap-3 px-5 py-4 transition-colors ${n.read ? "opacity-60" : "bg-primary/5"}`}
+                    >
+                      <div className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${n.read ? "bg-muted-foreground/30" : "bg-primary"}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm leading-snug">{n.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(n.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      {!n.read && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs shrink-0 h-7 px-2"
+                          onClick={async () => {
+                            await notificationsApi.markRead(n._id).catch(() => null);
+                            setNotifications((prev) =>
+                              prev.map((x) => x._id === n._id ? { ...x, read: true } : x)
+                            );
+                            setUnreadCount((c) => Math.max(0, c - 1));
+                          }}
+                        >
+                          Dismiss
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Recent journals table */}
             <div className="rounded-xl border bg-card card-shadow overflow-hidden">
               <div className="p-5 border-b flex items-center justify-between bg-muted/20">
@@ -215,6 +295,8 @@ export default function AdminPortal() {
           </div>
         : AccessDenied} />
         <Route path="/pipeline" element={canAccess("pipeline") ? <AdminJournalPipeline /> : AccessDenied} />
+        <Route path="/journal-payments" element={canAccess("pipeline") ? <AdminJournalPayments /> : AccessDenied} />
+        <Route path="/withdrawals" element={canAccess("pipeline") ? <AdminWithdrawals /> : AccessDenied} />
         <Route path="/analytics" element={canAccess("analytics") ? <AdminAnalytics /> : AccessDenied} />
         <Route path="/workflow" element={canAccess("workflow") ? <AdminWorkflow /> : AccessDenied} />
         <Route path="/sub-admins" element={canAccess("sub_admins") ? <AdminSubAdmins /> : AccessDenied} />

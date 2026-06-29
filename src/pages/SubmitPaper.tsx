@@ -175,13 +175,21 @@ export default function SubmitPaper() {
               <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors">
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Click to upload or drag and drop</span>
-                <span className="text-xs text-muted-foreground">PDF up to 50MB</span>
+                <span className="text-xs text-muted-foreground">PDF up to 10MB</span>
                 <span className="text-xs text-muted-foreground">If you are unable to upload, please contact us.</span>
                 <input
                   type="file"
                   accept=".pdf"
                   className="hidden"
-                  onChange={(e) => setManuscriptFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f && f.size > 10 * 1024 * 1024) {
+                      toast.error("PDF too large. Please upload a file under 10MB.");
+                      e.target.value = "";
+                      return;
+                    }
+                    setManuscriptFile(f);
+                  }}
                 />
               </label>
               {(manuscriptFile || existingManuscriptUrl) && (
@@ -206,7 +214,7 @@ export default function SubmitPaper() {
             <div className="space-y-4 text-xs text-muted-foreground">
               <div>
                 <p className="font-bold text-foreground mb-1">File Format</p>
-                <p>Only PDF files are accepted. Max size 50MB.</p>
+                <p>Only PDF files are accepted. Max size 10MB.</p>
               </div>
               <div>
                 <p className="font-bold text-foreground mb-1">Citations</p>
