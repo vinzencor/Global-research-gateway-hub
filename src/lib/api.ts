@@ -310,6 +310,8 @@ export const workflowApi = {
       body: { action, comment, accessMode, ppvPrice },
     }),
   getContentLogs: (contentId: string) => apiRequest(`/workflow/content/${contentId}/logs`),
+  getMyLogs: () => apiRequest("/workflow/my-logs"),
+  getAllLogs: () => apiRequest("/workflow/all-logs"),
   getMyScore: () => apiRequest("/workflow/my-score"),
 };
 

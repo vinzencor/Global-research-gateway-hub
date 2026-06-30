@@ -173,7 +173,7 @@ export default function EditorDashboard() {
                 <div key={item.id} className="p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">{item.title}</p>
-                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{item.type} Â· {new Date(item.created_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{item.type} · {new Date(item.created_at).toLocaleDateString()}</p>
                   </div>
                   <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/20">
                     {item.workflow_status?.replace("_", " ")}

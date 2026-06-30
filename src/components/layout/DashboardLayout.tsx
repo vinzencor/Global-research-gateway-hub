@@ -176,8 +176,8 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
                         </DropdownMenuItem>
                       )}
                       {(isSubAdmin(user.roles) || isReviewer(user.roles)) && (
-                        <DropdownMenuItem onClick={() => navigate(isSubAdmin(user.roles) ? "/sub-admin" : "/reviewer")} className="gap-2">
-                          <Bell className="h-4 w-4" /> {isSubAdmin(user.roles) ? "Sub-Admin Portal" : "Reviewer Portal"}
+                        <DropdownMenuItem onClick={() => navigate(isSubAdmin(user.roles) ? "/sub-admin" : "/reviewer/stage")} className="gap-2">
+                          <Bell className="h-4 w-4" /> {isSubAdmin(user.roles) ? "Sub-Admin Portal" : "Review Queue"}
                         </DropdownMenuItem>
                       )}
                     </div>

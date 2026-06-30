@@ -78,7 +78,7 @@ export default function EditorReport() {
             <BarChart2 className="h-6 w-6 text-primary" />
             <h2 className="font-heading text-2xl font-bold">My Performance Report</h2>
           </div>
-          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} Â· Editor Â· All-time statistics</p>
+          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} · Editor · All-time statistics</p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -125,7 +125,7 @@ export default function EditorReport() {
                     <div className="w-full h-2.5 bg-secondary rounded-full overflow-hidden">
                       <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% Â· +{item.count * item.pts} pts</p>
+                    <p className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% · +{item.count * item.pts} pts</p>
                   </div>
                 );
               })}

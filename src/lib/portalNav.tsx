@@ -54,6 +54,8 @@ function withRegisteredFallback(roles: UserRole[] = [], moduleAccess: Record<str
     return {
       ...defaultAccess,
       subadmin_review_queue: true,
+      subadmin_history: true,
+      subadmin_reports: true,
     } as Record<string, boolean>;
   }
 
@@ -94,7 +96,6 @@ export const BASE_PORTAL_NAV_ITEMS: PortalNavItem[] = [
 
 export const BASE_SUBADMIN_NAV_ITEMS: SubAdminNavItem[] = [
   { label: "Dashboard", to: "/sub-admin", moduleKey: "subadmin_dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: "Assigned Papers", to: "/reviewer", moduleKey: "subadmin_review_queue", icon: <FileText className="h-4 w-4" /> },
   { label: "My Review Queue", to: "/reviewer/stage", moduleKey: "subadmin_review_queue", icon: <FileText className="h-4 w-4" /> },
   { label: "Review History", to: "/sub-admin/history", moduleKey: "subadmin_history", icon: <Bell className="h-4 w-4" /> },
   { label: "Reports", to: "/sub-admin/report", moduleKey: "subadmin_reports", icon: <CreditCard className="h-4 w-4" /> },
@@ -109,12 +110,9 @@ export function getPortalNavItemsForRoles(roles: UserRole[] = [], moduleAccess: 
 
   const adminItems = isAdmin(roles) ? [{ label: "Admin Console", to: "/admin", icon: <ShieldCheck className="h-4 w-4" /> }] : [];
   
-  // Reviewers and sub-admins get reviewer-specific links in their main portal nav
-  const reviewerItems = (roles.includes("sub_admin") || roles.includes("reviewer") || isAdmin(roles)) 
-    ? [
-        { label: "Assigned Papers", to: "/reviewer", icon: <FileText className="h-4 w-4" /> },
-        { label: "My Review Queue", to: "/reviewer/stage", icon: <FileText className="h-4 w-4" /> }
-      ] 
+  // Reviewers and sub-admins get a reviewer-specific link in their main portal nav
+  const reviewerItems = (roles.includes("sub_admin") || roles.includes("reviewer") || isAdmin(roles))
+    ? [{ label: "My Review Queue", to: "/reviewer/stage", icon: <FileText className="h-4 w-4" /> }]
     : [];
 
   return [...baseItems, ...reviewerItems, ...adminItems];

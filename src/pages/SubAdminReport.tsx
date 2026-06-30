@@ -2,9 +2,10 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LayoutDashboard, ClipboardList, Settings, History, BarChart2, CheckCircle, XCircle, Clock, TrendingUp, Award, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { db } from "@/lib/legacyDb";
+import { workflowApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
+import { toast } from "sonner";
 
 const SCORE_APPROVED = 10;
 const SCORE_CHANGES = 5;
@@ -37,29 +38,32 @@ export default function SubAdminReport() {
 
   async function loadReport() {
     setLoading(true);
-    const { data } = await db
-      .from("workflow_logs")
-      .select("id, action, comment, acted_at, content_id, content_items(id, title, type)")
-      .eq("acted_by", user!.id)
-      .order("acted_at", { ascending: false });
+    try {
+      const data: any = await workflowApi.getMyLogs();
+      const all = Array.isArray(data) ? data : data?.items || [];
+      setLogs(all);
 
-    const all = data || [];
-    setLogs(all);
-
-    // Build last 6 months breakdown
-    const now = new Date();
-    const months: { month: string; count: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const label = d.toLocaleString("default", { month: "short" });
-      const count = all.filter(l => {
-        const ld = new Date(l.acted_at);
-        return ld.getMonth() === d.getMonth() && ld.getFullYear() === d.getFullYear();
-      }).length;
-      months.push({ month: label, count });
+      // Build last 6 months breakdown
+      const now = new Date();
+      const months: { month: string; count: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const label = d.toLocaleString("default", { month: "short" });
+        const count = all.filter((l: any) => {
+          if (!l.actedAt) return false;
+          const ld = new Date(l.actedAt);
+          return ld.getMonth() === d.getMonth() && ld.getFullYear() === d.getFullYear();
+        }).length;
+        months.push({ month: label, count });
+      }
+      setMonthlyData(months);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load report");
+      setLogs([]);
+      setMonthlyData([]);
+    } finally {
+      setLoading(false);
     }
-    setMonthlyData(months);
-    setLoading(false);
   }
 
   const approved = logs.filter(l => l.action === "approved").length;
@@ -92,7 +96,7 @@ export default function SubAdminReport() {
             <h2 className="font-heading text-2xl font-bold">My Performance Report</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            {user?.profile?.full_name || user?.email} Â· All-time review statistics
+            {user?.profile?.full_name || user?.email} · All-time review statistics
           </p>
         </div>
 
@@ -158,7 +162,7 @@ export default function SubAdminReport() {
                       <div className={`h-full ${item.color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {Math.round(pct)}% of total Â· +{item.count * item.pts} pts
+                      {Math.round(pct)}% of total · +{item.count * item.pts} pts
                     </p>
                   </div>
                 );
@@ -192,8 +196,8 @@ export default function SubAdminReport() {
                 </thead>
                 <tbody>
                   {logs.slice(0, 10).map(log => (
-                    <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "—"}</td>
+                    <tr key={log._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content?.title || "—"}</td>
                       <td className="p-4 hidden sm:table-cell">
                         <Badge variant="outline" className={`text-xs ${
                           log.action === "approved" ? "bg-success/10 text-success border-success/20" :
@@ -207,7 +211,7 @@ export default function SubAdminReport() {
                         <span className="line-clamp-1">{log.comment || "—"}</span>
                       </td>
                       <td className="p-4 text-xs text-muted-foreground">
-                        {new Date(log.acted_at).toLocaleDateString()}
+                        {log.actedAt ? new Date(log.actedAt).toLocaleDateString() : "—"}
                       </td>
                     </tr>
                   ))}

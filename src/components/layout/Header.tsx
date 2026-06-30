@@ -39,7 +39,7 @@ export function Header() {
   const dashboardPath = user
     ? isAdmin(user.roles) ? "/admin"
       : user.roles.includes("sub_admin") ? "/reviewer/stage"
-        : user.roles.includes("reviewer") ? "/reviewer"
+        : user.roles.includes("reviewer") ? "/reviewer/stage"
           : user.roles.includes("author") ? "/author"
             : "/portal/dashboard"
     : "/login";

@@ -43,7 +43,7 @@ const navItems: AdminNavItem[] = [
   { label: "Users & Roles", to: "/admin/users", moduleKey: "users", icon: <Users className="h-4 w-4" /> },
   { label: "Roles", to: "/admin/roles", moduleKey: "roles", icon: <Shield className="h-4 w-4" /> },
   { label: "Validate New Users", to: "/admin/validate-users", moduleKey: "validate_users", icon: <CheckCircle2 className="h-4 w-4" /> },
-  { label: "Billing", to: "/admin/billing", moduleKey: "billing", icon: <CreditCard className="h-4 w-4" /> },
+  // { label: "Billing", to: "/admin/billing", moduleKey: "billing", icon: <CreditCard className="h-4 w-4" /> },
   { label: "Payment Reports", to: "/admin/payment-reports", moduleKey: "billing", icon: <FileBarChart className="h-4 w-4" /> },
   { label: "Switch to User Portal", to: "/portal/dashboard", icon: <ArrowLeftRight className="h-4 w-4" /> },
 ];

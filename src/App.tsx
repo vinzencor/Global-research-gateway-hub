@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute, PublicOnlyRoute } from "@/components/ProtectedRoute";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -37,7 +37,6 @@ import AdminPortal from "./pages/AdminPortal";
 // Author + reviewer pages
 import AuthorDashboard from "./pages/AuthorDashboard";
 import SubmitPaper from "./pages/SubmitPaper";
-import ReviewerPortal from "./pages/ReviewerPortal";
 import SubAdminReview from "./pages/SubAdminReview";
 import SubAdminPortal from "./pages/SubAdminPortal";
 import SubAdminSettings from "./pages/SubAdminSettings";
@@ -91,12 +90,11 @@ const App = () => (
             <Route path="/author" element={<ProtectedRoute requiredModule="portal_submissions" requiredRoles={["registered_user","member","subscriber","author","sub_admin","reviewer","editor","content_admin","super_admin"]}><AuthorDashboard /></ProtectedRoute>} />
             <Route path="/submit-paper" element={<ProtectedRoute requiredModule="portal_submit" requiredRoles={["registered_user","member","subscriber","author","sub_admin","reviewer","editor","content_admin","super_admin"]}><SubmitPaper /></ProtectedRoute>} />
 
-            {/* Reviewer routes */}
-            <Route path="/reviewer/*" element={
-              <ProtectedRoute requiredRoles={["reviewer","sub_admin","editor","super_admin"]}>
-                <ReviewerPortal />
-              </ProtectedRoute>
-            } />
+            {/* Reviewer routes — papers are assigned to a Workflow only, so the
+                real reviewer queue lives at /reviewer/stage. Redirect the old
+                landing path there instead of rendering a page that can never
+                have data. */}
+            <Route path="/reviewer/*" element={<Navigate to="/reviewer/stage" replace />} />
 
             {/* Sub-admin portal + stage review */}
             <Route path="/sub-admin" element={

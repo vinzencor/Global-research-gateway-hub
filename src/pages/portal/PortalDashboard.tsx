@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAdmin } from "@/contexts/AuthContext";
-import { authApi, libraryApi, membershipApi, reviewsApi } from "@/lib/api";
+import { authApi, libraryApi, membershipApi, workflowApi } from "@/lib/api";
 import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 
 export default function PortalDashboard() {
@@ -26,9 +26,10 @@ export default function PortalDashboard() {
         ]);
 
         if ((user?.roles || []).some((r) => ["reviewer", "sub_admin", "editor", "super_admin"].includes(String(r)))) {
-          const myReviews: any[] = await reviewsApi.getMyReviews().catch(() => []);
-          const assigned = (myReviews || []).filter((r: any) => r?.status === "assigned").length;
-          setAssignedReviewCount(assigned);
+          // Papers are assigned via Workflow stages only — this is the same
+          // queue the Workflow Designer / "My Review Queue" page reads from.
+          const myQueue: any[] = await workflowApi.getMyQueue().catch(() => []);
+          setAssignedReviewCount((myQueue || []).length);
         } else {
           setAssignedReviewCount(0);
         }
@@ -154,10 +155,10 @@ export default function PortalDashboard() {
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="font-heading font-bold">Reviewer Assignments</h3>
-              <p className="text-sm text-muted-foreground">Assigned papers waiting for your selection: {assignedReviewCount}</p>
+              <p className="text-sm text-muted-foreground">Items waiting at your workflow stage: {assignedReviewCount}</p>
             </div>
-            <Link to="/reviewer">
-              <Button className="font-bold">Open Reviewer Portal</Button>
+            <Link to="/reviewer/stage">
+              <Button className="font-bold">Open Review Queue</Button>
             </Link>
           </div>
         )}

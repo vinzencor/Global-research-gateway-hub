@@ -348,8 +348,8 @@ export default function AdminUsers() {
                           </Badge>
                           <p className="text-xs text-muted-foreground">
                             {membership.membership_plans?.name || "Plan"}
-                            {typeof membership.membership_plans?.price === "number" ? ` Â· $${Number(membership.membership_plans.price).toFixed(2)}` : ""}
-                            {membership.ends_at ? ` Â· ${new Date(membership.ends_at).toLocaleDateString()}` : ""}
+                            {typeof membership.membership_plans?.price === "number" ? ` · $${Number(membership.membership_plans.price).toFixed(2)}` : ""}
+                            {membership.ends_at ? ` · ${new Date(membership.ends_at).toLocaleDateString()}` : ""}
                           </p>
                         </div>
                       ) : <span className="text-muted-foreground text-xs">No membership</span>}
@@ -474,7 +474,7 @@ export default function AdminUsers() {
                   <p className="text-sm">{showMembershipDialog.membership.membership_plans?.name || "Plan"}</p>
                   <p className="text-xs text-muted-foreground">
                     Starts: {showMembershipDialog.membership.starts_at ? new Date(showMembershipDialog.membership.starts_at).toLocaleDateString() : "N/A"}
-                    {" Â· "}
+                    {" · "}
                     Ends: {showMembershipDialog.membership.ends_at ? new Date(showMembershipDialog.membership.ends_at).toLocaleDateString() : "N/A"}
                   </p>
                 </div>

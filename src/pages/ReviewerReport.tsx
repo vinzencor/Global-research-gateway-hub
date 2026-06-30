@@ -105,7 +105,7 @@ export default function ReviewerReport() {
             <BarChart2 className="h-6 w-6 text-primary" />
             <h2 className="font-heading text-2xl font-bold">My Review Report</h2>
           </div>
-          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} Â· Reviewer Â· All-time statistics</p>
+          <p className="text-sm text-muted-foreground">{user?.profile?.full_name || user?.email} · Reviewer · All-time statistics</p>
         </div>
 
         {/* KPIs */}

@@ -92,7 +92,7 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
       return <Navigate to="/reviewer/stage" replace />;
     }
     if (user.roles.includes("reviewer")) {
-      return <Navigate to="/reviewer" replace />;
+      return <Navigate to="/reviewer/stage" replace />;
     }
     if (user.roles.includes("author")) {
       return <Navigate to="/author" replace />;
