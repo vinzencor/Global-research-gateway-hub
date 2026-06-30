@@ -31,6 +31,7 @@ import { ChairmanVoice } from "./ChairmanVoice";
 import { Separator } from "./Separator";
 import { Section2 } from "./Section2";
 import { contentApi, journalApi } from "@/lib/api";
+import MembershipShowcase from "@/components/MembershipShowcase";
 
 const categoryStats = [
   { label: "Total Papers", value: "12,000+", icon: <FileText className="h-5 w-5" /> },
@@ -370,7 +371,7 @@ export default function Index() {
 
       <HappeningAcross />
 
-""      {/* Section Six â€” Publication Types */}
+""      {/* Section Six — Publication Types */}
       <section className="container py-24">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-6">Diverse Publication Types</h2>
@@ -406,7 +407,7 @@ export default function Index() {
 
       <ChairmanVoice />
 
-      {/* Section Seven â€” Professional Membership */}
+      {/* Section Seven — Professional Membership */}
       <section className="bg-secondary/50 py-24 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
           <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[60%] bg-primary rounded-full blur-[150px]" />
@@ -631,45 +632,28 @@ export default function Index() {
       </section>
 
       {/* Membership Promo Section */}
-      <section className="bg-secondary/30 relative overflow-hidden">
-        <div className="container py-24">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm">
-                <CreditCard className="h-4 w-4" />
-                Membership
-              </div>
-              <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight tracking-tight">Become a Member</h2>
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                Membership gives you access to premium content, billing history, invoices, and an expanded digital experience tailored to your plan. Choose the level that fits your goals and unlock more value from the platform.
-              </p>
-              <Link to="/membership">
-                <Button size="lg" className="h-14 px-8  rounded-full font-bold text-lg group text-white">
-                  View Membership Plans
-                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </Link>
-            </div>
+      <section className="bg-secondary/20 relative overflow-hidden py-24 border-y border-border/40">
+        {/* Dynamic Background Gradients */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+          <div className="absolute top-[10%] right-[10%] w-[40%] h-[40%] bg-primary rounded-full blur-[120px]" />
+          <div className="absolute bottom-[10%] left-[10%] w-[35%] h-[35%] bg-indigo-500 rounded-full blur-[100px]" />
+        </div>
 
-            <div className="grid gap-4">
-              {membershipPlans.map((plan, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  viewport={{ once: true }}
-                  className={`rounded-2xl border p-6 transition-all ${plan.highlight ? "bg-primary text-white border-primary shadow-xl" : "bg-card hover:border-primary/30"}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className={`font-heading font-bold text-lg ${plan.highlight ? "text-white" : ""}`}>{plan.title}</h3>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${plan.highlight ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`}>{plan.badge}</span>
-                  </div>
-                  <p className={`text-sm leading-relaxed ${plan.highlight ? "text-white/80" : "text-muted-foreground"}`}>{plan.description}</p>
-                </motion.div>
-              ))}
+        <div className="container relative z-10">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium text-sm">
+              <CreditCard className="h-4 w-4" />
+              Membership Plans
             </div>
+            <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight tracking-tight">
+              Flexible Plans Built for Scholars and Experts
+            </h2>
+            <p className="text-lg text-muted-foreground leading-relaxed">
+              Unlock access to premium library resources, waiver credits, and professional badges with a membership plan designed around your academic needs.
+            </p>
           </div>
+
+          <MembershipShowcase />
         </div>
       </section>
 

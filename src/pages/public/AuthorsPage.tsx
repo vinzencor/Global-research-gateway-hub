@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { featuredApi, journalApi, usersApi } from "@/lib/api";
+import { featuredApi, usersApi } from "@/lib/api";
 import { Search, ArrowRight, Star } from "lucide-react";
 
 export default function    AuthorsPage() {
@@ -17,9 +17,8 @@ export default function    AuthorsPage() {
     async function loadAuthors() {
       setLoading(true);
       try {
-        const [usersRes, journalsRes, featuredRes] = await Promise.all([
-          usersApi.list({ role: "author", limit: "2000" }) as Promise<any>,
-          journalApi.listPublished({ limit: "2000" }) as Promise<any>,
+        const [usersRes, featuredRes] = await Promise.all([
+          usersApi.listPublicDirectory({ role: "author", limit: "2000" }) as Promise<any>,
           featuredApi.list() as Promise<any>,
         ]);
 
@@ -31,23 +30,11 @@ export default function    AuthorsPage() {
           ? usersRes
           : [];
 
-        const journals = Array.isArray(journalsRes?.items)
-          ? journalsRes.items
-          : Array.isArray(journalsRes)
-          ? journalsRes
-          : [];
-
         const featuredUsers = Array.isArray(featuredRes?.items)
           ? featuredRes.items
           : Array.isArray(featuredRes)
           ? featuredRes
           : [];
-
-        const publishedAuthorIds = new Set<string>();
-        for (const j of journals) {
-          const authorId = String(j?.authorUser?._id || j?.author_user_id || "");
-          if (authorId) publishedAuthorIds.add(authorId);
-        }
 
         const featuredIdSet = new Set<string>();
         for (const f of featuredUsers) {
@@ -84,8 +71,9 @@ export default function    AuthorsPage() {
           });
         }
 
+        // Show every author-role user — publication status only affects the
+        // "Featured" badge, it's not a gate on whether they appear at all.
         const merged = Array.from(userMap.values())
-          .filter((a) => publishedAuthorIds.has(a.id) || a.is_featured)
           .sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
 
         setAuthors(merged);

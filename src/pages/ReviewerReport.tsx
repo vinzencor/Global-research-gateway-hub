@@ -197,17 +197,17 @@ export default function ReviewerReport() {
                 <tbody>
                   {submittedReviews.map(r => (
                     <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium max-w-[200px] truncate">{r.content_items?.title || "â€”"}</td>
-                      <td className="p-4 text-muted-foreground capitalize hidden sm:table-cell">{r.content_items?.type || "â€”"}</td>
+                      <td className="p-4 font-medium max-w-[200px] truncate">{r.content_items?.title || "—"}</td>
+                      <td className="p-4 text-muted-foreground capitalize hidden sm:table-cell">{r.content_items?.type || "—"}</td>
                       <td className="p-4">
                         {r.recommendation ? (
                           <Badge variant="outline" className={`text-xs ${RECOMMENDATION_COLORS[r.recommendation] || ""}`}>
                             {RECOMMENDATION_LABELS[r.recommendation] || r.recommendation}
                           </Badge>
-                        ) : "â€”"}
+                        ) : "—"}
                       </td>
                       <td className="p-4 text-xs text-muted-foreground hidden md:table-cell">
-                        {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : "â€”"}
+                        {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : "—"}
                       </td>
                     </tr>
                   ))}

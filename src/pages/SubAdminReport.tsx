@@ -193,7 +193,7 @@ export default function SubAdminReport() {
                 <tbody>
                   {logs.slice(0, 10).map(log => (
                     <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "â€”"}</td>
+                      <td className="p-4 font-medium max-w-[200px] truncate">{log.content_items?.title || "—"}</td>
                       <td className="p-4 hidden sm:table-cell">
                         <Badge variant="outline" className={`text-xs ${
                           log.action === "approved" ? "bg-success/10 text-success border-success/20" :
@@ -204,7 +204,7 @@ export default function SubAdminReport() {
                         </Badge>
                       </td>
                       <td className="p-4 text-muted-foreground hidden md:table-cell">
-                        <span className="line-clamp-1">{log.comment || "â€”"}</span>
+                        <span className="line-clamp-1">{log.comment || "—"}</span>
                       </td>
                       <td className="p-4 text-xs text-muted-foreground">
                         {new Date(log.acted_at).toLocaleDateString()}

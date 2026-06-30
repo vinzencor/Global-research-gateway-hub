@@ -5,7 +5,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { db } from "@/lib/legacyDb";
+import { usersApi, featuredApi } from "@/lib/api";
 import { Search, Crown, Star, Users, ArrowRight, CheckCircle } from "lucide-react";
 
 export default function ReviewersPage() {
@@ -15,26 +15,46 @@ export default function ReviewersPage() {
 
   useEffect(() => {
     async function fetchReviewers() {
-      const { data: roleData } = await db.from("roles").select("id").eq("name", "reviewer").single();
-      if (!roleData) { setLoading(false); return; }
-      
-      const { data: userRoles } = await db.from("user_roles").select("user_id").eq("role_id", roleData.id);
-      const reviewerIds = Array.from(new Set((userRoles || []).map((ur: any) => ur.user_id)));
-      
-      if (reviewerIds.length === 0) {
-        setReviewers([]);
-        setLoading(false);
-        return;
-      }
+      setLoading(true);
+      try {
+        const [usersRes, featuredRes]: [any, any] = await Promise.all([
+          usersApi.listPublicDirectory({ role: "reviewer", limit: "2000" }),
+          featuredApi.list(),
+        ]);
 
-      const { data: profiles } = await db
-        .from("profiles")
-        .select("id, full_name, institution, bio, photo_url, reviewer_category")
-        .in("id", reviewerIds)
-        .order("full_name");
-        
-      setReviewers(profiles || []);
-      setLoading(false);
+        const users = Array.isArray(usersRes?.users)
+          ? usersRes.users
+          : Array.isArray(usersRes)
+          ? usersRes
+          : [];
+
+        const featuredIdSet = new Set<string>(
+          (Array.isArray(featuredRes?.items) ? featuredRes.items : Array.isArray(featuredRes) ? featuredRes : [])
+            .map((f: any) => String(f?._id || f?.id || ""))
+            .filter(Boolean)
+        );
+
+        const mapped = users
+          .map((u: any) => {
+            const id = String(u?._id || u?.id || "");
+            return {
+              id,
+              full_name: u?.fullName || "Unnamed User",
+              institution: u?.institution || "",
+              bio: u?.bio || "",
+              photo_url: u?.photoUrl || "",
+              reviewer_category: u?.reviewerCategory || "",
+              is_featured: featuredIdSet.has(id),
+            };
+          })
+          .sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || ""));
+
+        setReviewers(mapped);
+      } catch {
+        setReviewers([]);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchReviewers();
   }, []);

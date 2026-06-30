@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
+import MembershipShowcase from "@/components/MembershipShowcase";
 import {
   ArrowRight,
   BookOpen,
@@ -185,47 +186,12 @@ export default function MembershipPage() {
       </section>
 
       {/* Membership Plans */}
-      <section className="container py-24">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-4">Choose Your Plan</h2>
-          <p className="text-lg text-muted-foreground">Select the level of access that aligns with your goals.</p>
+      <section className="container py-24 border-t border-border/40">
+        <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
+          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight mb-2">Choose Your Plan</h2>
+          <p className="text-lg text-muted-foreground">Select the level of access that aligns with your professional and academic goals.</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              viewport={{ once: true }}
-              className={`relative rounded-[2.5rem] border p-10 flex flex-col transition-all ${plan.highlight ? "bg-primary text-white border-primary shadow-2xl scale-105" : "bg-card hover:border-primary/30 hover:shadow-xl"}`}
-            >
-              {plan.highlight && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 rounded-full bg-white text-primary text-xs font-bold shadow-lg uppercase tracking-widest">
-                  Most Popular
-                </div>
-              )}
-              <div className="mb-8">
-                <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-tighter ${plan.highlight ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`}>
-                  {plan.badge}
-                </span>
-              </div>
-              <h3 className={`font-heading text-3xl font-bold mb-6 ${plan.highlight ? "text-white" : ""}`}>{plan.title}</h3>
-              <p className={`text-lg leading-relaxed flex-1 ${plan.highlight ? "text-white/80" : "text-muted-foreground"}`}>{plan.description}</p>
-              <div className="mt-10">
-                <Link to="/register">
-                  <Button
-                    className={`w-full h-14 rounded-full font-bold text-lg ${plan.highlight ? "bg-white text-primary hover:bg-white/90" : ""}`}
-                    variant={plan.highlight ? "secondary" : "outline"}
-                    size="lg"
-                  >
-                    Select Plan
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        <MembershipShowcase />
       </section>
 
       {/* Purchase / Renewal Section */}

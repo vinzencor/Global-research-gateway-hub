@@ -338,7 +338,7 @@ export default function AdminWorkflow() {
                         <SelectValue placeholder="Assign sub-admin or reviewer..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">â€” No assignment â€”</SelectItem>
+                        <SelectItem value="none">No assignment</SelectItem>
                         {assignees.length === 0 && <SelectItem value="__empty" disabled>No sub-admins or reviewers yet</SelectItem>}
                         {assignees.map(u => (
                           <SelectItem key={u.id} value={u.id}>

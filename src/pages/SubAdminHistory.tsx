@@ -99,11 +99,11 @@ export default function SubAdminHistory() {
                     <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="font-medium max-w-[200px] truncate">
-                          {log.content_items?.title || "â€”"}
+                          {log.content_items?.title || "—"}
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground capitalize hidden sm:table-cell">
-                        {log.content_items?.type || "â€”"}
+                        {log.content_items?.type || "—"}
                       </td>
                       <td className="p-4">
                         <Badge variant="outline" className={`text-xs ${ACTION_COLORS[log.action] || ""}`}>
@@ -115,7 +115,7 @@ export default function SubAdminHistory() {
                         </Badge>
                       </td>
                       <td className="p-4 text-muted-foreground hidden md:table-cell">
-                        <span className="line-clamp-1 max-w-[200px]">{log.comment || "â€”"}</span>
+                        <span className="line-clamp-1 max-w-[200px]">{log.comment || "—"}</span>
                       </td>
                       <td className="p-4 text-muted-foreground text-xs">
                         Stage {(log.stage_index || 0) + 1}

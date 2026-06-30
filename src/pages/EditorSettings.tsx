@@ -63,7 +63,7 @@ export default function EditorSettings() {
             <div className="space-y-2 pt-4 border-t">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Full Name</span>
-                <span className="font-medium">{user?.profile?.full_name || "â€”"}</span>
+                <span className="font-medium">{user?.profile?.full_name || "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Email</span>

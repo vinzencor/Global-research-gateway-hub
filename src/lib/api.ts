@@ -171,6 +171,11 @@ export const usersApi = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return apiRequest(`/users${qs}`);
   },
+  // Public — no auth required, used by the public Authors/Reviewers pages
+  listPublicDirectory: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return apiRequest(`/users/public/directory${qs}`);
+  },
   assignRoles: (userId: string, roles: string[]) =>
     apiRequest(`/users/${userId}/roles`, { method: "PATCH", body: { roles } }),
   addRole: (userId: string, role: string) =>
@@ -239,8 +244,8 @@ export const journalApi = {
   delete: (id: string) => apiRequest(`/journals/${id}`, { method: "DELETE" }),
   withdraw: (id: string, reason: string) =>
     apiRequest(`/journals/${id}/withdraw`, { method: "PATCH", body: { reason } }),
-  verifyPayment: (id: string, approve: boolean) =>
-    apiRequest(`/journals/${id}/verify-payment`, { method: "PATCH", body: { approve } }),
+  verifyPayment: (id: string, approve: boolean, reason?: string) =>
+    apiRequest(`/journals/${id}/verify-payment`, { method: "PATCH", body: { approve, reason } }),
   track: (id: string, type: "view" | "copy") =>
     apiRequest(`/journals/${id}/track`, { method: "POST", body: { type } }),
 };
@@ -260,6 +265,20 @@ export const notificationsApi = {
   },
   markRead: (id: string) => apiRequest(`/notifications/${id}/read`, { method: "PATCH" }),
   markAllRead: () => apiRequest("/notifications/mark-all-read", { method: "PATCH" }),
+
+  // Author/user-facing — own notifications only
+  listMine: (params?: { unreadOnly?: boolean; limit?: number }) => {
+    const qs = params
+      ? "?" + new URLSearchParams(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined)
+            .map(([k, v]) => [k, String(v)])
+        ).toString()
+      : "";
+    return apiRequest(`/notifications/my${qs}`);
+  },
+  markMineRead: (id: string) => apiRequest(`/notifications/my/${id}/read`, { method: "PATCH" }),
+  markAllMineRead: () => apiRequest("/notifications/my/mark-all-read", { method: "PATCH" }),
 };
 
 // â”€â”€â”€ Workflow API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

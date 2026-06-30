@@ -27,6 +27,11 @@ export default function SubmitPaper() {
   const [institution, setInstitution] = useState(user?.institution || "");
   const [manuscriptFile, setManuscriptFile] = useState<File | null>(null);
   const [existingManuscriptUrl, setExistingManuscriptUrl] = useState("");
+  const [supplementaryFile, setSupplementaryFile] = useState<File | null>(null);
+  const [existingSupplementaryUrl, setExistingSupplementaryUrl] = useState("");
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [existingPaymentProofUrl, setExistingPaymentProofUrl] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [submitting, setSub] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -49,6 +54,9 @@ export default function SubmitPaper() {
           setCoAuthors(Array.isArray(item.coAuthors) ? item.coAuthors.join(", ") : "");
           setInstitution(item.institution || user?.institution || "");
           setExistingManuscriptUrl(item.manuscriptUrl || "");
+          setExistingSupplementaryUrl(item.supplementaryFileUrl || "");
+          setExistingPaymentProofUrl(item.paymentProofUrl || "");
+          setPaymentAmount(item.paymentAmount ? String(item.paymentAmount) : "");
         })
         .catch(() => {
           toast.error("Failed to load submission for editing");
@@ -66,6 +74,9 @@ export default function SubmitPaper() {
     form.append("coAuthors", coAuthors);
     if (journal) form.append("type", journal);
     if (manuscriptFile) form.append("manuscript", manuscriptFile);
+    if (supplementaryFile) form.append("supplementary", supplementaryFile);
+    if (paymentProofFile) form.append("paymentProof", paymentProofFile);
+    if (paymentAmount) form.append("paymentAmount", paymentAmount);
     return form;
   }
 
@@ -92,6 +103,10 @@ export default function SubmitPaper() {
     if (!title.trim() || !abstract.trim()) { toast.error("Title and abstract are required"); return; }
     if (!manuscriptFile && !existingManuscriptUrl) {
       toast.error("Please upload manuscript PDF before submitting");
+      return;
+    }
+    if (!paymentProofFile && !existingPaymentProofUrl) {
+      toast.error("Please upload proof of payment before submitting. Your paper cannot enter review without it.");
       return;
     }
     setSub(true);
@@ -166,12 +181,12 @@ export default function SubmitPaper() {
                 <Input id="authors" value={coAuthors} onChange={e => setCoAuthors(e.target.value)} placeholder="Author names (comma separated)" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="institution">Institution</Label>
+                <Label htmlFor="institution">Institution/Affiliations</Label>
                 <Input id="institution" value={institution} onChange={e => setInstitution(e.target.value)} placeholder="Your institution" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Upload Paper PDF *</Label>
+              <Label>Upload Manuscript PDF *</Label>
               <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors">
                 <Upload className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Click to upload or drag and drop</span>
@@ -198,6 +213,79 @@ export default function SubmitPaper() {
                 </p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label>Supporting Document <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-6 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Click to upload additional/supplementary PDF</span>
+                <span className="text-xs text-muted-foreground">e.g. supplementary data, figures, appendices — PDF up to 10MB</span>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f && f.size > 10 * 1024 * 1024) {
+                      toast.error("PDF too large. Please upload a file under 10MB.");
+                      e.target.value = "";
+                      return;
+                    }
+                    setSupplementaryFile(f);
+                  }}
+                />
+              </label>
+              {(supplementaryFile || existingSupplementaryUrl) && (
+                <p className="text-xs text-muted-foreground">
+                  {supplementaryFile ? `Selected: ${supplementaryFile.name}` : "Existing supporting document is attached"}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <Label>Payment Proof *</Label>
+              <p className="text-xs text-muted-foreground">
+                Your paper cannot be submitted for review until proof of payment for the submission fee is uploaded.
+                Our team will verify it after submission.
+              </p>
+              <div className="space-y-2 sm:max-w-[200px]">
+                <Label htmlFor="paymentAmount" className="text-xs">Amount Paid</Label>
+                <Input
+                  id="paymentAmount"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <label className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-background p-6 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Click to upload payment screenshot or receipt *</span>
+                <span className="text-xs text-muted-foreground">JPG, PNG, or PDF — up to 5MB</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f && f.size > 5 * 1024 * 1024) {
+                      toast.error("File too large. Please upload a file under 5MB.");
+                      e.target.value = "";
+                      return;
+                    }
+                    setPaymentProofFile(f);
+                  }}
+                />
+              </label>
+              {(paymentProofFile || existingPaymentProofUrl) && (
+                <p className="text-xs text-muted-foreground">
+                  {paymentProofFile ? `Selected: ${paymentProofFile.name}` : "Existing payment proof is attached"}
+                </p>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" size="lg" onClick={handleSaveDraft} disabled={saving}>{saving ? "Saving..." : "Save Draft"}</Button>
               <Button type="submit" size="lg" disabled={submitting}>{submitting ? "Submitting..." : editId ? "Resubmit Paper" : "Submit Paper"}</Button>

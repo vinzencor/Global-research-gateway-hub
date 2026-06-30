@@ -190,7 +190,7 @@ export default function PublicationsPage() {
               </div>
               <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight tracking-tight mb-6">Advance Your Discovery</h1>
               <p className="text-xl text-muted-foreground leading-relaxed font-light">
-                Explore a curated collection of research papers, technical frameworks, and expert analysesâ€”built on a foundation of quality and expert-led review.
+                Explore a curated collection of research papers, technical frameworks, and expert analyses—built on a foundation of quality and expert-led review.
               </p>
             </motion.div>
           </div>

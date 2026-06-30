@@ -34,11 +34,11 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
     : user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
-    <div className="min-h-screen flex bg-muted/30">
+    <div className="h-screen w-full flex overflow-hidden bg-muted/30">
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transform transition-transform duration-300 lg:relative lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transform transition-transform duration-300 lg:static lg:translate-x-0 h-full shrink-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -112,9 +112,9 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
       )}
 
       {/* Main content */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         {/* Top header */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 lg:px-6 shadow-sm">
+        <header className="flex h-16 items-center gap-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 lg:px-6 shadow-sm shrink-0">
           <Button variant="ghost" size="icon" className="lg:hidden shrink-0" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
@@ -195,7 +195,7 @@ export function DashboardLayout({ children, navItems, title }: DashboardLayoutPr
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
           {children}
         </main>
       </div>

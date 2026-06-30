@@ -330,13 +330,13 @@ export default function AdminUsers() {
                           {u.full_name?.charAt(0)?.toUpperCase() || "?"}
                         </div>
                         <div>
-                          <span className="font-medium block">{u.full_name || "â€”"}</span>
+                          <span className="font-medium block">{u.full_name || "—"}</span>
                           <span className="text-xs text-muted-foreground md:hidden">{u.email || "No email"}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.email || "â€”"}</td>
-                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.institution || "â€”"}</td>
+                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.email || "—"}</td>
+                    <td className="p-4 text-muted-foreground hidden md:table-cell">{u.institution || "—"}</td>
                     <td className="p-4">
                       <Badge variant="outline" className={roleColor[role] || ""}>{role.replace("_", " ")}</Badge>
                     </td>

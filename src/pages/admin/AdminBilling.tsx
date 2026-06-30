@@ -338,7 +338,7 @@ export default function AdminBilling() {
               </div>
               <div className="mb-3"><span className="text-2xl font-bold">${plan.price}</span><span className="text-sm text-muted-foreground">/{plan.billing_period}</span></div>
               <ul className="text-sm space-y-1 mb-4">
-                {(plan.features || []).map((f: string, i: number) => <li key={i} className="text-muted-foreground">â€¢ {f}</li>)}
+                {(plan.features || []).map((f: string, i: number) => <li key={i} className="text-muted-foreground">• {f}</li>)}
               </ul>
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => openEdit(plan)}><Edit className="h-3 w-3 mr-1" />Edit</Button>
@@ -407,10 +407,10 @@ export default function AdminBilling() {
                 {memberships.length === 0 ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No memberships</td></tr>
                   : memberships.map(m => (
                     <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-4 font-medium">{m.profiles?.full_name || "â€”"}{m.profiles?.institution && <div className="text-xs text-muted-foreground">{m.profiles.institution}</div>}</td>
-                      <td className="p-4 text-muted-foreground hidden sm:table-cell">{m.membership_plans?.name || "â€”"}</td>
+                      <td className="p-4 font-medium">{m.profiles?.full_name || "—"}{m.profiles?.institution && <div className="text-xs text-muted-foreground">{m.profiles.institution}</div>}</td>
+                      <td className="p-4 text-muted-foreground hidden sm:table-cell">{m.membership_plans?.name || "—"}</td>
                       <td className="p-4"><Badge variant="outline" className={m.status === "active" ? "bg-success/10 text-success border-success/20" : ""}>{m.status}</Badge></td>
-                      <td className="p-4 text-muted-foreground hidden md:table-cell">{m.ends_at ? new Date(m.ends_at).toLocaleDateString() : "â€”"}</td>
+                      <td className="p-4 text-muted-foreground hidden md:table-cell">{m.ends_at ? new Date(m.ends_at).toLocaleDateString() : "—"}</td>
                       <td className="p-4">
                         <div className="flex gap-1 flex-wrap">
                           <Button size="sm" variant="outline" onClick={() => handleMembershipRenew(m)}><RotateCw className="h-3 w-3 mr-1" />Renew</Button>
@@ -459,7 +459,7 @@ export default function AdminBilling() {
                 {filteredInvoices.length === 0 ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No invoices</td></tr>
                   : filteredInvoices.map(inv => (
                     <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-4 font-medium">{inv.profiles?.full_name || "â€”"}</td>
+                      <td className="p-4 font-medium">{inv.profiles?.full_name || "—"}</td>
                       <td className="p-4 font-medium">${inv.amount} <span className="text-muted-foreground text-xs">{inv.currency}</span></td>
                       <td className="p-4"><Badge variant="outline" className={inv.status === "paid" ? "bg-success/10 text-success border-success/20" : ""}>{inv.status}</Badge></td>
                       <td className="p-4 text-muted-foreground hidden sm:table-cell">{new Date(inv.created_at).toLocaleDateString()}</td>
@@ -578,7 +578,7 @@ export default function AdminBilling() {
           <div className="bg-background p-6 border-t">
             <h3 className="font-heading font-bold text-lg mb-1">{showScreenshot?.profiles?.full_name}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Plan: {showScreenshot?.membership_plans?.name} â€¢ Submitted: {showScreenshot && new Date(showScreenshot.created_at).toLocaleString()}
+              Plan: {showScreenshot?.membership_plans?.name} • Submitted: {showScreenshot && new Date(showScreenshot.created_at).toLocaleString()}
             </p>
             <div className="flex gap-3">
               <Button className="flex-1 bg-success hover:bg-success/90 h-11" onClick={() => { handleApprovePayment(showScreenshot); setShowScreenshot(null); }}>

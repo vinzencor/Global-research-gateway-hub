@@ -6,9 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { usersApi, journalApi, reviewsApi } from "@/lib/api";
+import { usersApi, journalApi, workflowApi } from "@/lib/api";
 import { toast } from "sonner";
-import { CheckCircle, Clock, Eye, FileText, Pencil, Plus, Search, Trash2, Upload, User, Building, Calendar, Download } from "lucide-react";
+import { CheckCircle, Clock, Eye, FileText, Pencil, Plus, Search, Trash2, Upload, User, Building, Calendar, Download, GitBranch } from "lucide-react";
 
 type Reviewer = {
   id: string;
@@ -38,19 +38,13 @@ const redactAuthor = (name: string) => {
     .join(" ");
 };
 
-const tokenize = (value: string) =>
-  value
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .map((part) => part.trim())
-    .filter((part) => part.length > 3);
-
 export default function AdminReviews() {
   const [tab, setTab] = useState("queue");
   const [queue, setQueue] = useState<any[]>([]);
   const [allPapers, setAllPapers] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<Reviewer[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [workflowTemplates, setWorkflowTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [reviewerSearch, setReviewerSearch] = useState("");
@@ -59,12 +53,9 @@ export default function AdminReviews() {
   const [savingReviewer, setSavingReviewer] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Reviewer | null>(null);
 
-  const [bucketOpen, setBucketOpen] = useState(false);
-  const [selectedReviewerId, setSelectedReviewerId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
-  const [assigningBucket, setAssigningBucket] = useState(false);
-  const [paperSearch, setPaperSearch] = useState("");
+  const [assignWorkflowTarget, setAssignWorkflowTarget] = useState<any | null>(null);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState("");
+  const [assigningWorkflow, setAssigningWorkflow] = useState(false);
 
   const [uploadingPaper, setUploadingPaper] = useState(false);
   const [uploadForm, setUploadForm] = useState({
@@ -91,13 +82,17 @@ export default function AdminReviews() {
   async function loadData() {
     setLoading(true);
     try {
-      const journalsResult: any = await journalApi.adminList({ limit: "1000" });
+      const [journalsResult, usersResult, templatesResult]: [any, any, any] = await Promise.all([
+        journalApi.adminList({ limit: "1000" }),
+        usersApi.list({ limit: "2000" }),
+        workflowApi.listTemplates(),
+      ]);
+
       const allJournals = journalsResult?.items || journalsResult || [];
       setAllPapers(allJournals);
       const reviewQueue = allJournals.filter((j: any) => ["submitted", "in_review", "changes_requested", "accepted"].includes(j.status));
       setQueue(reviewQueue);
 
-      const usersResult: any = await usersApi.list({ limit: "2000" });
       const userRows = usersResult?.users || [];
       setAllUsers(userRows);
 
@@ -113,10 +108,39 @@ export default function AdminReviews() {
           roles: Array.isArray(u?.roles) ? u.roles : [],
         }));
       setReviewers(reviewerRows);
+
+      setWorkflowTemplates((templatesResult as any)?.items || templatesResult || []);
     } catch {
       toast.error("Failed to load review data");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function openAssignWorkflow(paper: any) {
+    setAssignWorkflowTarget(paper);
+    setSelectedWorkflowId(String(paper.workflowTemplate?._id || paper.workflowTemplate || ""));
+  }
+
+  async function submitAssignWorkflow() {
+    if (!assignWorkflowTarget) return;
+    if (!selectedWorkflowId) {
+      toast.error("Please choose a workflow");
+      return;
+    }
+    setAssigningWorkflow(true);
+    try {
+      const formData = new FormData();
+      formData.append("workflowTemplate", selectedWorkflowId);
+      await journalApi.update(assignWorkflowTarget._id || assignWorkflowTarget.id, formData);
+      toast.success("Paper assigned to workflow. The first stage's reviewer/sub admin has been notified.");
+      setAssignWorkflowTarget(null);
+      setSelectedWorkflowId("");
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to assign workflow");
+    } finally {
+      setAssigningWorkflow(false);
     }
   }
 
@@ -163,85 +187,6 @@ export default function AdminReviews() {
       await loadData();
     } catch (err: any) {
       toast.error(err?.message || "Remove failed");
-    }
-  }
-
-  const selectedReviewer = useMemo(
-    () => reviewers.find((r) => r.id === selectedReviewerId) || null,
-    [reviewers, selectedReviewerId]
-  );
-
-  const recommendedPapers = useMemo(() => {
-    if (!selectedReviewer) return [];
-
-    const nicheTokens = tokenize(
-      [selectedReviewer.reviewerCategory, selectedReviewer.bio, selectedReviewer.institution].filter(Boolean).join(" ")
-    );
-
-    const scored = queue.map((paper: any) => {
-      const paperText = [paper.title, paper.abstract, Array.isArray(paper.keywords) ? paper.keywords.join(" ") : ""].join(" ").toLowerCase();
-      const score = nicheTokens.reduce((sum, token) => (paperText.includes(token) ? sum + 1 : sum), 0);
-      return { paper, score };
-    });
-
-    const ordered = scored
-      .sort((a, b) => (b.score !== a.score ? b.score - a.score : new Date(b.paper.createdAt).getTime() - new Date(a.paper.createdAt).getTime()))
-      .map((row) => row.paper);
-
-    return ordered.slice(0, 10);
-  }, [queue, selectedReviewer]);
-
-  useEffect(() => {
-    if (!selectedReviewerId) {
-      setSelectedPaperIds([]);
-      return;
-    }
-    setSelectedPaperIds(recommendedPapers.map((p: any) => String(p._id || p.id)).slice(0, 10));
-  }, [selectedReviewerId, recommendedPapers]);
-
-  const filteredBucketPapers = useMemo(() => {
-    const target = recommendedPapers.length ? recommendedPapers : queue;
-    const q = paperSearch.trim().toLowerCase();
-    if (!q) return target.slice(0, 10);
-    return target
-      .filter((paper: any) => `${paper.title} ${paper.abstract}`.toLowerCase().includes(q))
-      .slice(0, 10);
-  }, [recommendedPapers, queue, paperSearch]);
-
-  function togglePaper(paperId: string) {
-    setSelectedPaperIds((prev) => {
-      if (prev.includes(paperId)) return prev.filter((id) => id !== paperId);
-      if (prev.length >= 10) {
-        toast.error("You can select up to 10 papers");
-        return prev;
-      }
-      return [...prev, paperId];
-    });
-  }
-
-  async function submitBucketAssignment() {
-    if (!selectedReviewerId) {
-      toast.error("Please choose a reviewer");
-      return;
-    }
-    if (!selectedPaperIds.length) {
-      toast.error("Select at least one paper");
-      return;
-    }
-
-    setAssigningBucket(true);
-    try {
-      await reviewsApi.assignBucket(selectedReviewerId, selectedPaperIds, dueDate || undefined);
-      toast.success("Paper bucket assigned. Reviewer can now select one paper.");
-      setBucketOpen(false);
-      setSelectedReviewerId("");
-      setDueDate("");
-      setSelectedPaperIds([]);
-      setPaperSearch("");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to assign bucket");
-    } finally {
-      setAssigningBucket(false);
     }
   }
 
@@ -365,9 +310,6 @@ export default function AdminReviews() {
           <Button variant="outline" size="sm" onClick={loadData} disabled={loading} className="gap-2">
             <Clock className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
           </Button>
-          <Button size="sm" onClick={() => setBucketOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Assign Paper Bucket
-          </Button>
         </div>
       </div>
 
@@ -420,6 +362,7 @@ export default function AdminReviews() {
                     <th className="text-left p-4 font-medium text-muted-foreground">Paper Title</th>
                     <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Redacted Author</th>
                     <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Workflow</th>
                     <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Abstract</th>
                     <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
                   </tr>
@@ -427,13 +370,13 @@ export default function AdminReviews() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="p-10 text-center">
+                      <td colSpan={6} className="p-10 text-center">
                         <Clock className="h-6 w-6 animate-spin mx-auto opacity-20" />
                       </td>
                     </tr>
                   ) : queue.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-12 text-center text-muted-foreground">No papers in review queue</td>
+                      <td colSpan={6} className="p-12 text-center text-muted-foreground">No papers in review queue</td>
                     </tr>
                   ) : (
                     queue.map((item) => (
@@ -447,11 +390,24 @@ export default function AdminReviews() {
                             {String(item.status || "").replace("_", " ")}
                           </Badge>
                         </td>
+                        <td className="p-4 text-xs">
+                          {item.workflowTemplate?.name ? (
+                            <span className="text-muted-foreground">
+                              {item.workflowTemplate.name} · Stage {(item.currentStageIndex ?? 0) + 1}/{item.totalStages || "?"}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 font-medium">Unassigned</span>
+                          )}
+                        </td>
                         <td className="p-4 text-xs text-muted-foreground hidden lg:table-cell max-w-[420px]">
                           <p className="line-clamp-2">{item.abstract || "No abstract"}</p>
                         </td>
                         <td className="p-4" onClick={e => e.stopPropagation()}>
                           <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => openAssignWorkflow(item)} className="gap-1.5" title="Assign Workflow">
+                              <GitBranch className="h-4 w-4" />
+                              {item.workflowTemplate ? "Reassign" : "Assign Workflow"}
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => setViewPaper(item)} title="View Details"><Eye className="h-4 w-4" /></Button>
                             <Button size="sm" variant="outline" onClick={() => openEditPaper(item)}>
                               <Pencil className="h-4 w-4" />
@@ -745,91 +701,46 @@ export default function AdminReviews() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={bucketOpen} onOpenChange={setBucketOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={!!assignWorkflowTarget} onOpenChange={(o) => { if (!o) setAssignWorkflowTarget(null); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Assign Paper Bucket For Single Reviewer Selection</DialogTitle>
+            <DialogTitle>Assign Workflow</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid md:grid-cols-3 gap-3">
-              <div className="space-y-2 md:col-span-2">
-                <Label>Reviewer</Label>
-                <select
-                  className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                  value={selectedReviewerId}
-                  onChange={(e) => setSelectedReviewerId(e.target.value)}
-                >
-                  <option value="">Select reviewer</option>
-                  {reviewers.map((r) => (
-                    <option key={r.id} value={r.id}>{r.fullName} ({r.email})</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label>Optional Due Date</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-              </div>
-            </div>
-
-            {selectedReviewer && (
-              <div className="rounded-lg border p-3 bg-muted/30 text-sm">
-                <p className="font-medium">Niche-based recommendation ready</p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  The list below shows up to 10 papers based on reviewer niche keywords. Reviewer will only be able to select one paper.
-                </p>
-              </div>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground leading-relaxed break-words">
+              Papers are always assigned to a <strong>Workflow</strong>, never directly to a reviewer. The workflow's
+              first-stage assignee (a reviewer or sub admin, configured in Workflow Designer) will be notified once assigned.
+            </p>
+            {assignWorkflowTarget && (
+              <p className="text-sm font-medium break-words">{assignWorkflowTarget.title}</p>
             )}
 
             <div className="space-y-2">
-              <Input
-                placeholder="Search paper title or abstract"
-                value={paperSearch}
-                onChange={(e) => setPaperSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-3">
-              {filteredBucketPapers.map((paper: any) => {
-                const paperId = String(paper._id || paper.id);
-                const selected = selectedPaperIds.includes(paperId);
-                return (
-                  <label key={paperId} className="flex gap-3 rounded-lg border p-3 hover:bg-muted/20 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => togglePaper(paperId)}
-                      className="mt-1"
-                    />
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold">{paper.title}</p>
-                        <Badge variant="outline" className={STATUS_COLORS[paper.status] || ""}>
-                          {String(paper.status || "").replace("_", " ")}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Author: {redactAuthor(paper.originalAuthorName || paper.authorUser?.fullName || "Unknown")}</p>
-                      <p className="text-sm text-muted-foreground">{paper.abstract || "No abstract available"}</p>
-                    </div>
-                  </label>
-                );
-              })}
-              {filteredBucketPapers.length === 0 && (
-                <div className="rounded-lg border p-4 text-sm text-muted-foreground">No papers available for this selection.</div>
+              <Label>Workflow Template</Label>
+              <select
+                className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                value={selectedWorkflowId}
+                onChange={(e) => setSelectedWorkflowId(e.target.value)}
+              >
+                <option value="">Select workflow</option>
+                {workflowTemplates.map((t: any) => (
+                  <option key={t._id || t.id} value={t._id || t.id}>{t.name}</option>
+                ))}
+              </select>
+              {workflowTemplates.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  No workflow templates exist yet. Create one in Workflow Designer first, with stages assigned to a reviewer or sub admin.
+                </p>
               )}
             </div>
           </div>
 
           <DialogFooter>
-            <div className="w-full flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">Selected papers: {selectedPaperIds.length}/10</p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setBucketOpen(false)}>Cancel</Button>
-                <Button onClick={submitBucketAssignment} disabled={assigningBucket}>
-                  {assigningBucket ? "Assigning..." : "Assign Bucket"}
-                </Button>
-              </div>
-            </div>
+            <Button variant="outline" onClick={() => setAssignWorkflowTarget(null)}>Cancel</Button>
+            <Button onClick={submitAssignWorkflow} disabled={assigningWorkflow || !selectedWorkflowId}>
+              {assigningWorkflow ? "Assigning..." : "Assign Workflow"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

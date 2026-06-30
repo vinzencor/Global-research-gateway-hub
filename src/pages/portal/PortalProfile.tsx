@@ -100,8 +100,8 @@ export default function PortalProfile() {
             </div>
           </div>
           <div className="mt-5 pt-4 border-t space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Full Name</span><span className="font-medium">{fullName || "â€”"}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Institution</span><span className="font-medium">{institution || "â€”"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Full Name</span><span className="font-medium">{fullName || "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Institution</span><span className="font-medium">{institution || "—"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span className="font-medium text-xs">{user?.email}</span></div>
           </div>
         </div>

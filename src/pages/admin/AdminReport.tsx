@@ -192,7 +192,7 @@ export default function AdminReport() {
                           {i + 1}
                         </div>
                         <div>
-                          <p className="font-medium">{sa.full_name || "â€”"}</p>
+                          <p className="font-medium">{sa.full_name || "—"}</p>
                           {sa.institution && <p className="text-xs text-muted-foreground">{sa.institution}</p>}
                         </div>
                       </div>
@@ -241,7 +241,7 @@ export default function AdminReport() {
                   <tr key={rv.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="p-4">
                       <div>
-                        <p className="font-medium">{rv.full_name || "â€”"}</p>
+                        <p className="font-medium">{rv.full_name || "—"}</p>
                         {rv.institution && <p className="text-xs text-muted-foreground">{rv.institution}</p>}
                       </div>
                     </td>

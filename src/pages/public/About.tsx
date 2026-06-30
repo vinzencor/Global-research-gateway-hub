@@ -210,7 +210,7 @@ export default function About() {
                 </Button>
               </Link>
               <Link to="/membership">
-                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full font-bold text-lg border-white/20 text-black bg-white hover:bg-white/90">
                   View Membership
                 </Button>
               </Link>

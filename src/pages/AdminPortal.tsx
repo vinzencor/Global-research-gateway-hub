@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers, Bell, BellOff, Banknote, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers, Bell, BellOff, Banknote, LogOut, FileBarChart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { contentApi, adminApi, journalApi, notificationsApi } from "@/lib/api";
@@ -22,6 +22,7 @@ import AdminRoles from "@/pages/admin/AdminRoles";
 import AdminHappenings from "@/pages/admin/AdminHappenings";
 import AdminJournalPayments from "@/pages/admin/AdminJournalPayments";
 import AdminWithdrawals from "@/pages/admin/AdminWithdrawals";
+import AdminPaymentReports from "@/pages/admin/AdminPaymentReports";
 import { Megaphone } from "lucide-react";
 
 type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: string };
@@ -43,6 +44,7 @@ const navItems: AdminNavItem[] = [
   { label: "Roles", to: "/admin/roles", moduleKey: "roles", icon: <Shield className="h-4 w-4" /> },
   { label: "Validate New Users", to: "/admin/validate-users", moduleKey: "validate_users", icon: <CheckCircle2 className="h-4 w-4" /> },
   { label: "Billing", to: "/admin/billing", moduleKey: "billing", icon: <CreditCard className="h-4 w-4" /> },
+  { label: "Payment Reports", to: "/admin/payment-reports", moduleKey: "billing", icon: <FileBarChart className="h-4 w-4" /> },
   { label: "Switch to User Portal", to: "/portal/dashboard", icon: <ArrowLeftRight className="h-4 w-4" /> },
 ];
 
@@ -310,6 +312,7 @@ export default function AdminPortal() {
         <Route path="/roles" element={canAccess("roles") ? <AdminRoles /> : AccessDenied} />
         <Route path="/validate-users" element={canAccess("validate_users") ? <AdminValidateUsers /> : AccessDenied} />
         <Route path="/billing" element={canAccess("billing") ? <AdminBilling /> : AccessDenied} />
+        <Route path="/payment-reports" element={canAccess("billing") ? <AdminPaymentReports /> : AccessDenied} />
       </Routes>
     </DashboardLayout>
   );
