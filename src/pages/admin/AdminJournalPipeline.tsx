@@ -1,10 +1,21 @@
 import { useEffect, useState } from "react";
-import { journalApi } from "@/lib/api";
+import { journalApi, workflowApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { BarChart3, CheckCircle, RotateCcw, Clock, Eye, FileText, Download, User, Calendar, Building } from "lucide-react";
+import { BarChart3, CheckCircle, RotateCcw, Clock, Eye, FileText, Download, User, Calendar, Building, XCircle, AlertCircle, History, LogOut, ShieldCheck, Paperclip } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
+const fullFileUrl = (url?: string) => (url ? (url.startsWith("http") ? url : `${API_BASE}${url}`) : null);
+
+const LOG_ACTION_META: Record<string, { label: string; color: string; icon: JSX.Element }> = {
+  submitted: { label: "Submitted", color: "bg-blue-500", icon: <FileText className="h-3 w-3 text-white" /> },
+  approved: { label: "Approved", color: "bg-green-600", icon: <CheckCircle className="h-3 w-3 text-white" /> },
+  changes_requested: { label: "Changes Requested", color: "bg-orange-500", icon: <AlertCircle className="h-3 w-3 text-white" /> },
+  rejected: { label: "Rejected", color: "bg-destructive", icon: <XCircle className="h-3 w-3 text-white" /> },
+  resubmitted: { label: "Resubmitted", color: "bg-blue-500", icon: <FileText className="h-3 w-3 text-white" /> },
+};
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -24,6 +35,9 @@ export default function AdminJournalPipeline() {
   const [publishDates, setPublishDates] = useState<Record<string, string>>({});
   const [showView, setShowView] = useState(false);
   const [viewItem, setViewItem] = useState<any>(null);
+  const [reviewLogs, setReviewLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [stages, setStages] = useState<any[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -39,7 +53,28 @@ export default function AdminJournalPipeline() {
     setLoading(false);
   }
 
-  function openView(j: any) { setViewItem(j); setShowView(true); }
+  async function openView(j: any) {
+    setViewItem(j);
+    setShowView(true);
+    setReviewLogs([]);
+    setStages([]);
+    const id = j._id || j.id;
+    const templateId = j.workflowTemplate?._id || j.workflowTemplate;
+    setLoadingLogs(true);
+    try {
+      const [logs, stageList]: [any, any] = await Promise.all([
+        id ? workflowApi.getContentLogs(id) : Promise.resolve([]),
+        templateId ? workflowApi.getStages(templateId) : Promise.resolve([]),
+      ]);
+      setReviewLogs(Array.isArray(logs) ? logs : []);
+      setStages(Array.isArray(stageList) ? stageList : []);
+    } catch {
+      setReviewLogs([]);
+      setStages([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }
 
   async function publishPaper(id: string) {
     try {
@@ -138,7 +173,7 @@ export default function AdminJournalPipeline() {
                     {totalStages > 0 ? (
                       <div className="space-y-1.5 min-w-[120px]">
                         <div className="flex justify-between text-[10px] font-medium text-muted-foreground uppercase">
-                          <span>{j.status === 'published' ? 'Completed' : `Stage ${currentStage}/${totalStages}`}</span>
+                          <span>{j.status === 'published' ? 'Completed' : j.status === 'accepted' ? 'Awaiting Super Admin Publish' : `Stage ${currentStage}/${totalStages}`}</span>
                           <span>{Math.round(progressPct)}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -231,6 +266,16 @@ export default function AdminJournalPipeline() {
                 </div>
               )}
 
+              {/* Co-Authors */}
+              {Array.isArray(viewItem.coAuthors) && viewItem.coAuthors.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1"><User className="h-3 w-3" />Co-Authors</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {viewItem.coAuthors.map((c: string, i: number) => <Badge key={i} variant="secondary" className="text-xs">{c}</Badge>)}
+                  </div>
+                </div>
+              )}
+
               {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
                 {(viewItem.createdAt || viewItem.created_at) && (
@@ -247,25 +292,39 @@ export default function AdminJournalPipeline() {
                 )}
               </div>
 
-              {/* Workflow */}
+              {/* Workflow pipeline — every stage, ending with the Super Admin publish step */}
               {viewItem.workflowTemplate && (
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Workflow</p>
-                  <p className="text-sm">{viewItem.workflowTemplate.name}</p>
-                  {(viewItem.totalStages || 0) > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Stage {(viewItem.currentStageIndex || 0) + 1} of {viewItem.totalStages}</span>
-                        <span>{viewItem.status === "published" ? "100" : Math.round(((viewItem.currentStageIndex || 0) + 1) / ((viewItem.totalStages || 1) + 1) * 100)}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${viewItem.status === "published" ? "bg-green-500" : "bg-primary"}`}
-                          style={{ width: viewItem.status === "published" ? "100%" : `${Math.round(((viewItem.currentStageIndex || 0) + 1) / ((viewItem.totalStages || 1) + 1) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                    Workflow: {viewItem.workflowTemplate.name}
+                  </p>
+                  <ol className="space-y-2">
+                    {[...stages].sort((a, b) => a.orderIndex - b.orderIndex).map((s) => {
+                      const done = viewItem.status === "accepted" || viewItem.status === "published" || s.orderIndex < (viewItem.currentStageIndex || 0);
+                      const current = !done && s.orderIndex === (viewItem.currentStageIndex || 0);
+                      return (
+                        <li key={s._id || s.id} className="flex items-center gap-2">
+                          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${done ? "bg-green-600" : current ? "bg-primary" : "bg-muted"}`}>
+                            {done ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <span className={`text-[10px] font-bold ${current ? "text-primary-foreground" : "text-muted-foreground"}`}>{s.orderIndex + 1}</span>}
+                          </span>
+                          <span className="text-sm">
+                            {s.stageName}
+                            {s.assignedUser?.fullName && <span className="text-xs text-muted-foreground"> — {s.assignedUser.fullName}</span>}
+                          </span>
+                          {current && <Badge variant="outline" className="text-[10px] ml-1">In Progress</Badge>}
+                        </li>
+                      );
+                    })}
+                    {/* Final step is always the super admin's manual publish action */}
+                    <li className="flex items-center gap-2">
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${viewItem.status === "published" ? "bg-green-600" : viewItem.status === "accepted" ? "bg-primary" : "bg-muted"}`}>
+                        {viewItem.status === "published" ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <ShieldCheck className={`h-3.5 w-3.5 ${viewItem.status === "accepted" ? "text-primary-foreground" : "text-muted-foreground"}`} />}
+                      </span>
+                      <span className="text-sm font-medium">Super Admin — Publish</span>
+                      {viewItem.status === "accepted" && <Badge variant="outline" className="text-[10px] ml-1 border-primary text-primary">Awaiting Publish</Badge>}
+                      {viewItem.status === "published" && <Badge variant="outline" className="text-[10px] ml-1 bg-green-600/10 text-green-700 border-green-200">Published</Badge>}
+                    </li>
+                  </ol>
                 </div>
               )}
 
@@ -277,29 +336,107 @@ export default function AdminJournalPipeline() {
                 </div>
               )}
 
-              {/* Withdrawal Reason */}
-              {viewItem.withdrawalReason && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-destructive mb-1">Withdrawal Reason</p>
-                  <p className="text-sm text-destructive">{viewItem.withdrawalReason}</p>
-                </div>
-              )}
+              {/* Review History / Pipeline Timeline */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                  <History className="h-3 w-3" />Review History
+                </p>
 
-              {/* PDF */}
-              {(viewItem.pdfUrl || viewItem.pdf_url) && (
-                <div className="flex gap-2">
-                  <Button asChild size="sm">
-                    <a href={viewItem.pdfUrl || viewItem.pdf_url} target="_blank" rel="noopener noreferrer">
-                      <FileText className="h-4 w-4 mr-2" />Read Paper
-                    </a>
-                  </Button>
-                  <Button asChild size="sm" variant="outline">
-                    <a href={viewItem.pdfUrl || viewItem.pdf_url} target="_blank" rel="noopener noreferrer" download>
-                      <Download className="h-4 w-4 mr-2" />Download
-                    </a>
-                  </Button>
+                {/* Rejection / changes-requested counts */}
+                {reviewLogs.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-200">
+                      Changes Requested: {reviewLogs.filter((l) => l.action === "changes_requested").length}×
+                    </Badge>
+                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                      Rejected: {reviewLogs.filter((l) => l.action === "rejected").length}×
+                    </Badge>
+                  </div>
+                )}
+
+                {loadingLogs ? (
+                  <div className="flex justify-center py-6"><Clock className="h-5 w-5 animate-spin opacity-30" /></div>
+                ) : reviewLogs.length === 0 && viewItem.status !== "withdrawn" ? (
+                  <p className="text-xs text-muted-foreground italic">No review actions recorded yet.</p>
+                ) : (
+                  <ol className="relative border-l-2 border-muted pl-4 space-y-4">
+                    {[...reviewLogs].reverse().map((log: any) => {
+                      const meta = LOG_ACTION_META[log.action] || { label: log.action, color: "bg-muted-foreground", icon: <History className="h-3 w-3 text-white" /> };
+                      return (
+                        <li key={log._id} className="relative">
+                          <span className={`absolute -left-[22px] flex h-5 w-5 items-center justify-center rounded-full ${meta.color}`}>
+                            {meta.icon}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold">{meta.label}</span>
+                            {log.stage?.stageName && (
+                              <Badge variant="secondary" className="text-[10px]">{log.stage.stageName}</Badge>
+                            )}
+                            <span className="text-[11px] text-muted-foreground">
+                              {log.actedBy?.fullName || log.actedBy?.email || "Unknown"} · {new Date(log.actedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          {log.comment && (
+                            <p className="text-xs text-muted-foreground mt-1 bg-muted/40 rounded-md p-2">{log.comment}</p>
+                          )}
+                        </li>
+                      );
+                    })}
+
+                    {/* Withdrawal always shown as the final step in the pipeline */}
+                    {viewItem.status === "withdrawn" && (
+                      <li className="relative">
+                        <span className="absolute -left-[22px] flex h-5 w-5 items-center justify-center rounded-full bg-gray-500">
+                          <LogOut className="h-3 w-3 text-white" />
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold">Withdrawn</span>
+                          {viewItem.withdrawnAt && (
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(viewItem.withdrawnAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {viewItem.withdrawalReason && (
+                          <p className="text-xs text-destructive mt-1 bg-destructive/10 rounded-md p-2">{viewItem.withdrawalReason}</p>
+                        )}
+                      </li>
+                    )}
+                  </ol>
+                )}
+              </div>
+
+              {/* Documents: manuscript + supporting/supplementary file */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <Paperclip className="h-3 w-3" />Documents
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {fullFileUrl(viewItem.manuscriptUrl || viewItem.pdfUrl || viewItem.pdf_url) ? (
+                    <>
+                      <Button asChild size="sm">
+                        <a href={fullFileUrl(viewItem.manuscriptUrl || viewItem.pdfUrl || viewItem.pdf_url)!} target="_blank" rel="noopener noreferrer">
+                          <FileText className="h-4 w-4 mr-2" />View Manuscript
+                        </a>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={fullFileUrl(viewItem.manuscriptUrl || viewItem.pdfUrl || viewItem.pdf_url)!} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="h-4 w-4 mr-2" />Download Manuscript
+                        </a>
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">No manuscript uploaded.</p>
+                  )}
+                  {fullFileUrl(viewItem.supplementaryFileUrl) && (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={fullFileUrl(viewItem.supplementaryFileUrl)!} target="_blank" rel="noopener noreferrer">
+                        <Paperclip className="h-4 w-4 mr-2" />Supporting Document
+                      </a>
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
           <DialogFooter>

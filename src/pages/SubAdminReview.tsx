@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { workflowApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPortalNavItemsForRoles, getSubAdminNavItemsForRoles } from "@/lib/portalNav";
@@ -28,7 +27,6 @@ export default function SubAdminReview() {
     : getPortalNavItemsForRoles(user?.roles || [], user?.moduleAccess || {});
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [accessMode, setAccessMode] = useState<Record<string, string>>({});
   const [acting, setActing] = useState<string | null>(null);
 
   // Changes request modal state
@@ -52,15 +50,13 @@ export default function SubAdminReview() {
   async function act(item: any, action: "approved" | "changes_requested" | "rejected", comment?: string) {
     const id = item._id || item.id;
     setActing(id);
-    const selectedAccessMode = accessMode[id] || item.accessMode || "open_access";
 
     try {
       // Pass individual positional parameters, NOT an object
       await workflowApi.reviewAction(
         id,
         action,
-        comment || "",
-        selectedAccessMode
+        comment || ""
       );
 
       if (action === "approved") {
@@ -132,8 +128,7 @@ export default function SubAdminReview() {
                     <Badge variant="secondary" className="text-[10px] uppercase">{item.itemType || 'article'}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    By {item.authorUser?.fullName || 'Unknown Author'}
-                    {item.authorUser?.institution && ` - ${item.authorUser.institution}`}
+                    Author and institution are hidden for blind review
                     {" - "}Submitted {new Date(item.createdAt || item.created_at).toLocaleDateString()}
                   </p>
                   <Badge variant="outline" className={`mt-2 text-xs ${STATUS_COLORS[status] || ""}`}>
@@ -152,18 +147,6 @@ export default function SubAdminReview() {
                   <p className="text-sm line-clamp-3 text-muted-foreground leading-relaxed">{item.summary || item.abstract}</p>
                 </div>
               )}
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Access Mode (if publishing at final stage)</label>
-                <Select value={accessMode[id] || item.accessMode || "open_access"} onValueChange={(v) => setAccessMode((prev) => ({ ...prev, [id]: v }))}>
-                  <SelectTrigger className="max-w-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open_access">Open Access</SelectItem>
-                    <SelectItem value="members_only">Members Only</SelectItem>
-                    <SelectItem value="pay_per_view">Pay-per-view</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div className="flex gap-2 flex-wrap pt-2 border-t">
                 <Button

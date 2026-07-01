@@ -8,7 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { usersApi, journalApi, workflowApi } from "@/lib/api";
 import { toast } from "sonner";
-import { CheckCircle, Clock, Eye, FileText, Pencil, Plus, Search, Trash2, Upload, User, Building, Calendar, Download, GitBranch } from "lucide-react";
+import { CheckCircle, Clock, Eye, FileText, Pencil, Plus, Search, Trash2, Upload, User, Building, Calendar, Download, GitBranch, History, XCircle, AlertCircle, LogOut, ShieldCheck, Paperclip } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
+const fullFileUrl = (url?: string) => (url ? (url.startsWith("http") ? url : `${API_BASE}${url}`) : null);
+
+const LOG_ACTION_META: Record<string, { label: string; color: string; icon: JSX.Element }> = {
+  submitted: { label: "Submitted", color: "bg-blue-500", icon: <FileText className="h-3 w-3 text-white" /> },
+  approved: { label: "Approved", color: "bg-green-600", icon: <CheckCircle className="h-3 w-3 text-white" /> },
+  changes_requested: { label: "Changes Requested", color: "bg-orange-500", icon: <AlertCircle className="h-3 w-3 text-white" /> },
+  rejected: { label: "Rejected", color: "bg-destructive", icon: <XCircle className="h-3 w-3 text-white" /> },
+  resubmitted: { label: "Resubmitted", color: "bg-blue-500", icon: <FileText className="h-3 w-3 text-white" /> },
+};
 
 type Reviewer = {
   id: string;
@@ -55,6 +66,7 @@ export default function AdminReviews() {
 
   const [assignWorkflowTarget, setAssignWorkflowTarget] = useState<any | null>(null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState("");
+  const [selectedAccessMode, setSelectedAccessMode] = useState("open_access");
   const [assigningWorkflow, setAssigningWorkflow] = useState(false);
 
   const [uploadingPaper, setUploadingPaper] = useState(false);
@@ -74,10 +86,35 @@ export default function AdminReviews() {
   const [deletePaper, setDeletePaper] = useState<any>(null);
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [viewPaper, setViewPaper] = useState<any>(null);
+  const [viewReviewLogs, setViewReviewLogs] = useState<any[]>([]);
+  const [viewStages, setViewStages] = useState<any[]>([]);
+  const [viewLoadingLogs, setViewLoadingLogs] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  async function openViewPaper(item: any) {
+    setViewPaper(item);
+    setViewReviewLogs([]);
+    setViewStages([]);
+    const id = item._id || item.id;
+    const templateId = item.workflowTemplate?._id || item.workflowTemplate;
+    setViewLoadingLogs(true);
+    try {
+      const [logs, stageList]: [any, any] = await Promise.all([
+        id ? workflowApi.getContentLogs(id) : Promise.resolve([]),
+        templateId ? workflowApi.getStages(templateId) : Promise.resolve([]),
+      ]);
+      setViewReviewLogs(Array.isArray(logs) ? logs : []);
+      setViewStages(Array.isArray(stageList) ? stageList : []);
+    } catch {
+      setViewReviewLogs([]);
+      setViewStages([]);
+    } finally {
+      setViewLoadingLogs(false);
+    }
+  }
 
   async function loadData() {
     setLoading(true);
@@ -120,6 +157,7 @@ export default function AdminReviews() {
   function openAssignWorkflow(paper: any) {
     setAssignWorkflowTarget(paper);
     setSelectedWorkflowId(String(paper.workflowTemplate?._id || paper.workflowTemplate || ""));
+    setSelectedAccessMode(paper.accessMode || "open_access");
   }
 
   async function submitAssignWorkflow() {
@@ -132,6 +170,7 @@ export default function AdminReviews() {
     try {
       const formData = new FormData();
       formData.append("workflowTemplate", selectedWorkflowId);
+      formData.append("accessMode", selectedAccessMode);
       await journalApi.update(assignWorkflowTarget._id || assignWorkflowTarget.id, formData);
       toast.success("Paper assigned to workflow. The first stage's reviewer/sub admin has been notified.");
       setAssignWorkflowTarget(null);
@@ -380,7 +419,7 @@ export default function AdminReviews() {
                     </tr>
                   ) : (
                     queue.map((item) => (
-                      <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setViewPaper(item)}>
+                      <tr key={item._id || item.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => openViewPaper(item)}>
                         <td className="p-4 font-medium max-w-[280px] truncate hover:text-primary transition-colors">{item.title}</td>
                         <td className="p-4 text-muted-foreground hidden md:table-cell">
                           {redactAuthor(item.originalAuthorName || item.authorUser?.fullName || "Unknown")}
@@ -408,7 +447,7 @@ export default function AdminReviews() {
                               <GitBranch className="h-4 w-4" />
                               {item.workflowTemplate ? "Reassign" : "Assign Workflow"}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setViewPaper(item)} title="View Details"><Eye className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => openViewPaper(item)} title="View Details"><Eye className="h-4 w-4" /></Button>
                             <Button size="sm" variant="outline" onClick={() => openEditPaper(item)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -633,7 +672,7 @@ export default function AdminReviews() {
                     </tr>
                   ) : (
                     allPapers.map((paper) => (
-                      <tr key={paper._id || paper.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <tr key={paper._id || paper.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => openViewPaper(paper)}>
                         <td className="p-4 font-medium max-w-[320px] truncate">{paper.title}</td>
                         <td className="p-4 text-muted-foreground">{paper.originalAuthorName || paper.authorUser?.fullName || "Unknown"}</td>
                         <td className="p-4">
@@ -648,8 +687,9 @@ export default function AdminReviews() {
                             <span className="text-muted-foreground text-xs">-</span>
                           )}
                         </td>
-                        <td className="p-4 text-right">
+                        <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => openViewPaper(paper)} title="View Details"><Eye className="h-4 w-4" /></Button>
                             <Button
                               size="sm"
                               variant={paper.featured ? "outline" : "secondary"}
@@ -733,6 +773,22 @@ export default function AdminReviews() {
                   No workflow templates exist yet. Create one in Workflow Designer first, with stages assigned to a reviewer or sub admin.
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Access Mode (used when this paper is published)</Label>
+              <select
+                className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                value={selectedAccessMode}
+                onChange={(e) => setSelectedAccessMode(e.target.value)}
+              >
+                <option value="open_access">Open Access</option>
+                <option value="members_only">Members Only</option>
+                <option value="pay_per_view">Pay-per-view</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Reviewers no longer choose this — it's set by the admin here and can be changed again at publish time.
+              </p>
             </div>
           </div>
 
@@ -918,21 +974,140 @@ export default function AdminReviews() {
                 </div>
               )}
 
-              {/* PDF */}
-              {(viewPaper.pdfUrl || viewPaper.pdf_url) && (
-                <div className="flex gap-2">
-                  <Button asChild size="sm">
-                    <a href={viewPaper.pdfUrl || viewPaper.pdf_url} target="_blank" rel="noopener noreferrer">
-                      <FileText className="h-4 w-4 mr-2" />Read Paper
-                    </a>
-                  </Button>
-                  <Button asChild size="sm" variant="outline">
-                    <a href={viewPaper.pdfUrl || viewPaper.pdf_url} target="_blank" rel="noopener noreferrer" download>
-                      <Download className="h-4 w-4 mr-2" />Download
-                    </a>
-                  </Button>
+              {/* Workflow pipeline — every stage, ending with the Super Admin publish step */}
+              {viewPaper.workflowTemplate && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                    Workflow: {viewPaper.workflowTemplate?.name || ""}
+                  </p>
+                  <ol className="space-y-2">
+                    {[...viewStages].sort((a, b) => a.orderIndex - b.orderIndex).map((s) => {
+                      const done = viewPaper.status === "accepted" || viewPaper.status === "published" || s.orderIndex < (viewPaper.currentStageIndex || 0);
+                      const current = !done && s.orderIndex === (viewPaper.currentStageIndex || 0);
+                      return (
+                        <li key={s._id || s.id} className="flex items-center gap-2">
+                          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${done ? "bg-green-600" : current ? "bg-primary" : "bg-muted"}`}>
+                            {done ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <span className={`text-[10px] font-bold ${current ? "text-primary-foreground" : "text-muted-foreground"}`}>{s.orderIndex + 1}</span>}
+                          </span>
+                          <span className="text-sm">
+                            {s.stageName}
+                            {s.assignedUser?.fullName && <span className="text-xs text-muted-foreground"> — {s.assignedUser.fullName}</span>}
+                          </span>
+                          {current && <Badge variant="outline" className="text-[10px] ml-1">In Progress</Badge>}
+                        </li>
+                      );
+                    })}
+                    <li className="flex items-center gap-2">
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${viewPaper.status === "published" ? "bg-green-600" : viewPaper.status === "accepted" ? "bg-primary" : "bg-muted"}`}>
+                        {viewPaper.status === "published" ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <ShieldCheck className={`h-3.5 w-3.5 ${viewPaper.status === "accepted" ? "text-primary-foreground" : "text-muted-foreground"}`} />}
+                      </span>
+                      <span className="text-sm font-medium">Super Admin — Publish</span>
+                      {viewPaper.status === "accepted" && <Badge variant="outline" className="text-[10px] ml-1 border-primary text-primary">Awaiting Publish</Badge>}
+                      {viewPaper.status === "published" && <Badge variant="outline" className="text-[10px] ml-1 bg-green-600/10 text-green-700 border-green-200">Published</Badge>}
+                    </li>
+                  </ol>
                 </div>
               )}
+
+              {/* Review History */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+                  <History className="h-3 w-3" />Review History
+                </p>
+
+                {viewReviewLogs.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-200">
+                      Changes Requested: {viewReviewLogs.filter((l) => l.action === "changes_requested").length}×
+                    </Badge>
+                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+                      Rejected: {viewReviewLogs.filter((l) => l.action === "rejected").length}×
+                    </Badge>
+                  </div>
+                )}
+
+                {viewLoadingLogs ? (
+                  <div className="flex justify-center py-6"><Clock className="h-5 w-5 animate-spin opacity-30" /></div>
+                ) : viewReviewLogs.length === 0 && viewPaper.status !== "withdrawn" ? (
+                  <p className="text-xs text-muted-foreground italic">No review actions recorded yet.</p>
+                ) : (
+                  <ol className="relative border-l-2 border-muted pl-4 space-y-4">
+                    {[...viewReviewLogs].reverse().map((log: any) => {
+                      const meta = LOG_ACTION_META[log.action] || { label: log.action, color: "bg-muted-foreground", icon: <History className="h-3 w-3 text-white" /> };
+                      return (
+                        <li key={log._id} className="relative">
+                          <span className={`absolute -left-[22px] flex h-5 w-5 items-center justify-center rounded-full ${meta.color}`}>
+                            {meta.icon}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold">{meta.label}</span>
+                            {log.stage?.stageName && (
+                              <Badge variant="secondary" className="text-[10px]">{log.stage.stageName}</Badge>
+                            )}
+                            <span className="text-[11px] text-muted-foreground">
+                              {log.actedBy?.fullName || log.actedBy?.email || "Unknown"} · {new Date(log.actedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          {log.comment && (
+                            <p className="text-xs text-muted-foreground mt-1 bg-muted/40 rounded-md p-2">{log.comment}</p>
+                          )}
+                        </li>
+                      );
+                    })}
+
+                    {viewPaper.status === "withdrawn" && (
+                      <li className="relative">
+                        <span className="absolute -left-[22px] flex h-5 w-5 items-center justify-center rounded-full bg-gray-500">
+                          <LogOut className="h-3 w-3 text-white" />
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold">Withdrawn</span>
+                          {viewPaper.withdrawnAt && (
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(viewPaper.withdrawnAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {viewPaper.withdrawalReason && (
+                          <p className="text-xs text-destructive mt-1 bg-destructive/10 rounded-md p-2">{viewPaper.withdrawalReason}</p>
+                        )}
+                      </li>
+                    )}
+                  </ol>
+                )}
+              </div>
+
+              {/* Documents: manuscript + supporting/supplementary file */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <Paperclip className="h-3 w-3" />Documents
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {fullFileUrl(viewPaper.manuscriptUrl || viewPaper.pdfUrl || viewPaper.pdf_url) ? (
+                    <>
+                      <Button asChild size="sm">
+                        <a href={fullFileUrl(viewPaper.manuscriptUrl || viewPaper.pdfUrl || viewPaper.pdf_url)!} target="_blank" rel="noopener noreferrer">
+                          <FileText className="h-4 w-4 mr-2" />View Manuscript
+                        </a>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={fullFileUrl(viewPaper.manuscriptUrl || viewPaper.pdfUrl || viewPaper.pdf_url)!} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="h-4 w-4 mr-2" />Download Manuscript
+                        </a>
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">No manuscript uploaded.</p>
+                  )}
+                  {fullFileUrl(viewPaper.supplementaryFileUrl) && (
+                    <Button asChild size="sm" variant="outline">
+                      <a href={fullFileUrl(viewPaper.supplementaryFileUrl)!} target="_blank" rel="noopener noreferrer">
+                        <Paperclip className="h-4 w-4 mr-2" />Supporting Document
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           <DialogFooter>
