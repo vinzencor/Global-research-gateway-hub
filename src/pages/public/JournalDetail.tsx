@@ -5,9 +5,11 @@ import { Footer } from "@/components/layout/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { journalApi } from "@/lib/api";
-import { ArrowLeft, Calendar, FileText, BookOpen, Download, User, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, BookOpen, Download, User, Tag, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import { buildFullDocumentText, copyToClipboard } from "@/lib/citation";
+import { toast } from "sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
 
@@ -32,15 +34,16 @@ export default function JournalDetail() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  useEffect(() => {
+  const handleCopyCitation = async () => {
     if (!item) return;
-    const handleCopy = () => {
-      const id = item._id || item.id;
-      journalApi.track(id, "copy").catch(() => {});
-    };
-    document.addEventListener("copy", handleCopy);
-    return () => document.removeEventListener("copy", handleCopy);
-  }, [item]);
+    try {
+      await copyToClipboard(buildFullDocumentText(item));
+      journalApi.track(item._id || item.id, "copy").catch(() => {});
+      toast.success("Full document copied.");
+    } catch {
+      toast.error("Could not copy document.");
+    }
+  };
 
   if (loading) {
     return (
@@ -131,6 +134,11 @@ export default function JournalDetail() {
               </div>
 
               <h1 className="font-heading text-3xl md:text-4xl font-bold mb-6 leading-tight">{item.title}</h1>
+              <div className="flex flex-wrap gap-3 mb-2">
+                <Button variant="outline" onClick={handleCopyCitation}>
+                  <Copy className="h-4 w-4 mr-2" /> Copy Full Document
+                </Button>
+              </div>
 
               {authorName && (
                 <div className="flex items-center gap-3 mb-2">

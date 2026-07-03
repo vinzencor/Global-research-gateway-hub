@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, FileText, Calendar, Lock, BookOpen, Download, ArrowRight, Building, User, Globe, Star } from "lucide-react";
+import { Search, FileText, Calendar, Lock, BookOpen, Download, ArrowRight, Building, User, Globe, Star, Copy } from "lucide-react";
 import { contentApi, libraryApi, journalApi, membershipApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { buildCitation, copyToClipboard } from "@/lib/citation";
+import { toast } from "sonner";
 
 export default function PublicationsPage() {
   const { user } = useAuth();
@@ -21,26 +23,33 @@ export default function PublicationsPage() {
   const [viewItem, setViewItem] = useState<any | null>(null);
   const [showView, setShowView] = useState(false);
 
-  useEffect(() => {
-    if (!viewItem) return;
-    const handleCopy = () => {
-      const id = viewItem._id || viewItem.id;
-      // Depending on source (library vs content), call libraryApi.track or contentApi.track
-      if (viewItem._source === "library") {
-        libraryApi.track(id, "copy").catch(() => {});
-      } else {
-        contentApi.track(id, "copy").catch(() => {});
-      }
-    };
-    document.addEventListener("copy", handleCopy);
-    return () => document.removeEventListener("copy", handleCopy);
-  }, [viewItem]);
-
   const [hasAccess, setHasAccess] = useState(false);
 
   const isMember = user?.roles?.some((r: string) =>
     ["member", "subscriber", "super_admin", "content_admin", "editor"].includes(r)
   );
+
+  const trackCopy = (item: any) => {
+    const id = item._id || item.id;
+    if (item._source === "library") {
+      libraryApi.track(id, "copy").catch(() => {});
+    } else if (item._source === "journal") {
+      journalApi.track(id, "copy").catch(() => {});
+    } else {
+      contentApi.track(id, "copy").catch(() => {});
+    }
+  };
+
+  const handleCopyCitation = async (item: any) => {
+    try {
+      const citation = buildCitation(item);
+      await copyToClipboard(citation);
+      trackCopy(item);
+      toast.success("Citation copied.");
+    } catch {
+      toast.error("Could not copy citation.");
+    }
+  };
 
   useEffect(() => {
     if (!viewItem) {
@@ -136,9 +145,12 @@ export default function PublicationsPage() {
           // Featured first
           if (a._featured && !b._featured) return -1;
           if (!a._featured && b._featured) return 1;
-          // Then by date descending
-          return new Date(b.createdAt || b.created_at || 0).getTime() -
-                 new Date(a.createdAt || a.created_at || 0).getTime();
+           // Then by engagement count descending, falling back to recency
+           const scoreA = Number(a.copyCount || a.downloadCount || a.downloads || 0);
+           const scoreB = Number(b.copyCount || b.downloadCount || b.downloads || 0);
+           if (scoreA !== scoreB) return scoreB - scoreA;
+           return new Date(b.createdAt || b.created_at || 0).getTime() -
+             new Date(a.createdAt || a.created_at || 0).getTime();
         });
         setItems(merged);
       } catch (err) {
@@ -295,17 +307,22 @@ export default function PublicationsPage() {
                       )}
                       {item.abstract && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{item.abstract}</p>}
                       <div className="mt-8 pt-6 border-t flex items-center justify-between" onClick={e => e.stopPropagation()}>
-                        {canLibraryAccess && item.pdfUrl ? (
-                          <a href={item.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:underline">
-                            <Download className="h-4 w-4" /> Download PDF
-                          </a>
-                        ) : !canLibraryAccess ? (
-                          <Link to={user ? "/portal/membership" : "/register"} className="inline-flex items-center gap-2 text-primary font-bold text-sm">
-                            <Lock className="h-4 w-4" /> Members Only
-                          </Link>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Library Paper</span>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {canLibraryAccess && item.pdfUrl ? (
+                            <a href={item.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:underline">
+                              <Download className="h-4 w-4" /> Download PDF
+                            </a>
+                          ) : !canLibraryAccess ? (
+                            <Link to={user ? "/portal/membership" : "/register"} className="inline-flex items-center gap-2 text-primary font-bold text-sm">
+                              <Lock className="h-4 w-4" /> Members Only
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Library Paper</span>
+                          )}
+                          <Button variant="ghost" size="sm" className="h-8 px-3 text-xs" onClick={() => handleCopyCitation(item)}>
+                            <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+                          </Button>
+                        </div>
                         {item.year && <span className="text-xs text-muted-foreground">{item.year}</span>}
                       </div>
                     </div>
@@ -350,7 +367,10 @@ export default function PublicationsPage() {
                         {item.abstract && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{item.abstract}</p>}
                         <div className="mt-8 pt-6 border-t flex items-center justify-between">
                           {authorName && <span className="text-xs text-muted-foreground">{authorName}</span>}
-                          <span className="text-primary font-bold text-sm ml-auto">Read Journal</span>
+                          <Button variant="ghost" size="sm" className="h-8 px-3 text-xs ml-auto mr-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyCitation(item); }}>
+                            <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+                          </Button>
+                          <span className="text-primary font-bold text-sm">Read Journal</span>
                         </div>
                       </div>
                     </Link>
@@ -392,7 +412,12 @@ export default function PublicationsPage() {
                       <h3 className="font-heading font-bold text-xl leading-snug group-hover:text-primary transition-colors line-clamp-2 mb-4">{item.title}</h3>
                       {item.summary && <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{item.summary}</p>}
                       <div className="mt-8 pt-6 border-t flex items-center justify-between">
-                        <span className="text-primary font-bold text-sm tracking-wide">Read Publication</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-primary font-bold text-sm tracking-wide">Read Publication</span>
+                          <Button variant="ghost" size="sm" className="h-8 px-3 text-xs" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyCitation(item); }}>
+                            <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+                          </Button>
+                        </div>
                         {item.accessMode === "pay_per_view" && (
                           <span className="text-xs font-bold bg-primary text-white px-2 py-1 rounded">
                             ${Number(item.ppvPrice || 9.99).toFixed(2)}
@@ -472,11 +497,16 @@ export default function PublicationsPage() {
 
                   <div className="pt-3 border-t flex justify-end gap-2">
                     {hasAccess && viewItem.pdfUrl ? (
-                      <Button asChild>
-                        <a href={viewItem.pdfUrl} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-2" /> View PDF Manuscript
-                        </a>
-                      </Button>
+                      <>
+                        <Button variant="outline" onClick={() => handleCopyCitation(viewItem)}>
+                          <Copy className="h-4 w-4 mr-2" /> Copy Citation
+                        </Button>
+                        <Button asChild>
+                          <a href={viewItem.pdfUrl} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-2" /> View PDF Manuscript
+                          </a>
+                        </Button>
+                      </>
                     ) : !hasAccess ? (
                       <Button asChild>
                         <Link to={user ? "/portal/membership" : "/register"}>
@@ -484,9 +514,14 @@ export default function PublicationsPage() {
                         </Link>
                       </Button>
                     ) : (
-                      <Button variant="outline" disabled>
-                        No PDF Manuscript Uploaded
-                      </Button>
+                      <>
+                        <Button variant="outline" onClick={() => handleCopyCitation(viewItem)}>
+                          <Copy className="h-4 w-4 mr-2" /> Copy Citation
+                        </Button>
+                        <Button variant="outline" disabled>
+                          No PDF Manuscript Uploaded
+                        </Button>
+                      </>
                     )}
                   </div>
                 </>
@@ -522,6 +557,9 @@ export default function PublicationsPage() {
                   )}
 
                   <div className="pt-3 border-t flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => handleCopyCitation(viewItem)}>
+                      <Copy className="h-4 w-4 mr-2" /> Copy Citation
+                    </Button>
                     <Button asChild>
                       <Link to={`/publications/${viewItem.slug}`}>
                         Read Full Publication <ArrowRight className="ml-2 h-4 w-4" />

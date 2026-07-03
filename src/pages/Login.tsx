@@ -82,7 +82,7 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <button type="button" className="text-xs text-primary hover:underline">Forgot password?</button>
+                <Link to="/support" className="text-xs text-primary hover:underline">Support</Link>
               </div>
               <div className="relative">
                 <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required className="pr-10" />

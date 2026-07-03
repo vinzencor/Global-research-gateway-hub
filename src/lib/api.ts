@@ -166,6 +166,15 @@ export const authApi = {
     }),
 };
 
+export const supportApi = {
+  createRequest: (payload: {
+    currentEmail: string;
+    requestedEmail?: string;
+    passwordResetRequested?: boolean;
+    reason: string;
+  }) => apiRequest("/support-requests", { method: "POST", body: payload }),
+};
+
 // â"€â"€â"€ Users API â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 export const usersApi = {
@@ -197,6 +206,8 @@ export const usersApi = {
       body: { roleName, moduleKey, canAccess },
     }),
   delete: (userId: string) => apiRequest(`/users/${userId}`, { method: "DELETE" }),
+  updateAccount: (userId: string, payload: { email?: string; password?: string }) =>
+    apiRequest(`/users/${userId}/account`, { method: "PATCH", body: payload }),
 };
 
 
@@ -456,5 +467,14 @@ export const adminApi = {
   getPipeline: () => apiRequest("/admin/pipeline"),
   getSubAdminLeaderboard: () => apiRequest("/admin/sub-admins/leaderboard"),
   getSubAdminUsers: () => apiRequest("/admin/sub-admins/users"),
+  listSupportRequests: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return apiRequest(`/admin/support-requests${qs}`);
+  },
+  reviewSupportRequest: (id: string, action: "approve" | "reject", adminNote?: string, newPassword?: string) =>
+    apiRequest(`/admin/support-requests/${id}/review`, {
+      method: "PATCH",
+      body: { action, adminNote, newPassword },
+    }),
 };
 

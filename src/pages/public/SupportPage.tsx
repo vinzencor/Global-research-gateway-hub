@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HelpCircle, Mail, MessageSquare, CreditCard, BookOpen, Settings, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { supportApi } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const contactCategories = [
   {
@@ -31,32 +33,49 @@ const contactCategories = [
   },
   {
     icon: <Settings className="h-6 w-6" />,
-    title: "Technical Assistance",
-    description: "Support for login issues, account problems, or unexpected errors.",
+    title: "Account Changes",
+    description: "Request help updating your registered email or password.",
     color: "bg-rose-500/10 text-rose-600",
   },
 ];
 
 export default function SupportPage() {
-  const [formData, setFormData] = useState({ name: "", email: "", subject: "", type: "", message: "" });
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({ currentEmail: "", requestedEmail: "", passwordResetRequested: false, reason: "" });
   const [sending, setSending] = useState(false);
 
+  useEffect(() => {
+    if (user?.email) {
+      setFormData((prev) => ({ ...prev, currentEmail: user.email }));
+    }
+  }, [user?.email]);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.message) {
-      toast.error("Please fill in all required fields.");
+    if (!formData.currentEmail || !formData.reason) {
+      toast.error("Please fill in the required fields.");
       return;
     }
     setSending(true);
-    setTimeout(() => {
+    try {
+      await supportApi.createRequest({
+        currentEmail: formData.currentEmail,
+        requestedEmail: formData.requestedEmail || undefined,
+        passwordResetRequested: formData.passwordResetRequested,
+        reason: formData.reason,
+      });
+      toast.success("Your support request has been submitted.");
+      setFormData({ currentEmail: user?.email || "", requestedEmail: "", passwordResetRequested: false, reason: "" });
+    } catch (err: any) {
+      toast.error(err?.message || "Could not submit support request.");
+    } finally {
       setSending(false);
-      toast.success("Your message has been sent. We will respond as soon as possible.");
-      setFormData({ name: "", email: "", subject: "", type: "", message: "" });
-    }, 1200);
+    }
   }
 
   return (
@@ -78,7 +97,7 @@ export default function SupportPage() {
             Support & Contact
           </h1>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            We are here to help with memberships, access, billing, digital library questions, and general platform enquiries.
+            Submit an account support request if you need to change your registered email or reset your password.
           </p>
         </div>
       </section>
@@ -86,7 +105,7 @@ export default function SupportPage() {
       {/* Intro */}
       <section className="container py-16 max-w-3xl mx-auto text-center space-y-6">
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Whether you need help with your account, have a billing question, want support with library access, or need assistance navigating the platform, our team is here to assist you.
+          Use the form below to request an email update or password reset. Administrators review each request before making account changes.
         </p>
         <p className="text-lg text-muted-foreground leading-relaxed">
           <strong className="text-foreground">Articles and News</strong> are items that the journal publishes for marketing purposes, either from our own archives, or new content that is intended to engage our audience.
@@ -124,46 +143,38 @@ export default function SupportPage() {
       <section className="container py-24">
         <div className="grid lg:grid-cols-2 gap-16 max-w-5xl mx-auto">
           <div className="space-y-6">
-            <h2 className="font-heading text-3xl font-bold tracking-tight">Send Us a Message</h2>
+            <h2 className="font-heading text-3xl font-bold tracking-tight">Account Support Request</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Complete the contact form and our team will respond to your enquiry as soon as possible.
+              Tell us what needs to change and why. We will review and process the request if approved.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name <span className="text-destructive">*</span></Label>
-                  <Input id="name" name="name" placeholder="Your full name" value={formData.name} onChange={handleChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
-                  <Input id="email" name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="currentEmail">Current Registered Email <span className="text-destructive">*</span></Label>
+                <Input id="currentEmail" name="currentEmail" type="email" placeholder="you@example.com" value={formData.currentEmail} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input id="subject" name="subject" placeholder="Brief subject of your enquiry" value={formData.subject} onChange={handleChange} />
+                <Label htmlFor="requestedEmail">Requested New Email <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input id="requestedEmail" name="requestedEmail" type="email" placeholder="new-email@example.com" value={formData.requestedEmail} onChange={handleChange} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="type">Enquiry Type</Label>
-                <Select value={formData.type} onValueChange={val => setFormData(prev => ({ ...prev, type: val }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select enquiry type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="general">General Enquiry</SelectItem>
-                    <SelectItem value="membership">Membership Support</SelectItem>
-                    <SelectItem value="library">Digital Library Support</SelectItem>
-                    <SelectItem value="technical">Technical Assistance</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    name="passwordResetRequested"
+                    checked={formData.passwordResetRequested}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  Password reset request
+                </Label>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="message">Message <span className="text-destructive">*</span></Label>
-                <Textarea id="message" name="message" placeholder="Please describe your enquiry in detail..." rows={5} value={formData.message} onChange={handleChange} required />
+                <Label htmlFor="reason">Reason for the request <span className="text-destructive">*</span></Label>
+                <Textarea id="reason" name="reason" placeholder="Please explain why you need this change..." rows={5} value={formData.reason} onChange={handleChange} required />
               </div>
               <Button type="submit" size="lg" className="w-full rounded-full font-bold" disabled={sending}>
-                {sending ? "Sending..." : "Send Message"}
+                {sending ? "Sending..." : "Submit Support Request"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
@@ -174,7 +185,7 @@ export default function SupportPage() {
             <div className="rounded-3xl border bg-card p-8 space-y-4">
               <h3 className="font-heading font-bold text-xl">Other Ways to Reach Us</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                You may also contact the relevant team using the details provided below for faster support where applicable.
+                You may also contact the support desk using the details provided below.
               </p>
               <a
                 href="mailto:support@platform.org"
@@ -196,13 +207,13 @@ export default function SupportPage() {
                 <h3 className="font-heading font-bold text-xl">Need Quick Answers?</h3>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Before contacting support, you may also wish to review our common questions related to membership, digital access, payments, and user accounts.
+                Before submitting a request, review the most common account questions below.
               </p>
               {[
-                { q: "How do I access member-only content?", a: "Active members can access entitled library content through their account dashboard." },
-                { q: "How do I renew my membership?", a: "Renewal options are available directly in your membership section within your account." },
-                { q: "Where can I find my invoices?", a: "Invoices and payment history are available in the billing section of your account." },
-                { q: "How do I reset my password?", a: "Use the Forgot Password link on the login page to receive a reset email." },
+                { q: "How do I change my email address?", a: "Submit a support request with your current email and the new email you want to use." },
+                { q: "How do I reset my password?", a: "Submit a support request and select the password reset option." },
+                { q: "How long does review take?", a: "Requests are reviewed by administrators and processed after approval." },
+                { q: "Can I log in with my old email after a change?", a: "No. The previous email remains reserved and only the latest email can be used to sign in." },
               ].map((item, i) => (
                 <div key={i} className="border-t pt-4">
                   <p className="font-bold text-sm mb-1">{item.q}</p>

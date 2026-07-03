@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { UserRole } from "@/contexts/AuthContext";
-import { authApi, membershipApi, usersApi } from "@/lib/api";
+import { adminApi, authApi, membershipApi, usersApi } from "@/lib/api";
 import { PREDEFINED_ROLES } from "@/lib/roles";
 import { toast } from "sonner";
 import { Search, Shield, RefreshCw, UserPlus, ReceiptText, XCircle, RotateCw, Trash2 } from "lucide-react";
@@ -84,8 +85,17 @@ export default function AdminUsers() {
   const [showMembershipDialog, setShowMembershipDialog] = useState<any>(null);
   const [membershipActionLoading, setMembershipActionLoading] = useState(false);
   const [deletingUser, setDeletingUser] = useState<string | null>(null);
+  const [supportRequests, setSupportRequests] = useState<any[]>([]);
+  const [supportLoading, setSupportLoading] = useState(true);
+  const [showSupportReview, setShowSupportReview] = useState<any | null>(null);
+  const [supportNote, setSupportNote] = useState("");
+  const [supportNewPassword, setSupportNewPassword] = useState("");
+  const [supportActionLoading, setSupportActionLoading] = useState(false);
+  const [showAccountEdit, setShowAccountEdit] = useState<any | null>(null);
+  const [accountForm, setAccountForm] = useState({ email: "", password: "" });
+  const [accountSaving, setAccountSaving] = useState(false);
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => { loadUsers(); loadSupportRequests(); }, []);
 
   async function loadUsers() {
     setLoading(true);
@@ -163,6 +173,19 @@ export default function AdminUsers() {
     }
   }
 
+  async function loadSupportRequests() {
+    setSupportLoading(true);
+    try {
+      const response = await adminApi.listSupportRequests({ limit: "200" }) as any;
+      setSupportRequests(Array.isArray(response?.items) ? response.items : []);
+    } catch {
+      toast.error("Failed to load support requests.");
+      setSupportRequests([]);
+    } finally {
+      setSupportLoading(false);
+    }
+  }
+
   async function openMembershipManage(u: any) {
     setShowMembershipDialog(u);
   }
@@ -210,6 +233,11 @@ export default function AdminUsers() {
     const primary = roles.find(r => r !== "registered_user") || "registered_user";
     setSelectedRole(primary);
     setShowRoleEdit(u);
+  }
+
+  async function openAccountEdit(u: any) {
+    setShowAccountEdit(u);
+    setAccountForm({ email: u.email || "", password: "" });
   }
 
 
@@ -273,12 +301,62 @@ export default function AdminUsers() {
     }
   }
 
+  async function handleSupportReview(action: "approve" | "reject") {
+    if (!showSupportReview) return;
+    setSupportActionLoading(true);
+    try {
+      await adminApi.reviewSupportRequest(
+        showSupportReview._id || showSupportReview.id,
+        action,
+        supportNote.trim() || undefined,
+        supportNewPassword.trim() || undefined
+      );
+      toast.success(action === "approve" ? "Support request approved." : "Support request rejected.");
+      setShowSupportReview(null);
+      setSupportNote("");
+      setSupportNewPassword("");
+      await loadSupportRequests();
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to process support request.");
+    } finally {
+      setSupportActionLoading(false);
+    }
+  }
+
   const filtered = users.filter(u => {
     if (!search) return true;
     const name = u.full_name?.toLowerCase() || "";
     const email = u.email?.toLowerCase() || "";
     return name.includes(search.toLowerCase()) || email.includes(search.toLowerCase());
   });
+
+  const filteredSupportRequests = supportRequests.filter((request) => {
+    if (!search) return true;
+    const needle = search.toLowerCase();
+    return String(request.currentEmail || "").toLowerCase().includes(needle)
+      || String(request.requestedEmail || "").toLowerCase().includes(needle)
+      || String(request.reason || "").toLowerCase().includes(needle);
+  });
+
+  async function handleAccountSave() {
+    if (!showAccountEdit) return;
+    setAccountSaving(true);
+    try {
+      await usersApi.updateAccount(showAccountEdit.id, {
+        email: accountForm.email.trim() || undefined,
+        password: accountForm.password.trim() || undefined,
+      });
+      toast.success("User account updated.");
+      setShowAccountEdit(null);
+      setAccountForm({ email: "", password: "" });
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update user account.");
+    } finally {
+      setAccountSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -368,6 +446,9 @@ export default function AdminUsers() {
                         <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={() => openRoleEdit(u)}>
                           <Shield className="h-3 w-3" /> Edit Role
                         </Button>
+                        <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={() => openAccountEdit(u)}>
+                          <UserPlus className="h-3 w-3" /> Edit Account
+                        </Button>
                         <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={() => openMembershipManage(u)}>
                           <ReceiptText className="h-3 w-3" /> Membership
                         </Button>
@@ -379,6 +460,64 @@ export default function AdminUsers() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card card-shadow overflow-hidden">
+        <div className="flex items-center justify-between gap-3 flex-wrap p-4 border-b bg-muted/20">
+          <div>
+            <h3 className="font-heading font-bold text-lg">Support Requests</h3>
+            <p className="text-sm text-muted-foreground">Review account-change and password-reset requests.</p>
+          </div>
+          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+            {supportRequests.length} total
+          </Badge>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left p-4 font-medium text-muted-foreground">Current Email</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Requested Change</th>
+                <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Reason</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {supportLoading ? (
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Loading support requests...</td></tr>
+              ) : filteredSupportRequests.length === 0 ? (
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No support requests found</td></tr>
+              ) : filteredSupportRequests.map((request) => (
+                <tr key={request._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="p-4">
+                    <div>
+                      <p className="font-medium">{request.currentEmail}</p>
+                      {request.requesterUser?.fullName && <p className="text-xs text-muted-foreground">{request.requesterUser.fullName}</p>}
+                    </div>
+                  </td>
+                  <td className="p-4 text-muted-foreground">
+                    <div className="space-y-1">
+                      <p>{request.requestedEmail || "Password reset only"}</p>
+                      {request.passwordResetRequested && <Badge variant="outline" className="text-[10px]">Password reset requested</Badge>}
+                    </div>
+                  </td>
+                  <td className="p-4 text-muted-foreground hidden md:table-cell max-w-[22rem]">
+                    <p className="line-clamp-2">{request.reason}</p>
+                  </td>
+                  <td className="p-4">
+                    <Badge variant="outline" className={request.status === "completed" ? "bg-success/10 text-success border-success/20" : request.status === "rejected" ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-warning/10 text-warning border-warning/20"}>
+                      {String(request.status || "pending").replace("_", " ")}
+                    </Badge>
+                  </td>
+                  <td className="p-4">
+                    <Button variant="ghost" size="sm" onClick={() => { setSupportNewPassword(""); setShowSupportReview(request); }}>Review</Button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -504,6 +643,64 @@ export default function AdminUsers() {
             <Button variant="destructive" disabled={membershipActionLoading || !showMembershipDialog?.membership} onClick={handleCancelMembership} className="flex items-center gap-1">
               <XCircle className="h-3 w-3" /> Cancel Membership
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!showSupportReview} onOpenChange={() => { setShowSupportReview(null); setSupportNote(""); setSupportNewPassword(""); }}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Review Support Request</DialogTitle>
+            <DialogDescription>Review the reason, then approve or reject the request.</DialogDescription>
+          </DialogHeader>
+          {showSupportReview && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+                <p className="text-sm"><span className="font-medium">Current email:</span> {showSupportReview.currentEmail}</p>
+                <p className="text-sm"><span className="font-medium">Requested email:</span> {showSupportReview.requestedEmail || "Not requested"}</p>
+                <p className="text-sm"><span className="font-medium">Password reset:</span> {showSupportReview.passwordResetRequested ? "Yes" : "No"}</p>
+                <p className="text-sm"><span className="font-medium">Reason:</span></p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{showSupportReview.reason}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="supportNote">Admin note (optional)</Label>
+                <Textarea id="supportNote" value={supportNote} onChange={(e) => setSupportNote(e.target.value)} placeholder="Add an internal note before processing the request." />
+              </div>
+              {showSupportReview?.passwordResetRequested && (
+                <div className="space-y-2">
+                  <Label htmlFor="supportNewPassword">New Password (optional)</Label>
+                  <Input id="supportNewPassword" type="text" value={supportNewPassword} onChange={(e) => setSupportNewPassword(e.target.value)} placeholder="Leave blank to auto-generate" />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => { setShowSupportReview(null); setSupportNote(""); setSupportNewPassword(""); }}>Close</Button>
+            <Button variant="destructive" onClick={() => handleSupportReview("reject")} disabled={supportActionLoading}>Reject</Button>
+            <Button onClick={() => handleSupportReview("approve")} disabled={supportActionLoading}>Approve</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!showAccountEdit} onOpenChange={() => { setShowAccountEdit(null); setAccountForm({ email: "", password: "" }); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit User Account</DialogTitle>
+            <DialogDescription>Update the user’s email and/or password directly.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Email Address</Label>
+              <Input type="email" value={accountForm.email} onChange={(e) => setAccountForm(prev => ({ ...prev, email: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>New Password <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input type="password" value={accountForm.password} onChange={(e) => setAccountForm(prev => ({ ...prev, password: e.target.value }))} placeholder="Leave blank to keep the current password" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowAccountEdit(null); setAccountForm({ email: "", password: "" }); }}>Cancel</Button>
+            <Button onClick={handleAccountSave} disabled={accountSaving}>{accountSaving ? "Saving..." : "Save Changes"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
