@@ -32,6 +32,7 @@ export interface UserProfile {
   roles: UserRole[];
   moduleAccess: Record<string, boolean>;
   isActive: boolean;
+  isEmailVerified: boolean;
   createdAt: string;
 }
 

@@ -729,6 +729,15 @@ export default function AdminReviews() {
                                 Publish Now
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/5"
+                              title="Delete Paper"
+                              onClick={() => setDeletePaper(paper)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>

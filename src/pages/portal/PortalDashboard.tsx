@@ -1,12 +1,12 @@
 ﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { BookOpen, FileText, PenSquare, ShieldCheck } from "lucide-react";
+import { Bell, BookOpen, FileText, PenSquare, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAdmin } from "@/contexts/AuthContext";
-import { authApi, libraryApi, membershipApi, workflowApi } from "@/lib/api";
+import { authApi, libraryApi, membershipApi, notificationsApi, workflowApi } from "@/lib/api";
 import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 
 export default function PortalDashboard() {
@@ -14,6 +14,18 @@ export default function PortalDashboard() {
   const [membership, setMembership] = useState<any>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [assignedReviewCount, setAssignedReviewCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => { if (user) loadNotifications(); }, [user]);
+
+  async function loadNotifications() {
+    try {
+      const data: any = await notificationsApi.listMine({ limit: 20 });
+      setNotifications(data?.notifications || []);
+      setUnreadCount(data?.unreadCount || 0);
+    } catch { /* notifications are non-critical, fail silently */ }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -133,6 +145,63 @@ export default function PortalDashboard() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Notifications */}
+        <div className="rounded-xl border bg-card card-shadow overflow-hidden">
+          <div className="p-4 border-b flex items-center justify-between bg-muted/20">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              <h3 className="font-heading font-bold text-sm">Notifications</h3>
+              {unreadCount > 0 && (
+                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-destructive text-white text-[10px] font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+            {unreadCount > 0 && (
+              <button
+                className="text-[11px] text-primary hover:underline"
+                onClick={async () => {
+                  await notificationsApi.markAllMineRead().catch(() => null);
+                  setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                  setUnreadCount(0);
+                }}
+              >
+                Mark all read
+              </button>
+            )}
+          </div>
+          {notifications.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">
+              <Bell className="h-6 w-6 mx-auto mb-2 opacity-20" />
+              <p className="text-xs">No notifications yet</p>
+            </div>
+          ) : (
+            <div className="divide-y max-h-80 overflow-y-auto">
+              {notifications.map((n: any) => (
+                <div
+                  key={n._id}
+                  className={`flex items-start gap-2.5 px-4 py-3 cursor-pointer transition-colors ${n.read ? "opacity-60" : "bg-primary/5"}`}
+                  onClick={async () => {
+                    if (!n.read) {
+                      await notificationsApi.markMineRead(n._id).catch(() => null);
+                      setNotifications((prev) => prev.map((x) => (x._id === n._id ? { ...x, read: true } : x)));
+                      setUnreadCount((c) => Math.max(0, c - 1));
+                    }
+                  }}
+                >
+                  <Bell className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-xs leading-relaxed">{n.message}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {n.createdAt ? new Date(n.createdAt).toLocaleString() : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Stats */}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -6,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HelpCircle, Mail, MessageSquare, CreditCard, BookOpen, Settings, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supportApi } from "@/lib/api";
@@ -41,36 +41,29 @@ const contactCategories = [
 
 export default function SupportPage() {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({ currentEmail: "", requestedEmail: "", passwordResetRequested: false, reason: "" });
+  const [formData, setFormData] = useState({ requestedEmail: "", reason: "", currentPassword: "" });
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    if (user?.email) {
-      setFormData((prev) => ({ ...prev, currentEmail: user.email }));
-    }
-  }, [user?.email]);
-
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!formData.currentEmail || !formData.reason) {
+    if (!formData.requestedEmail || !formData.reason || !formData.currentPassword) {
       toast.error("Please fill in the required fields.");
       return;
     }
     setSending(true);
     try {
       await supportApi.createRequest({
-        currentEmail: formData.currentEmail,
-        requestedEmail: formData.requestedEmail || undefined,
-        passwordResetRequested: formData.passwordResetRequested,
+        requestedEmail: formData.requestedEmail,
         reason: formData.reason,
+        currentPassword: formData.currentPassword,
       });
       toast.success("Your support request has been submitted.");
-      setFormData({ currentEmail: user?.email || "", requestedEmail: "", passwordResetRequested: false, reason: "" });
+      setFormData({ requestedEmail: "", reason: "", currentPassword: "" });
     } catch (err: any) {
       toast.error(err?.message || "Could not submit support request.");
     } finally {
@@ -148,36 +141,45 @@ export default function SupportPage() {
               Tell us what needs to change and why. We will review and process the request if approved.
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentEmail">Current Registered Email <span className="text-destructive">*</span></Label>
-                <Input id="currentEmail" name="currentEmail" type="email" placeholder="you@example.com" value={formData.currentEmail} onChange={handleChange} required />
+            {!user ? (
+              <div className="rounded-2xl border bg-secondary/30 p-6 space-y-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  To keep your account secure, email change requests must be submitted while signed in.
+                  Forgot your password instead? Use the self-service reset link — no admin wait required.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link to="/login" className="flex-1">
+                    <Button className="w-full rounded-full font-bold">Log In to Request an Email Change</Button>
+                  </Link>
+                  <Link to="/account-recovery" className="flex-1">
+                    <Button variant="outline" className="w-full rounded-full font-bold">Forgot Password</Button>
+                  </Link>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="requestedEmail">Requested New Email <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input id="requestedEmail" name="requestedEmail" type="email" placeholder="new-email@example.com" value={formData.requestedEmail} onChange={handleChange} />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    name="passwordResetRequested"
-                    checked={formData.passwordResetRequested}
-                    onChange={handleChange}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  Password reset request
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reason">Reason for the request <span className="text-destructive">*</span></Label>
-                <Textarea id="reason" name="reason" placeholder="Please explain why you need this change..." rows={5} value={formData.reason} onChange={handleChange} required />
-              </div>
-              <Button type="submit" size="lg" className="w-full rounded-full font-bold" disabled={sending}>
-                {sending ? "Sending..." : "Submit Support Request"}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Current Registered Email</Label>
+                  <Input value={user.email} disabled className="bg-muted" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="requestedEmail">Requested New Email <span className="text-destructive">*</span></Label>
+                  <Input id="requestedEmail" name="requestedEmail" type="email" placeholder="new-email@example.com" value={formData.requestedEmail} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reason">Reason for the request <span className="text-destructive">*</span></Label>
+                  <Textarea id="reason" name="reason" placeholder="Please explain why you need this change..." rows={5} value={formData.reason} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Confirm Current Password <span className="text-destructive">*</span></Label>
+                  <Input id="currentPassword" name="currentPassword" type="password" placeholder="••••••••" value={formData.currentPassword} onChange={handleChange} required />
+                </div>
+                <Button type="submit" size="lg" className="w-full rounded-full font-bold" disabled={sending}>
+                  {sending ? "Sending..." : "Submit Support Request"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </form>
+            )}
           </div>
 
           {/* Direct Contact Block + FAQ Prompt */}
@@ -210,8 +212,8 @@ export default function SupportPage() {
                 Before submitting a request, review the most common account questions below.
               </p>
               {[
-                { q: "How do I change my email address?", a: "Submit a support request with your current email and the new email you want to use." },
-                { q: "How do I reset my password?", a: "Submit a support request and select the password reset option." },
+                { q: "How do I change my email address?", a: "Log in, then submit a support request with the new email you want to use." },
+                { q: "How do I reset my password?", a: "Use the self-service Forgot Password link — no admin wait required." },
                 { q: "How long does review take?", a: "Requests are reviewed by administrators and processed after approval." },
                 { q: "Can I log in with my old email after a change?", a: "No. The previous email remains reserved and only the latest email can be used to sign in." },
               ].map((item, i) => (

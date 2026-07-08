@@ -286,7 +286,7 @@ export default function StandardsPage() {
                 </Button>
               </Link>
               <Link to="/support">
-                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
+                <Button size="lg" variant="outline" className="h-16 px-10 rounded-full font-bold text-lg bg-transparent border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
                   Governance Support
                 </Button>
               </Link>

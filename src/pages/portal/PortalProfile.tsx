@@ -1,13 +1,21 @@
 ﻿import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, User, CreditCard, BookOpen, Save, PenSquare, FileText } from "lucide-react";
+import { LayoutDashboard, User, CreditCard, BookOpen, Save, PenSquare, FileText, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { featuredApi, usersApi } from "@/lib/api";
+import { featuredApi, usersApi, supportApi } from "@/lib/api";
 import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
 
@@ -21,6 +29,11 @@ export default function PortalProfile() {
   const [requestStatus, setRequestStatus] = useState<string | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailChangeReason, setEmailChangeReason] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [submittingEmailChange, setSubmittingEmailChange] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -58,6 +71,30 @@ export default function PortalProfile() {
     }
     await refreshUser();
     toast.success("Profile updated successfully!");
+  }
+
+  async function handleEmailChangeRequest() {
+    if (!newEmail.trim() || !emailChangeReason.trim() || !currentPassword) {
+      toast.error("Please fill in the new email, reason, and your current password.");
+      return;
+    }
+    setSubmittingEmailChange(true);
+    try {
+      await supportApi.createRequest({
+        requestedEmail: newEmail.trim(),
+        reason: emailChangeReason.trim(),
+        currentPassword,
+      });
+      toast.success("Email change request submitted. An admin will review it and email your new credentials.");
+      setShowEmailChange(false);
+      setNewEmail("");
+      setEmailChangeReason("");
+      setCurrentPassword("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit email change request.");
+    } finally {
+      setSubmittingEmailChange(false);
+    }
   }
 
   async function handleFeaturedRequest() {
@@ -117,7 +154,12 @@ export default function PortalProfile() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
-              <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Email cannot be edited directly.</p>
+                <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => setShowEmailChange(true)}>
+                  Request email change
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="institution">Institution / Organization</Label>
@@ -160,6 +202,37 @@ export default function PortalProfile() {
         </div>
         </div>
       </div>
+
+      <Dialog open={showEmailChange} onOpenChange={(open) => { setShowEmailChange(open); if (!open) { setNewEmail(""); setEmailChangeReason(""); setCurrentPassword(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Mail className="h-4 w-4" /> Request Email Change</DialogTitle>
+            <DialogDescription>
+              An admin will review this request and email your new login details once approved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="newEmail">New Email Address</Label>
+              <Input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="new-email@example.com" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emailChangeReason">Reason</Label>
+              <Textarea id="emailChangeReason" value={emailChangeReason} onChange={(e) => setEmailChangeReason(e.target.value)} placeholder="Why do you need this change?" rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Confirm Current Password</Label>
+              <Input id="currentPassword" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEmailChange(false)}>Cancel</Button>
+            <Button onClick={handleEmailChangeRequest} disabled={submittingEmailChange}>
+              {submittingEmailChange ? "Submitting..." : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

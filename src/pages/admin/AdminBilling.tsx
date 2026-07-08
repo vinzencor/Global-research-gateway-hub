@@ -23,7 +23,7 @@ export default function AdminBilling() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [editPlan, setEditPlan] = useState<any>(null);
   const [form, setForm] = useState({ ...defaultPlan });
-  const [invoiceForm, setInvoiceForm] = useState({ user_id: "", amount: 0, currency: "USD", status: "unpaid" });
+  const [invoiceForm, setInvoiceForm] = useState({ user_id: "", amount: 0, currency: "INR", status: "unpaid" });
   const [saving, setSaving] = useState(false);
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
@@ -211,7 +211,7 @@ export default function AdminBilling() {
     await db.from("invoices").insert({
       user_id: member.user_id,
       amount: member.membership_plans?.price || 0,
-      currency: "USD",
+      currency: "INR",
       status: "paid",
       paid_at: new Date().toISOString(),
     } as any);
@@ -270,7 +270,7 @@ export default function AdminBilling() {
     });
     toast.success("Manual invoice created");
     setShowInvoiceForm(false);
-    setInvoiceForm({ user_id: "", amount: 0, currency: "USD", status: "unpaid" });
+    setInvoiceForm({ user_id: "", amount: 0, currency: "INR", status: "unpaid" });
     loadData();
   }
 
@@ -306,7 +306,7 @@ export default function AdminBilling() {
         {[
           { label: "Active Plans", value: plans.filter(p => p.is_active).length },
           { label: "Active Members", value: memberships.filter(m => m.status === "active").length },
-          { label: "Total Revenue", value: `$${invoices.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount || 0), 0).toFixed(0)}` },
+          { label: "Total Revenue", value: `₹${invoices.filter(i => i.status === "paid").reduce((s, i) => s + (i.amount || 0), 0).toFixed(0)}` },
         ].map(s => (
           <div key={s.label} className="rounded-xl border bg-card p-4 card-shadow">
             <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -336,7 +336,7 @@ export default function AdminBilling() {
                 </div>
                 <Badge variant="outline" className={plan.is_active ? "bg-success/10 text-success border-success/20" : ""}>{plan.is_active ? "Active" : "Inactive"}</Badge>
               </div>
-              <div className="mb-3"><span className="text-2xl font-bold">${plan.price}</span><span className="text-sm text-muted-foreground">/{plan.billing_period}</span></div>
+              <div className="mb-3"><span className="text-2xl font-bold">₹{plan.price}</span><span className="text-sm text-muted-foreground">/{plan.billing_period}</span></div>
               <ul className="text-sm space-y-1 mb-4">
                 {(plan.features || []).map((f: string, i: number) => <li key={i} className="text-muted-foreground">• {f}</li>)}
               </ul>
@@ -371,7 +371,7 @@ export default function AdminBilling() {
                         <div className="text-xs text-muted-foreground">{v.profiles?.institution}</div>
                       </td>
                       <td className="p-4 font-medium">{v.membership_plans?.name}</td>
-                      <td className="p-4 font-medium">${Number(v.membership_plans?.price || 0).toFixed(2)}</td>
+                      <td className="p-4 font-medium">₹{Number(v.membership_plans?.price || 0).toFixed(2)}</td>
                       <td className="p-4 text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</td>
                       <td className="p-4 text-center">
                         <Button variant="ghost" size="sm" onClick={() => setShowScreenshot(v)} className="gap-2">
@@ -460,7 +460,7 @@ export default function AdminBilling() {
                   : filteredInvoices.map(inv => (
                     <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-4 font-medium">{inv.profiles?.full_name || "—"}</td>
-                      <td className="p-4 font-medium">${inv.amount} <span className="text-muted-foreground text-xs">{inv.currency}</span></td>
+                      <td className="p-4 font-medium">₹{inv.amount} <span className="text-muted-foreground text-xs">{inv.currency}</span></td>
                       <td className="p-4"><Badge variant="outline" className={inv.status === "paid" ? "bg-success/10 text-success border-success/20" : ""}>{inv.status}</Badge></td>
                       <td className="p-4 text-muted-foreground hidden sm:table-cell">{new Date(inv.created_at).toLocaleDateString()}</td>
                       <td className="p-4">
@@ -487,7 +487,7 @@ export default function AdminBilling() {
             <div className="space-y-1"><Label>Plan Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Basic, Pro, Enterprise..." /></div>
             <div className="space-y-1"><Label>Description</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>Price ($)</Label><Input type="number" min={0} value={form.price} onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} /></div>
+              <div className="space-y-1"><Label>Price (₹)</Label><Input type="number" min={0} value={form.price} onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))} /></div>
               <div className="space-y-1"><Label>Billing Period</Label>
                 <Select value={form.billing_period} onValueChange={v => setForm(f => ({ ...f, billing_period: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

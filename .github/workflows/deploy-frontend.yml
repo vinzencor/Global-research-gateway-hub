@@ -9,6 +9,8 @@ jobs:
   build-and-deploy:
     name: Build & Deploy to Server
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.FRONTEND_HOST || vars.FRONTEND_HOST || vars.EC2_HOST || '15.134.201.226' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,14 +29,19 @@ jobs:
         env:
           VITE_API_URL: https://api.globalresearchgateway.in/api
 
+      - name: Validate deployment secrets
+        run: |
+          test -n "${{ env.DEPLOY_HOST }}" || (echo "Missing FRONTEND_HOST/EC2_HOST setting" && exit 1)
+          test -n "${{ secrets.FRONTEND_USER }}" || (echo "Missing FRONTEND_USER secret" && exit 1)
+          test -n "${{ secrets.FRONTEND_SSH_KEY }}" || (echo "Missing FRONTEND_SSH_KEY secret" && exit 1)
+
       # ─── Deploy built files to server ───────────────────────────────────
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.FRONTEND_HOST }}
+          host: ${{ env.DEPLOY_HOST }}
           username: ${{ secrets.FRONTEND_USER }}
           key: ${{ secrets.FRONTEND_SSH_KEY }}
-          script_stop: true
           script: |
             echo "Frontend deployment triggered"
             # If hosted on same EC2 or a separate server, adjust accordingly

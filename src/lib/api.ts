@@ -90,7 +90,11 @@ async function apiRequest<T = unknown>(
   }
 
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Request failed.");
+  if (!response.ok) {
+    const error = new Error(data.message || "Request failed.") as Error & { errorCode?: string };
+    if (data.errorCode) error.errorCode = data.errorCode;
+    throw error;
+  }
 
   return data.data as T;
 }
@@ -164,15 +168,25 @@ export const authApi = {
       body: { currentPassword, newPassword },
       requireAuth: true,
     }),
+
 };
 
 export const supportApi = {
+  // Email-change requests require an authenticated session — the backend
+  // always uses the logged-in user's own email as "current email" and asks
+  // for a password confirmation, so requests can't be submitted on behalf
+  // of someone else's account.
   createRequest: (payload: {
-    currentEmail: string;
-    requestedEmail?: string;
-    passwordResetRequested?: boolean;
+    requestedEmail: string;
     reason: string;
+    currentPassword: string;
   }) => apiRequest("/support-requests", { method: "POST", body: payload }),
+
+  // Forgot-password requests are admin-mediated: submitted without a session
+  // (the user can't log in), reviewed in the Admin Portal, and the admin
+  // resets the password and emails it to the account's registered address.
+  createPasswordResetRequest: (payload: { currentEmail: string; reason?: string }) =>
+    apiRequest("/support-requests/password-reset", { method: "POST", body: payload }),
 };
 
 // â"€â"€â"€ Users API â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
@@ -471,10 +485,10 @@ export const adminApi = {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return apiRequest(`/admin/support-requests${qs}`);
   },
-  reviewSupportRequest: (id: string, action: "approve" | "reject", adminNote?: string, newPassword?: string) =>
+  reviewSupportRequest: (id: string, action: "approve" | "reject", adminNote?: string, newPassword?: string, newEmail?: string) =>
     apiRequest(`/admin/support-requests/${id}/review`, {
       method: "PATCH",
-      body: { action, adminNote, newPassword },
+      body: { action, adminNote, newPassword, newEmail },
     }),
 };
 

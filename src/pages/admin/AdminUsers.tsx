@@ -90,6 +90,7 @@ export default function AdminUsers() {
   const [showSupportReview, setShowSupportReview] = useState<any | null>(null);
   const [supportNote, setSupportNote] = useState("");
   const [supportNewPassword, setSupportNewPassword] = useState("");
+  const [supportNewEmail, setSupportNewEmail] = useState("");
   const [supportActionLoading, setSupportActionLoading] = useState(false);
   const [showAccountEdit, setShowAccountEdit] = useState<any | null>(null);
   const [accountForm, setAccountForm] = useState({ email: "", password: "" });
@@ -309,12 +310,14 @@ export default function AdminUsers() {
         showSupportReview._id || showSupportReview.id,
         action,
         supportNote.trim() || undefined,
-        supportNewPassword.trim() || undefined
+        supportNewPassword.trim() || undefined,
+        supportNewEmail.trim() || undefined
       );
       toast.success(action === "approve" ? "Support request approved." : "Support request rejected.");
       setShowSupportReview(null);
       setSupportNote("");
       setSupportNewPassword("");
+      setSupportNewEmail("");
       await loadSupportRequests();
       await loadUsers();
     } catch (err: any) {
@@ -514,7 +517,7 @@ export default function AdminUsers() {
                     </Badge>
                   </td>
                   <td className="p-4">
-                    <Button variant="ghost" size="sm" onClick={() => { setSupportNewPassword(""); setShowSupportReview(request); }}>Review</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setSupportNewPassword(""); setSupportNewEmail(request.requestedEmail || ""); setShowSupportReview(request); }}>Review</Button>
                   </td>
                 </tr>
               ))}
@@ -647,7 +650,7 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!showSupportReview} onOpenChange={() => { setShowSupportReview(null); setSupportNote(""); setSupportNewPassword(""); }}>
+      <Dialog open={!!showSupportReview} onOpenChange={() => { setShowSupportReview(null); setSupportNote(""); setSupportNewPassword(""); setSupportNewEmail(""); }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Review Support Request</DialogTitle>
@@ -666,6 +669,11 @@ export default function AdminUsers() {
                 <Label htmlFor="supportNote">Admin note (optional)</Label>
                 <Textarea id="supportNote" value={supportNote} onChange={(e) => setSupportNote(e.target.value)} placeholder="Add an internal note before processing the request." />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="supportNewEmail">Email to update on approval (optional)</Label>
+                <Input id="supportNewEmail" type="email" value={supportNewEmail} onChange={(e) => setSupportNewEmail(e.target.value)} placeholder="Leave blank to keep the current email" />
+                <p className="text-xs text-muted-foreground">Verify the requester's identity before changing this. New credentials are always emailed to this address (or the current email if left blank).</p>
+              </div>
               {showSupportReview?.passwordResetRequested && (
                 <div className="space-y-2">
                   <Label htmlFor="supportNewPassword">New Password (optional)</Label>
@@ -675,7 +683,7 @@ export default function AdminUsers() {
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => { setShowSupportReview(null); setSupportNote(""); setSupportNewPassword(""); }}>Close</Button>
+            <Button variant="outline" onClick={() => { setShowSupportReview(null); setSupportNote(""); setSupportNewPassword(""); setSupportNewEmail(""); }}>Close</Button>
             <Button variant="destructive" onClick={() => handleSupportReview("reject")} disabled={supportActionLoading}>Reject</Button>
             <Button onClick={() => handleSupportReview("approve")} disabled={supportActionLoading}>Approve</Button>
           </DialogFooter>

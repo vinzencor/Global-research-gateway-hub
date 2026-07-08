@@ -331,7 +331,7 @@ export default function PortalMembership() {
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">One-time access purchase for this publication:</p>
                 <p className="font-medium">{ppvContent.title}</p>
-                <p className="text-sm">Amount: <span className="font-semibold">${Number(ppvContent.ppv_price || 9.99).toFixed(2)}</span></p>
+                <p className="text-sm">Amount: <span className="font-semibold">₹{Number(ppvContent.ppv_price || 9.99).toFixed(2)}</span></p>
                 <div className="flex gap-2 flex-wrap">
                   <Button onClick={handlePurchasePpv} disabled={ppvPurchasing}>{ppvPurchasing ? "Processing..." : "Pay Now"}</Button>
                   <Button variant="outline" asChild><Link to={returnTo}>Cancel</Link></Button>
@@ -350,7 +350,7 @@ export default function PortalMembership() {
             <div className="flex items-center gap-3 flex-wrap">
               <Badge className="bg-success/10 text-success border-success/20 text-sm px-3 py-1">{currentMembership.membership_plans?.name} Plan</Badge>
               <span className="text-sm text-muted-foreground">Expires: {currentMembership.ends_at ? new Date(currentMembership.ends_at).toLocaleDateString() : "N/A"}</span>
-              <span className="text-sm font-medium">${currentMembership.membership_plans?.price}/{currentMembership.membership_plans?.billing_period || "yr"}</span>
+              <span className="text-sm font-medium">₹{currentMembership.membership_plans?.price}/{currentMembership.membership_plans?.billing_period || "yr"}</span>
               <Button variant="outline" size="sm" onClick={handleCancelMembership} disabled={cancelling}>
                 {cancelling ? "Cancelling..." : "Cancel Membership"}
               </Button>
@@ -394,7 +394,7 @@ export default function PortalMembership() {
             <h3 className="font-heading font-bold mb-2">Approval Pending</h3>
             <p className="text-sm text-muted-foreground">
               Your request for <span className="font-semibold text-foreground">{pendingMembership.membership_plans?.name}</span>
-              {" "}(${Number(pendingMembership.membership_plans?.price || 0).toFixed(2)}) is awaiting admin approval.
+              {" "}(₹{Number(pendingMembership.membership_plans?.price || 0).toFixed(2)}) is awaiting admin approval.
             </p>
           </div>
         )}
@@ -452,7 +452,7 @@ export default function PortalMembership() {
                 <div key={plan.id} className={`rounded-xl border p-6 card-shadow ${isCurrent ? "border-primary ring-2 ring-primary/20" : ""}`}>
                   {isCurrent && <Badge className="mb-3 bg-primary/10 text-primary border-primary/20">Current Plan</Badge>}
                   <h4 className="font-heading font-bold text-lg">{plan.name}</h4>
-                  <div className="my-3"><span className="text-3xl font-bold">${plan.price}</span><span className="text-muted-foreground text-sm">/{plan.billing_period}</span></div>
+                  <div className="my-3"><span className="text-3xl font-bold">₹{plan.price}</span><span className="text-muted-foreground text-sm">/{plan.billing_period}</span></div>
                   <ul className="space-y-2 mb-4">
                     {(plan.features || []).map((f: string, i: number) => (
                       <li key={i} className="flex items-center gap-2 text-sm"><Check className="h-4 w-4 text-success shrink-0" />{f}</li>
@@ -493,7 +493,7 @@ export default function PortalMembership() {
                   {invoices.map((inv) => (
                     <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-4">{new Date(inv.created_at).toLocaleDateString()}</td>
-                      <td className="p-4 font-medium">${inv.amount} {inv.currency}</td>
+                      <td className="p-4 font-medium">₹{inv.amount} {inv.currency}</td>
                       <td className="p-4"><Badge variant="outline" className={inv.status === "paid" ? "bg-success/10 text-success border-success/20" : ""}>{inv.status}</Badge></td>
                     </tr>
                   ))}

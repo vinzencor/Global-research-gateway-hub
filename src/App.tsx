@@ -22,6 +22,7 @@ import About from "./pages/public/About";
 import MembershipPage from "./pages/public/MembershipPage";
 import StandardsPage from "./pages/public/StandardsPage";
 import SupportPage from "./pages/public/SupportPage";
+import AccountRecoveryPage from "./pages/public/AccountRecoveryPage";
 import PolicyPage from "./pages/public/PolicyPage";
 
 // Portal pages
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/membership" element={<MembershipPage />} />
             <Route path="/standards" element={<StandardsPage />} />
             <Route path="/support" element={<SupportPage />} />
+            <Route path="/account-recovery" element={<AccountRecoveryPage />} />
             <Route path="/policy/:type" element={<PolicyPage />} />
             <Route path="/authors" element={<AuthorsPage />} />
             <Route path="/reviewers" element={<ReviewersPage />} />

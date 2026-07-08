@@ -97,7 +97,7 @@ export default function Register() {
         screenshotFile: file,
       });
 
-      toast.success(`Registration submitted for ${selectedPlan.name} ($${selectedPlan.price}). You can log in after verification.`);
+      toast.success(`Registration submitted for ${selectedPlan.name} (₹${selectedPlan.price}). You can log in after verification.`);
       navigate("/login");
     } catch (err: any) {
       toast.error(err.message || "Registration failed");
@@ -165,7 +165,7 @@ export default function Register() {
                     {plans.map((p) => (
                       <SelectItem key={p.id} value={p.id} className="py-3">
                         <div className="flex flex-col">
-                          <span className="font-bold text-sm">{p.name} — ${p.price}</span>
+                          <span className="font-bold text-sm">{p.name} — ₹{p.price}</span>
                           <span className="text-xs text-muted-foreground">{p.description || `${p.billing_period} billing`}</span>
                         </div>
                       </SelectItem>
