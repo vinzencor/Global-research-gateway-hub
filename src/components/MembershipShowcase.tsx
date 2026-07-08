@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ArrowRight, Star, Zap, GraduationCap, Sparkles, HelpCircle } from "lucide-react";
+import { Check, ArrowRight, Star, Zap, GraduationCap, Building2, Sparkles, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -13,9 +13,9 @@ interface PlanDetail {
 interface MembershipPlan {
   id: string;
   title: string;
+  category: string;
   description: string;
-  monthlyPrice: string;
-  yearlyPrice: string;
+  price: string;
   icon: React.ReactNode;
   badge: string;
   highlight?: boolean;
@@ -27,16 +27,15 @@ interface MembershipPlan {
 }
 
 export default function MembershipShowcase() {
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [selectedPlanId, setSelectedPlanId] = useState<string>("individual");
 
   const plans: MembershipPlan[] = [
     {
       id: "student",
       title: "Student Plan",
+      category: "Academic",
       description: "Tailored for verified students and early-stage academic researchers building their foundation.",
-      monthlyPrice: "$9",
-      yearlyPrice: "$89",
+      price: "₹1,800",
       icon: <GraduationCap className="h-6 w-6 text-blue-500" />,
       badge: "Academic Starter",
       colorTheme: "from-blue-600 to-cyan-500",
@@ -44,22 +43,21 @@ export default function MembershipShowcase() {
       glowColor: "rgba(59, 130, 246, 0.15)",
       textColor: "text-blue-500",
       details: [
-        { text: "Access to 10 standard journal articles per month", included: true },
-        { text: "Read commentaries and public insights", included: true },
-        { text: "PDF download limit: 5 downloads/month", included: true },
-        { text: "Student membership badge on your profile", included: true },
-        { text: "Standard email support (within 48 hours)", included: true },
-        { text: "Access to general webinars and forums", included: true },
-        { text: "Submission fee waivers", included: false },
-        { text: "API access for text mining", included: false },
+        { text: "View papers on the website", included: true },
+        { text: "Access to the digital library", included: true },
+        { text: "Cite any section of a paper for a ready-made reference", included: true },
+        { text: "See how many times a paper has been cited", included: true },
+        { text: "Downloads", included: false },
+        { text: "Free paper submission", included: false },
+        { text: "Access to reviewer application", included: false },
       ],
     },
     {
       id: "individual",
       title: "Individual Plan",
+      category: "Standard",
       description: "Designed for independent researchers, authors, and professionals needing consistent reference materials.",
-      monthlyPrice: "$29",
-      yearlyPrice: "$289",
+      price: "₹7,500",
       icon: <Zap className="h-6 w-6 text-indigo-500" />,
       badge: "Most Popular",
       highlight: true,
@@ -68,22 +66,21 @@ export default function MembershipShowcase() {
       glowColor: "rgba(99, 102, 241, 0.2)",
       textColor: "text-indigo-500",
       details: [
-        { text: "Access to 50 premium journal articles per month", included: true },
-        { text: "Advanced search filters & citation exporting", included: true },
-        { text: "PDF download limit: 30 downloads/month", included: true },
-        { text: "Individual membership badge on your profile", included: true },
-        { text: "1 submission fee waiver per year", included: true },
-        { text: "Priority email support (within 24 hours)", included: true },
-        { text: "Exclusive research roundtables access", included: true },
-        { text: "API access for text mining", included: false },
+        { text: "All Student plan benefits", included: true },
+        { text: "Apply as a reviewer", included: true },
+        { text: "Author eligibility", included: true },
+        { text: "Citations allowed", included: true },
+        { text: "Pay to publish or gain authorship", included: true },
+        { text: "Downloads", included: false },
+        { text: "Profile featuring", included: false },
       ],
     },
     {
       id: "professional",
       title: "Professional Plan",
-      description: "Full access suite for institutional leaders, heavy contributors, and advanced analytics teams.",
-      monthlyPrice: "$79",
-      yearlyPrice: "$759",
+      category: "Enterprise",
+      description: "Full access suite for active reviewers, publishing authors, and advanced research professionals.",
+      price: "₹15,000",
       icon: <Star className="h-6 w-6 text-amber-500" />,
       badge: "Full Access",
       colorTheme: "from-amber-600 to-orange-500",
@@ -91,14 +88,37 @@ export default function MembershipShowcase() {
       glowColor: "rgba(245, 158, 11, 0.2)",
       textColor: "text-amber-500",
       details: [
-        { text: "Unlimited access to all journals, archives, and books", included: true },
-        { text: "Unlimited PDF downloads of all publications", included: true },
-        { text: "Full API access for text mining & analysis", included: true },
-        { text: "Professional membership badge on your profile", included: true },
-        { text: "Eligible for Editorial Board consideration", included: true },
-        { text: "3 submission fee waivers per year", included: true },
-        { text: "24/7 dedicated chat & fast-track support", included: true },
-        { text: "Speaker opportunities at annual GRGH summits", included: true },
+        { text: "All Student plan benefits", included: true },
+        { text: "Apply as a reviewer", included: true },
+        { text: "Author eligibility", included: true },
+        { text: "Citations allowed", included: true },
+        { text: "Pay to publish or gain authorship", included: true },
+        { text: "Priority publication access", included: true },
+        { text: "Downloads", included: false },
+        { text: "Profile featuring", included: false },
+      ],
+    },
+    {
+      id: "institutional",
+      title: "Institutional Plan",
+      category: "Institution",
+      description: "Built for universities, libraries, and organizations supporting multiple researchers at once.",
+      price: "₹48,500",
+      icon: <Building2 className="h-6 w-6 text-emerald-500" />,
+      badge: "Best for Institutions",
+      colorTheme: "from-emerald-600 to-teal-500",
+      borderColor: "group-hover:from-emerald-500 group-hover:to-teal-400",
+      glowColor: "rgba(16, 185, 129, 0.2)",
+      textColor: "text-emerald-500",
+      details: [
+        { text: "All Student plan benefits", included: true },
+        { text: "Apply as a reviewer", included: true },
+        { text: "Author eligibility", included: true },
+        { text: "Citations allowed", included: true },
+        { text: "Pay to publish or gain authorship", included: true },
+        { text: "Discounted institutional review rates", included: true },
+        { text: "Downloads", included: false },
+        { text: "Profile featuring", included: false },
       ],
     },
   ];
@@ -107,56 +127,12 @@ export default function MembershipShowcase() {
 
   return (
     <div className="space-y-12">
-      {/* Monthly / Yearly Toggle */}
-      <div className="flex flex-col items-center justify-center space-y-4">
-        <div className="relative flex p-1.5 bg-secondary/80 backdrop-blur-md rounded-full border border-border/40 max-w-xs shadow-inner">
-          <button
-            onClick={() => setBillingPeriod("monthly")}
-            className={cn(
-              "relative px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 z-10",
-              billingPeriod === "monthly" ? "text-white" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {billingPeriod === "monthly" && (
-              <motion.div
-                layoutId="activeBilling"
-                className="absolute inset-0 bg-primary rounded-full -z-10 shadow-md"
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
-            )}
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingPeriod("yearly")}
-            className={cn(
-              "relative px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 z-10 flex items-center gap-1.5",
-              billingPeriod === "yearly" ? "text-white" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {billingPeriod === "yearly" && (
-              <motion.div
-                layoutId="activeBilling"
-                className="absolute inset-0 bg-primary rounded-full -z-10 shadow-md"
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
-            )}
-            Yearly
-            <span className="text-[10px] bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-              -20%
-            </span>
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground italic">
-          {billingPeriod === "yearly" ? "Billed annually (Save up to $189/yr)" : "Cancel or switch plans anytime"}
-        </p>
-      </div>
-
       {/* Plans Carousel Grid */}
-      <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto px-4">
         {plans.map((plan, idx) => {
           const isSelected = plan.id === selectedPlanId;
-          const price = billingPeriod === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
-          const subText = billingPeriod === "monthly" ? "/month" : "/year";
+          const price = plan.price;
+          const subText = "/year";
 
           return (
             <motion.div
@@ -202,7 +178,7 @@ export default function MembershipShowcase() {
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                        {plan.id === "student" ? "Academic" : plan.id === "individual" ? "Standard" : "Enterprise"}
+                        {plan.category}
                       </span>
                       <h3 className="font-heading text-2xl font-bold text-foreground">{plan.title}</h3>
                     </div>
@@ -314,7 +290,7 @@ export default function MembershipShowcase() {
                     <p className={cn("text-sm font-semibold", detail.included ? "text-foreground" : "text-muted-foreground line-through")}>
                       {detail.text}
                     </p>
-                    {detail.included && idx === 0 && (
+                    {detail.included && detail.text.toLowerCase().includes("digital library") && (
                       <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-bold uppercase mt-1 inline-block">
                         Digital Library Enabled
                       </span>
@@ -329,7 +305,7 @@ export default function MembershipShowcase() {
               <div className="flex items-center gap-3">
                 <HelpCircle className="h-5 w-5 text-primary shrink-0" />
                 <span className="text-xs text-muted-foreground leading-relaxed">
-                  Need custom enterprise terms or multi-user licenses for your university or institution? We offer custom institutional pricing packages.
+                  Need a custom multi-user license beyond the standard Institutional plan? Reach out and we'll tailor a package for your organization.
                 </span>
               </div>
               <Link to="/support" className="shrink-0 text-xs font-bold text-primary hover:underline flex items-center gap-1">
