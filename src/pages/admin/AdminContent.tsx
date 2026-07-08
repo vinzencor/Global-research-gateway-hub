@@ -231,7 +231,7 @@ export default function AdminContent() {
                     ? <><Globe className="h-3 w-3 mr-1" />Open Access</>
                     : viewItem.accessMode === "members_only"
                     ? <><Lock className="h-3 w-3 mr-1" />Members Only</>
-                    : `Pay-per-view $${Number(viewItem.ppvPrice || 9.99).toFixed(2)}`
+                    : `Pay-per-view ₹${Number(viewItem.ppvPrice || 9.99).toFixed(2)}`
                   }
                 </Badge>
                 {viewItem.featured && <Badge className="bg-amber-500/10 text-amber-600 border-amber-200">Featured</Badge>}
@@ -303,7 +303,7 @@ export default function AdminContent() {
               <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["draft","in_review","approved","published"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2 col-span-2"><Label>Access Mode</Label><Select value={form.accessMode} onValueChange={v => setForm(f => ({ ...f, accessMode: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[{ value: "open_access", label: "Open Access" }, { value: "members_only", label: "Members Only" }, { value: "pay_per_view", label: "Pay-per-view" }].map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent></Select></div>
               {form.accessMode === "pay_per_view" && (
-                <div className="space-y-2 col-span-2"><Label>Pay-per-view Price (USD)</Label><Input type="number" min={0} step={0.01} value={form.ppvPrice} onChange={e => setForm(f => ({ ...f, ppvPrice: Number(e.target.value) || 0 }))} /></div>
+                <div className="space-y-2 col-span-2"><Label>Pay-per-view Price (₹)</Label><Input type="number" min={0} step={0.01} value={form.ppvPrice} onChange={e => setForm(f => ({ ...f, ppvPrice: Number(e.target.value) || 0 }))} /></div>
               )}
             </div>
             <div className="space-y-2"><Label>Summary</Label><Textarea value={form.summary} onChange={e => setForm(f => ({ ...f, summary: e.target.value }))} placeholder="Brief description..." rows={2} /></div>

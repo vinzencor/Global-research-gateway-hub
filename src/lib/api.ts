@@ -189,6 +189,24 @@ export const supportApi = {
     apiRequest("/support-requests/password-reset", { method: "POST", body: payload }),
 };
 
+// ─── Support Tickets API (general issue/help requests) ───────────────────────
+
+export const supportTicketApi = {
+  create: (payload: {
+    name: string;
+    email: string;
+    category: string;
+    subject: string;
+    description: string;
+  }) => apiRequest("/support-tickets", { method: "POST", body: payload }),
+  adminList: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return apiRequest(`/support-tickets${qs}`);
+  },
+  adminUpdate: (id: string, payload: { status?: string; adminNote?: string }) =>
+    apiRequest(`/support-tickets/${id}`, { method: "PATCH", body: payload }),
+};
+
 // â"€â"€â"€ Users API â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 export const usersApi = {
@@ -211,6 +229,8 @@ export const usersApi = {
     apiRequest(`/users/${userId}/roles/add`, { method: "POST", body: { role } }),
   removeRole: (userId: string, role: string) =>
     apiRequest(`/users/${userId}/roles/remove`, { method: "POST", body: { role } }),
+  setReviewerCategory: (userId: string, reviewerCategory: "" | "our_reviewer" | "top_reviewer" | "chief_editor") =>
+    apiRequest(`/users/${userId}/reviewer-category`, { method: "PATCH", body: { reviewerCategory } }),
   toggleActive: (userId: string) =>
     apiRequest(`/users/${userId}/toggle-active`, { method: "PATCH" }),
   getRoleModuleAccess: () => apiRequest("/users/admin/role-module-access"),
@@ -447,6 +467,7 @@ export const featuredApi = {
   submitRequest: (note?: string) =>
     apiRequest("/featured/request", { method: "POST", body: { note } }),
   getMyRequests: () => apiRequest("/featured/my-requests"),
+  cancelMyRequest: () => apiRequest("/featured/my-requests", { method: "DELETE" }),
   adminList: () => apiRequest("/featured/admin/all"),
   adminListRequests: () => apiRequest("/featured/admin/requests"),
   reviewRequest: (requestId: string, approve: boolean, adminNote?: string) =>
@@ -456,6 +477,21 @@ export const featuredApi = {
     }),
   removeFeatured: (userId: string) =>
     apiRequest(`/featured/admin/${userId}`, { method: "DELETE" }),
+};
+
+// ─── Role Requests API (users requesting an additional role) ─────────────────
+
+export const roleRequestApi = {
+  create: (role: string, note?: string) =>
+    apiRequest("/role-requests", { method: "POST", body: { role, note } }),
+  getMyRequests: () => apiRequest("/role-requests/my-requests"),
+  adminList: (status?: string) =>
+    apiRequest(`/role-requests/admin/all${status ? `?status=${status}` : ""}`),
+  reviewRequest: (requestId: string, approve: boolean, adminNote?: string) =>
+    apiRequest(`/role-requests/admin/${requestId}/review`, {
+      method: "PATCH",
+      body: { approve, adminNote },
+    }),
 };
 
 // ─── Happenings API ────────────────────────────────────────────────────────────────

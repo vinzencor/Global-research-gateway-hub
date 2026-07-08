@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Routes, Route } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, UserCheck, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers, Bell, BellOff, Banknote, LogOut, FileBarChart } from "lucide-react";
+import { LayoutDashboard, FileText, Users, BookOpen, CreditCard, Star, ClipboardList, GitBranch, BarChart3, TrendingUp, ArrowLeftRight, CheckCircle2, Shield, Eye, Clock, CheckCircle, Layers, Bell, BellOff, Banknote, LogOut, FileBarChart, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { contentApi, adminApi, journalApi, notificationsApi } from "@/lib/api";
@@ -23,6 +23,7 @@ import AdminHappenings from "@/pages/admin/AdminHappenings";
 import AdminJournalPayments from "@/pages/admin/AdminJournalPayments";
 import AdminWithdrawals from "@/pages/admin/AdminWithdrawals";
 import AdminPaymentReports from "@/pages/admin/AdminPaymentReports";
+import AdminSupportTickets from "@/pages/admin/AdminSupportTickets";
 import { Megaphone } from "lucide-react";
 
 type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: string };
@@ -34,7 +35,6 @@ const navItems: AdminNavItem[] = [
   { label: "Withdrawals", to: "/admin/withdrawals", moduleKey: "pipeline", icon: <LogOut className="h-4 w-4" /> },
   { label: "Analytics", to: "/admin/analytics", moduleKey: "analytics", icon: <TrendingUp className="h-4 w-4" /> },
   { label: "Workflow Designer", to: "/admin/workflow", moduleKey: "workflow", icon: <GitBranch className="h-4 w-4" /> },
-  { label: "Sub-Admins", to: "/admin/sub-admins", moduleKey: "sub_admins", icon: <UserCheck className="h-4 w-4" /> },
   { label: "Content", to: "/admin/content", moduleKey: "content", icon: <FileText className="h-4 w-4" /> },
   { label: "Happenings", to: "/admin/happenings", moduleKey: "happenings", icon: <Megaphone className="h-4 w-4" /> },
   { label: "Review Queue", to: "/admin/reviews", moduleKey: "reviews", icon: <ClipboardList className="h-4 w-4" /> },
@@ -43,6 +43,7 @@ const navItems: AdminNavItem[] = [
   { label: "Users & Roles", to: "/admin/users", moduleKey: "users", icon: <Users className="h-4 w-4" /> },
   { label: "Roles", to: "/admin/roles", moduleKey: "roles", icon: <Shield className="h-4 w-4" /> },
   { label: "Validate New Users", to: "/admin/validate-users", moduleKey: "validate_users", icon: <CheckCircle2 className="h-4 w-4" /> },
+  { label: "Support Tickets", to: "/admin/support-tickets", moduleKey: "support_tickets", icon: <HelpCircle className="h-4 w-4" /> },
   // { label: "Billing", to: "/admin/billing", moduleKey: "billing", icon: <CreditCard className="h-4 w-4" /> },
   { label: "Payment Reports", to: "/admin/payment-reports", moduleKey: "billing", icon: <FileBarChart className="h-4 w-4" /> },
   { label: "Switch to User Portal", to: "/portal/dashboard", icon: <ArrowLeftRight className="h-4 w-4" /> },
@@ -169,7 +170,6 @@ export default function AdminPortal() {
                   { title: "Featured Users", desc: "Feature published users for the public page", action: () => navigate("/admin/people"), btn: "Manage", icon: <Star className="h-5 w-5 text-orange-500" />, color: "border-orange-200 dark:border-orange-900" },
                   { title: "Digital Library", desc: "Upload and manage library papers", action: () => navigate("/admin/library"), btn: "Manage", icon: <BookOpen className="h-5 w-5 text-violet-500" />, color: "border-violet-200 dark:border-violet-900" },
                   { title: "Manage Happenings", desc: "Update news and events on homepage", action: () => navigate("/admin/happenings"), btn: "Manage", icon: <Megaphone className="h-5 w-5 text-pink-500" />, color: "border-pink-200 dark:border-pink-900" },
-                  { title: "Sub-Admins", desc: "Manage sub-admin accounts and permissions", action: () => navigate("/admin/sub-admins"), btn: "Manage", icon: <UserCheck className="h-5 w-5 text-cyan-500" />, color: "border-cyan-200 dark:border-cyan-900" },
                 ].map((c) => (
                   <div key={c.title} className={`rounded-xl border ${c.color} bg-card p-5 card-shadow hover:shadow-md transition-all`}>
                     <div className="flex items-start gap-3 mb-3">
@@ -311,6 +311,7 @@ export default function AdminPortal() {
         <Route path="/users" element={canAccess("users") ? <AdminUsers /> : AccessDenied} />
         <Route path="/roles" element={canAccess("roles") ? <AdminRoles /> : AccessDenied} />
         <Route path="/validate-users" element={canAccess("validate_users") ? <AdminValidateUsers /> : AccessDenied} />
+        <Route path="/support-tickets" element={canAccess("support_tickets") ? <AdminSupportTickets /> : AccessDenied} />
         <Route path="/billing" element={canAccess("billing") ? <AdminBilling /> : AccessDenied} />
         <Route path="/payment-reports" element={canAccess("billing") ? <AdminPaymentReports /> : AccessDenied} />
       </Routes>

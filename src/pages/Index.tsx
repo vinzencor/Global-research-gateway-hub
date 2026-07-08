@@ -155,12 +155,14 @@ export default function Index() {
         ).slice(0, 3);
         setRecentPubs(mergedLatest);
 
-        // Featured section: prefer explicitly featured items (content homepage + featured journals)
+        // Featured section: prefer explicitly featured items (content homepage/featured + featured journals)
         const homepageItems: any[] = Array.isArray(homepageData)
           ? homepageData
           : (homepageData as any)?.items || [];
+        const featuredContentItems = latestContentItems.filter((i: any) => i.featured);
         const allFeatured = [
           ...homepageItems,
+          ...featuredContentItems.filter((i: any) => !homepageItems.some((h: any) => String(h._id || h.id) === String(i._id || i.id))),
           ...featuredJournals.map((j: any) => ({ ...j, _isJournal: true })),
         ];
         setFeaturedPubs(

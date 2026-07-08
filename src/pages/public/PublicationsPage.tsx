@@ -263,7 +263,11 @@ export default function PublicationsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-24 text-muted-foreground bg-secondary/20 rounded-[3rem] border border-dashed">
             <FileText className="h-16 w-16 mx-auto mb-6 opacity-20" />
-            <p className="text-xl font-light">No publications matched your criteria.</p>
+            <p className="text-xl font-light">
+              {filterType === "featured"
+                ? "No publications have been marked as featured yet."
+                : "No publications matched your criteria."}
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -420,7 +424,7 @@ export default function PublicationsPage() {
                         </div>
                         {item.accessMode === "pay_per_view" && (
                           <span className="text-xs font-bold bg-primary text-white px-2 py-1 rounded">
-                            ${Number(item.ppvPrice || 9.99).toFixed(2)}
+                            ₹{Number(item.ppvPrice || 9.99).toFixed(2)}
                           </span>
                         )}
                       </div>

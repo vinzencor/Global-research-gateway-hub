@@ -130,7 +130,7 @@ export default function About() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {offerings.map((item, i) => (
               <motion.div
                 key={i}
@@ -138,10 +138,10 @@ export default function About() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
                 viewport={{ once: true }}
-                className="flex items-start gap-4 rounded-2xl border bg-card p-6 hover:border-primary/30 transition-all"
+                className="flex items-start gap-4 rounded-2xl border bg-card p-8 hover:border-primary/30 transition-all"
               >
-                <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                <p className="text-sm font-medium leading-relaxed">{item}</p>
+                <CheckCircle className="h-6 w-6 text-primary mt-0.5 shrink-0" />
+                <p className="text-lg font-medium leading-relaxed">{item}</p>
               </motion.div>
             ))}
           </div>
@@ -168,7 +168,7 @@ export default function About() {
             <h2 className="font-heading text-4xl font-bold tracking-tight mb-4">Our Values</h2>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {values.map((value, i) => (
               <motion.div
                 key={i}
@@ -176,13 +176,13 @@ export default function About() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 viewport={{ once: true }}
-                className="group rounded-3xl border bg-card p-6 hover:shadow-lg transition-all hover:border-primary/20 text-center"
+                className="group rounded-3xl border bg-card p-7 hover:shadow-lg transition-all hover:border-primary/20 text-center"
               >
-                <div className={`h-12 w-12 rounded-2xl ${value.color} flex items-center justify-center mb-4 mx-auto transition-transform group-hover:scale-110`}>
+                <div className={`h-14 w-14 rounded-2xl ${value.color} flex items-center justify-center mb-4 mx-auto transition-transform group-hover:scale-110`}>
                   {value.icon}
                 </div>
-                <h3 className="font-heading font-bold text-base mb-2 group-hover:text-primary transition-colors">{value.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{value.description}</p>
+                <h3 className="font-heading font-bold text-lg mb-2 group-hover:text-primary transition-colors">{value.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{value.description}</p>
               </motion.div>
             ))}
           </div>

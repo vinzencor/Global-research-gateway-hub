@@ -1,11 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, LayoutDashboard, LogOut, User, Sparkles } from "lucide-react";
+import { Search, Menu, X, LayoutDashboard, LogOut, User, Sparkles, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { isAdmin } from "@/contexts/AuthContext";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { isAdmin, getAvailableDashboards } from "@/contexts/AuthContext";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
@@ -43,6 +43,9 @@ export function Header() {
           : user.roles.includes("author") ? "/author"
             : "/portal/dashboard"
     : "/login";
+
+  const availableDashboards = user ? getAvailableDashboards(user.roles) : [];
+  const canSwitchRoles = availableDashboards.length > 1;
 
   return (
     <header
@@ -92,9 +95,24 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl">
-                <DropdownMenuItem onClick={() => navigate(dashboardPath)} className="rounded-xl h-10 cursor-pointer">
-                  <LayoutDashboard className="h-4 w-4 mr-3" /> Dashboard
-                </DropdownMenuItem>
+                {canSwitchRoles ? (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="rounded-xl h-10 cursor-pointer">
+                      <ArrowLeftRight className="h-4 w-4 mr-3" /> Switch Role
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-52 p-2 rounded-2xl">
+                      {availableDashboards.map((d) => (
+                        <DropdownMenuItem key={d.key} onClick={() => navigate(d.to)} className="rounded-xl h-10 cursor-pointer">
+                          <LayoutDashboard className="h-4 w-4 mr-3" /> {d.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                ) : (
+                  <DropdownMenuItem onClick={() => navigate(dashboardPath)} className="rounded-xl h-10 cursor-pointer">
+                    <LayoutDashboard className="h-4 w-4 mr-3" /> Dashboard
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/portal/profile")} className="rounded-xl h-10 cursor-pointer">
                   <User className="h-4 w-4 mr-3" /> Profile
                 </DropdownMenuItem>

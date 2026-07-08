@@ -252,7 +252,7 @@ export default function AdminBilling() {
     const payload = {
       user_id: invoiceForm.user_id,
       amount: invoiceForm.amount,
-      currency: invoiceForm.currency || "USD",
+      currency: invoiceForm.currency || "INR",
       status: invoiceForm.status,
       paid_at: invoiceForm.status === "paid" ? new Date().toISOString() : null,
     };

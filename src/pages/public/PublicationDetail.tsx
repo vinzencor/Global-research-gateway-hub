@@ -215,7 +215,7 @@ export default function PublicationDetail() {
                 ) : (
                   <Button asChild>
                     <Link to={`/portal/membership?mode=ppv&contentId=${item._id || item.id}&returnTo=/publications/${item.slug}`}>
-                      {`Buy Access — $${Number(item.ppvPrice || item.ppv_price || 9.99).toFixed(2)}`}
+                      {`Buy Access — ₹${Number(item.ppvPrice || item.ppv_price || 9.99).toFixed(2)}`}
                     </Link>
                   </Button>
                 )}

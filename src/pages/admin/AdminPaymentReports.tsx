@@ -109,7 +109,7 @@ export default function AdminPaymentReports() {
               ? `${inv.membership.plan.name} Membership`
               : "Membership",
             amount: Number(inv.amount) || 0,
-            currency: inv.currency || "USD",
+            currency: inv.currency || "INR",
             status,
             recordedAt: inv.status === "paid" ? (inv.paidAt || inv.updatedAt || null) : null,
             submittedAt: inv.createdAt || null,
@@ -129,7 +129,7 @@ export default function AdminPaymentReports() {
           userEmail: j.authorUser?.email || "",
           itemTitle: j.title || "Journal Submission",
           amount: Number(j.paymentAmount) || 0,
-          currency: "USD",
+          currency: "INR",
           status: (j.paymentStatus === "paid" ? "paid" : j.paymentStatus === "awaiting_verification" ? "awaiting_verification" : "unpaid") as PaymentRecord["status"],
           recordedAt: j.paymentStatus === "paid" ? (j.paymentVerifiedAt || null) : null,
           submittedAt: j.createdAt || null,
@@ -240,28 +240,28 @@ export default function AdminPaymentReports() {
         <div className="rounded-xl border p-5 bg-green-50 dark:bg-green-950/20 flex items-center gap-3">
           <TrendingUp className="h-5 w-5 text-green-600" />
           <div>
-            <p className="text-2xl font-bold">${totals.recordedTotal.toFixed(2)}</p>
+            <p className="text-2xl font-bold">₹{totals.recordedTotal.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Recorded Revenue ({totals.recordedCount})</p>
           </div>
         </div>
         <div className="rounded-xl border p-5 bg-yellow-50 dark:bg-yellow-950/20 flex items-center gap-3">
           <Clock className="h-5 w-5 text-yellow-600" />
           <div>
-            <p className="text-2xl font-bold">${totals.pendingTotal.toFixed(2)}</p>
+            <p className="text-2xl font-bold">₹{totals.pendingTotal.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Pending, Not Recorded ({totals.pendingCount})</p>
           </div>
         </div>
         <div className="rounded-xl border p-5 bg-blue-50 dark:bg-blue-950/20 flex items-center gap-3">
           <CreditCard className="h-5 w-5 text-blue-600" />
           <div>
-            <p className="text-2xl font-bold">${totals.membershipRecordedTotal.toFixed(2)}</p>
+            <p className="text-2xl font-bold">₹{totals.membershipRecordedTotal.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Membership Revenue</p>
           </div>
         </div>
         <div className="rounded-xl border p-5 bg-violet-50 dark:bg-violet-950/20 flex items-center gap-3">
           <FileText className="h-5 w-5 text-violet-600" />
           <div>
-            <p className="text-2xl font-bold">${totals.journalRecordedTotal.toFixed(2)}</p>
+            <p className="text-2xl font-bold">₹{totals.journalRecordedTotal.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">Journal Submission Revenue</p>
           </div>
         </div>
@@ -353,7 +353,7 @@ export default function AdminPaymentReports() {
                   </Badge>
                 </td>
                 <td className="p-4 hidden lg:table-cell text-xs text-muted-foreground max-w-[220px] truncate">{r.itemTitle}</td>
-                <td className="p-4 text-xs font-semibold">${r.amount.toFixed(2)}</td>
+                <td className="p-4 text-xs font-semibold">₹{r.amount.toFixed(2)}</td>
                 <td className="p-4">
                   <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[r.status]}`}>
                     {r.status === "paid" && <CheckCircle2 className="h-3 w-3 mr-1 inline" />}
@@ -381,7 +381,7 @@ export default function AdminPaymentReports() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="rounded-xl border p-4 bg-green-50 dark:bg-green-950/20">
-                  <p className="text-2xl font-bold">${userReportTotal.toFixed(2)}</p>
+                  <p className="text-2xl font-bold">₹{userReportTotal.toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground">Total Approved & Recorded</p>
                 </div>
                 <div className="rounded-xl border p-4">
@@ -406,7 +406,7 @@ export default function AdminPaymentReports() {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-semibold">${r.amount.toFixed(2)}</p>
+                          <p className="text-sm font-semibold">₹{r.amount.toFixed(2)}</p>
                           <Badge variant="outline" className={`text-[10px] ${STATUS_COLORS[r.status]}`}>
                             {STATUS_LABELS[r.status]}
                           </Badge>

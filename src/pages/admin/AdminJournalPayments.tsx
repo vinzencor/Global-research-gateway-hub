@@ -309,7 +309,7 @@ export default function AdminJournalPayments() {
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Amount Paid</p>
                     <p className="text-sm font-semibold">
-                      {viewItem.paymentAmount ? `$${Number(viewItem.paymentAmount).toFixed(2)}` : "Not specified"}
+                      {viewItem.paymentAmount ? `₹${Number(viewItem.paymentAmount).toFixed(2)}` : "Not specified"}
                     </p>
                   </div>
                 </div>

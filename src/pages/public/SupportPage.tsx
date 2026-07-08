@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -9,8 +8,23 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { HelpCircle, Mail, MessageSquare, CreditCard, BookOpen, Settings, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { supportApi } from "@/lib/api";
+import { supportTicketApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const ticketCategories = [
+  { value: "general", label: "General Enquiry" },
+  { value: "membership", label: "Membership Support" },
+  { value: "digital_library", label: "Digital Library Support" },
+  { value: "technical", label: "Technical Issue" },
+  { value: "other", label: "Other" },
+];
 
 const contactCategories = [
   {
@@ -33,15 +47,21 @@ const contactCategories = [
   },
   {
     icon: <Settings className="h-6 w-6" />,
-    title: "Account Changes",
-    description: "Request help updating your registered email or password.",
+    title: "Technical Issues",
+    description: "Report bugs, broken pages, or other technical problems.",
     color: "bg-rose-500/10 text-rose-600",
   },
 ];
 
 export default function SupportPage() {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({ requestedEmail: "", reason: "", currentPassword: "" });
+  const [formData, setFormData] = useState({
+    name: user?.fullName || "",
+    email: user?.email || "",
+    category: "general",
+    subject: "",
+    description: "",
+  });
   const [sending, setSending] = useState(false);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -51,19 +71,15 @@ export default function SupportPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!formData.requestedEmail || !formData.reason || !formData.currentPassword) {
+    if (!formData.name || !formData.email || !formData.subject || !formData.description) {
       toast.error("Please fill in the required fields.");
       return;
     }
     setSending(true);
     try {
-      await supportApi.createRequest({
-        requestedEmail: formData.requestedEmail,
-        reason: formData.reason,
-        currentPassword: formData.currentPassword,
-      });
-      toast.success("Your support request has been submitted.");
-      setFormData({ requestedEmail: "", reason: "", currentPassword: "" });
+      await supportTicketApi.create(formData);
+      toast.success("Your support request has been submitted. Our team will get back to you.");
+      setFormData(prev => ({ ...prev, subject: "", description: "" }));
     } catch (err: any) {
       toast.error(err?.message || "Could not submit support request.");
     } finally {
@@ -90,7 +106,7 @@ export default function SupportPage() {
             Support & Contact
           </h1>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Submit an account support request if you need to change your registered email or reset your password.
+            Have an issue or question? Tell us what's going on and our team will look into it.
           </p>
         </div>
       </section>
@@ -98,7 +114,7 @@ export default function SupportPage() {
       {/* Intro */}
       <section className="container py-16 max-w-3xl mx-auto text-center space-y-6">
         <p className="text-lg text-muted-foreground leading-relaxed">
-          Use the form below to request an email update or password reset. Administrators review each request before making account changes.
+          Use the form below to submit a support request for any issue — membership, digital library access, technical problems, or general questions. Our team reviews and responds to every request.
         </p>
         <p className="text-lg text-muted-foreground leading-relaxed">
           <strong className="text-foreground">Articles and News</strong> are items that the journal publishes for marketing purposes, either from our own archives, or new content that is intended to engage our audience.
@@ -136,50 +152,48 @@ export default function SupportPage() {
       <section className="container py-24">
         <div className="grid lg:grid-cols-2 gap-16 max-w-5xl mx-auto">
           <div className="space-y-6">
-            <h2 className="font-heading text-3xl font-bold tracking-tight">Account Support Request</h2>
+            <h2 className="font-heading text-3xl font-bold tracking-tight">Submit a Support Request</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Tell us what needs to change and why. We will review and process the request if approved.
+              Tell us what issue you're facing and our team will review it and get back to you.
             </p>
 
-            {!user ? (
-              <div className="rounded-2xl border bg-secondary/30 p-6 space-y-4">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  To keep your account secure, email change requests must be submitted while signed in.
-                  Forgot your password instead? Use the self-service reset link — no admin wait required.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link to="/login" className="flex-1">
-                    <Button className="w-full rounded-full font-bold">Log In to Request an Email Change</Button>
-                  </Link>
-                  <Link to="/account-recovery" className="flex-1">
-                    <Button variant="outline" className="w-full rounded-full font-bold">Forgot Password</Button>
-                  </Link>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Your Name <span className="text-destructive">*</span></Label>
+                  <Input id="name" name="name" placeholder="Jane Smith" value={formData.name} onChange={handleChange} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Your Email <span className="text-destructive">*</span></Label>
+                  <Input id="email" name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} required />
                 </div>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Current Registered Email</Label>
-                  <Input value={user.email} disabled className="bg-muted" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="requestedEmail">Requested New Email <span className="text-destructive">*</span></Label>
-                  <Input id="requestedEmail" name="requestedEmail" type="email" placeholder="new-email@example.com" value={formData.requestedEmail} onChange={handleChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reason">Reason for the request <span className="text-destructive">*</span></Label>
-                  <Textarea id="reason" name="reason" placeholder="Please explain why you need this change..." rows={5} value={formData.reason} onChange={handleChange} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="currentPassword">Confirm Current Password <span className="text-destructive">*</span></Label>
-                  <Input id="currentPassword" name="currentPassword" type="password" placeholder="••••••••" value={formData.currentPassword} onChange={handleChange} required />
-                </div>
-                <Button type="submit" size="lg" className="w-full rounded-full font-bold" disabled={sending}>
-                  {sending ? "Sending..." : "Submit Support Request"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </form>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="category">Issue Category <span className="text-destructive">*</span></Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ticketCategories.map(c => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subject">Subject <span className="text-destructive">*</span></Label>
+                <Input id="subject" name="subject" placeholder="Briefly describe the issue" value={formData.subject} onChange={handleChange} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
+                <Textarea id="description" name="description" placeholder="Please describe the issue in detail..." rows={5} value={formData.description} onChange={handleChange} required />
+              </div>
+              <Button type="submit" size="lg" className="w-full rounded-full font-bold" disabled={sending}>
+                {sending ? "Sending..." : "Submit Support Request"}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </form>
           </div>
 
           {/* Direct Contact Block + FAQ Prompt */}
@@ -212,10 +226,10 @@ export default function SupportPage() {
                 Before submitting a request, review the most common account questions below.
               </p>
               {[
-                { q: "How do I change my email address?", a: "Log in, then submit a support request with the new email you want to use." },
+                { q: "How do I change my registered email address?", a: "Log in, go to My Profile, and use the \"Request email change\" option." },
                 { q: "How do I reset my password?", a: "Use the self-service Forgot Password link — no admin wait required." },
-                { q: "How long does review take?", a: "Requests are reviewed by administrators and processed after approval." },
-                { q: "Can I log in with my old email after a change?", a: "No. The previous email remains reserved and only the latest email can be used to sign in." },
+                { q: "How long does a support request take?", a: "Our team reviews and responds to submitted requests as soon as possible." },
+                { q: "Can I submit a request without logging in?", a: "Yes. Just provide your name and email so our team can get back to you." },
               ].map((item, i) => (
                 <div key={i} className="border-t pt-4">
                   <p className="font-bold text-sm mb-1">{item.q}</p>

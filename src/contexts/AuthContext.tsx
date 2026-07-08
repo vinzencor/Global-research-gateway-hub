@@ -51,6 +51,31 @@ export const isMember = (roles: UserRole[]) =>
   roles.some((r) => ["member", "subscriber"].includes(r)) || isAdmin(roles);
 export const isSubscriber = (roles: UserRole[]) => roles.includes("subscriber");
 
+export interface DashboardOption {
+  key: string;
+  label: string;
+  to: string;
+}
+
+// A user can hold several roles at once (e.g. author + reviewer). This
+// returns one entry per distinct dashboard they can reach, in priority
+// order, so the navbar can offer a "Switch Role" picker instead of always
+// routing to a single hard-coded destination.
+export function getAvailableDashboards(roles: UserRole[] = []): DashboardOption[] {
+  const options: DashboardOption[] = [];
+  const add = (key: string, label: string, to: string) => {
+    if (!options.some((o) => o.key === key)) options.push({ key, label, to });
+  };
+
+  if (isAdmin(roles)) add("admin", "Admin Console", "/admin");
+  if (roles.includes("sub_admin")) add("sub_admin", "Sub-Admin Portal", "/sub-admin");
+  if (roles.includes("reviewer")) add("reviewer", "Reviewer Dashboard", "/reviewer/stage");
+  if (roles.includes("author")) add("author", "Author Dashboard", "/author");
+  add("member", "Member Portal", "/portal/dashboard");
+
+  return options;
+}
+
 
 // ─── Context type ─────────────────────────────────────────────────────────────
 interface AuthContextType {

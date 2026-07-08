@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UserRole } from "@/contexts/AuthContext";
-import { adminApi, authApi, membershipApi, usersApi } from "@/lib/api";
+import { adminApi, authApi, membershipApi, usersApi, roleRequestApi } from "@/lib/api";
 import { PREDEFINED_ROLES } from "@/lib/roles";
 import { toast } from "sonner";
 import { Search, Shield, RefreshCw, UserPlus, ReceiptText, XCircle, RotateCw, Trash2 } from "lucide-react";
@@ -95,8 +95,11 @@ export default function AdminUsers() {
   const [showAccountEdit, setShowAccountEdit] = useState<any | null>(null);
   const [accountForm, setAccountForm] = useState({ email: "", password: "" });
   const [accountSaving, setAccountSaving] = useState(false);
+  const [roleRequests, setRoleRequests] = useState<any[]>([]);
+  const [roleRequestsLoading, setRoleRequestsLoading] = useState(true);
+  const [roleRequestActionLoading, setRoleRequestActionLoading] = useState<string | null>(null);
 
-  useEffect(() => { loadUsers(); loadSupportRequests(); }, []);
+  useEffect(() => { loadUsers(); loadSupportRequests(); loadRoleRequests(); }, []);
 
   async function loadUsers() {
     setLoading(true);
@@ -184,6 +187,33 @@ export default function AdminUsers() {
       setSupportRequests([]);
     } finally {
       setSupportLoading(false);
+    }
+  }
+
+  async function loadRoleRequests() {
+    setRoleRequestsLoading(true);
+    try {
+      const response = await roleRequestApi.adminList() as any;
+      setRoleRequests(Array.isArray(response) ? response : response?.items || []);
+    } catch {
+      toast.error("Failed to load role requests.");
+      setRoleRequests([]);
+    } finally {
+      setRoleRequestsLoading(false);
+    }
+  }
+
+  async function handleRoleRequestReview(request: any, approve: boolean) {
+    setRoleRequestActionLoading(request._id);
+    try {
+      await roleRequestApi.reviewRequest(request._id, approve);
+      toast.success(approve ? "Role request approved." : "Role request rejected.");
+      await loadRoleRequests();
+      await loadUsers();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to process role request.");
+    } finally {
+      setRoleRequestActionLoading(null);
     }
   }
 
@@ -342,6 +372,14 @@ export default function AdminUsers() {
       || String(request.reason || "").toLowerCase().includes(needle);
   });
 
+  const filteredRoleRequests = roleRequests.filter((request) => {
+    if (!search) return true;
+    const needle = search.toLowerCase();
+    return String(request.user?.fullName || "").toLowerCase().includes(needle)
+      || String(request.user?.email || "").toLowerCase().includes(needle)
+      || String(request.requestedRole || "").toLowerCase().includes(needle);
+  });
+
   async function handleAccountSave() {
     if (!showAccountEdit) return;
     setAccountSaving(true);
@@ -429,7 +467,7 @@ export default function AdminUsers() {
                           </Badge>
                           <p className="text-xs text-muted-foreground">
                             {membership.membership_plans?.name || "Plan"}
-                            {typeof membership.membership_plans?.price === "number" ? ` · $${Number(membership.membership_plans.price).toFixed(2)}` : ""}
+                            {typeof membership.membership_plans?.price === "number" ? ` · ₹${Number(membership.membership_plans.price).toFixed(2)}` : ""}
                             {membership.ends_at ? ` · ${new Date(membership.ends_at).toLocaleDateString()}` : ""}
                           </p>
                         </div>
@@ -438,7 +476,7 @@ export default function AdminUsers() {
                     <td className="p-4 hidden lg:table-cell">
                       <div className="text-xs">
                         <p className="font-medium">{invoiceSummary.paidCount} membership paid</p>
-                        <p className="text-muted-foreground">${invoiceSummary.total.toFixed(0)} membership total</p>
+                        <p className="text-muted-foreground">₹{invoiceSummary.total.toFixed(0)} membership total</p>
                       </div>
                     </td>
                     <td className="p-4 text-muted-foreground hidden sm:table-cell">
@@ -518,6 +556,68 @@ export default function AdminUsers() {
                   </td>
                   <td className="p-4">
                     <Button variant="ghost" size="sm" onClick={() => { setSupportNewPassword(""); setSupportNewEmail(request.requestedEmail || ""); setShowSupportReview(request); }}>Review</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-card card-shadow overflow-hidden">
+        <div className="flex items-center justify-between gap-3 flex-wrap p-4 border-b bg-muted/20">
+          <div>
+            <h3 className="font-heading font-bold text-lg">Role Requests</h3>
+            <p className="text-sm text-muted-foreground">Users requesting an additional role (author, reviewer, subscriber).</p>
+          </div>
+          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+            {roleRequests.length} total
+          </Badge>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left p-4 font-medium text-muted-foreground">User</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Requested Role</th>
+                <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Note</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roleRequestsLoading ? (
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Loading role requests...</td></tr>
+              ) : filteredRoleRequests.length === 0 ? (
+                <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No role requests found</td></tr>
+              ) : filteredRoleRequests.map((request) => (
+                <tr key={request._id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="p-4">
+                    <div>
+                      <p className="font-medium">{request.user?.fullName || "Unknown"}</p>
+                      <p className="text-xs text-muted-foreground">{request.user?.email}</p>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <Badge variant="secondary" className="capitalize">{request.requestedRole}</Badge>
+                  </td>
+                  <td className="p-4 text-muted-foreground hidden md:table-cell max-w-[22rem]">
+                    <p className="line-clamp-2">{request.note || "—"}</p>
+                  </td>
+                  <td className="p-4">
+                    <Badge variant="outline" className={request.status === "approved" ? "bg-success/10 text-success border-success/20" : request.status === "rejected" ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-warning/10 text-warning border-warning/20"}>
+                      {request.status}
+                    </Badge>
+                  </td>
+                  <td className="p-4">
+                    {request.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={roleRequestActionLoading === request._id} onClick={() => handleRoleRequestReview(request, true)}>Approve</Button>
+                        <Button variant="ghost" size="sm" className="text-destructive" disabled={roleRequestActionLoading === request._id} onClick={() => handleRoleRequestReview(request, false)}>Reject</Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Reviewed</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -631,7 +731,7 @@ export default function AdminUsers() {
                 Paid invoices: <span className="font-medium">{showMembershipDialog?.invoiceSummary?.paidCount || 0}</span>
               </p>
               <p className="text-sm">
-                Total billed: <span className="font-medium">${Number(showMembershipDialog?.invoiceSummary?.total || 0).toFixed(2)}</span>
+                Total billed: <span className="font-medium">₹{Number(showMembershipDialog?.invoiceSummary?.total || 0).toFixed(2)}</span>
               </p>
               <p className="text-xs text-muted-foreground">
                 Last invoice: {showMembershipDialog?.invoiceSummary?.lastInvoiceAt ? new Date(showMembershipDialog.invoiceSummary.lastInvoiceAt).toLocaleDateString() : "No invoices"}

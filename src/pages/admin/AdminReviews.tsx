@@ -31,6 +31,20 @@ type Reviewer = {
   roles: string[];
 };
 
+type ReviewerCategory = "our_reviewer" | "top_reviewer" | "chief_editor";
+
+const REVIEWER_CATEGORY_OPTIONS: Array<{ value: ReviewerCategory; label: string }> = [
+  { value: "our_reviewer", label: "Our Reviewer" },
+  { value: "top_reviewer", label: "Top Reviewer" },
+  { value: "chief_editor", label: "Chief Editor" },
+];
+
+const reviewerCategoryLabel = (value?: string) => {
+  if (value === "chief_editor") return "Chief Editor";
+  if (value === "top_reviewer") return "Top Reviewer";
+  return "Our Reviewer";
+};
+
 const STATUS_COLORS: Record<string, string> = {
   submitted: "bg-blue-500/10 text-blue-600 border-blue-200",
   in_review: "bg-warning/10 text-warning border-warning/20",
@@ -60,7 +74,11 @@ export default function AdminReviews() {
 
   const [reviewerSearch, setReviewerSearch] = useState("");
   const [showReviewerDialog, setShowReviewerDialog] = useState<"add" | null>(null);
-  const [revForm, setRevForm] = useState({ email: "" });
+  const [revForm, setRevForm] = useState<{ userId: string; reviewerCategory: ReviewerCategory }>({
+    userId: "",
+    reviewerCategory: "our_reviewer",
+  });
+  const [reviewerUserSearch, setReviewerUserSearch] = useState("");
   const [savingReviewer, setSavingReviewer] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Reviewer | null>(null);
 
@@ -134,7 +152,10 @@ export default function AdminReviews() {
       setAllUsers(userRows);
 
       const reviewerRows: Reviewer[] = userRows
-        .filter((u: any) => Array.isArray(u?.roles) && u.roles.includes("reviewer"))
+        .filter((u: any) => {
+          const roles = Array.isArray(u?.roles) ? u.roles : [];
+          return roles.includes("reviewer") || roles.includes("sub_admin");
+        })
         .map((u: any) => ({
           id: String(u?._id || u?.id),
           fullName: u?.fullName || "Unnamed",
@@ -151,6 +172,36 @@ export default function AdminReviews() {
       toast.error("Failed to load review data");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleApprovePaper(paper: any) {
+    if (!confirm("Approve this paper? Its status will be set to Accepted.")) return;
+    try {
+      const formData = new FormData();
+      formData.append("status", "accepted");
+      await journalApi.update(paper._id || paper.id, formData);
+      toast.success("Paper approved.");
+      setViewPaper(null);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to approve paper");
+    }
+  }
+
+  async function handleRejectPaper(paper: any) {
+    const reason = window.prompt("Reason for rejection (shown to the author):", "");
+    if (reason === null) return;
+    try {
+      const formData = new FormData();
+      formData.append("status", "rejected");
+      if (reason.trim()) formData.append("reviewerComment", reason.trim());
+      await journalApi.update(paper._id || paper.id, formData);
+      toast.success("Paper rejected.");
+      setViewPaper(null);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reject paper");
     }
   }
 
@@ -184,35 +235,39 @@ export default function AdminReviews() {
   }
 
   function openAddReviewer() {
-    setRevForm({ email: "" });
+    setRevForm({ userId: "", reviewerCategory: "our_reviewer" });
+    setReviewerUserSearch("");
     setShowReviewerDialog("add");
   }
 
   async function handleSaveReviewer() {
-    if (!revForm.email.trim()) {
-      toast.error("Email is required");
+    if (!revForm.userId) {
+      toast.error("Please select a user");
       return;
     }
 
     setSavingReviewer(true);
-    const found = allUsers.find(
-      (u: any) => String(u?.email || "").toLowerCase() === revForm.email.trim().toLowerCase()
-    );
+    const found = allUsers.find((u: any) => String(u?._id || u?.id) === revForm.userId);
 
     if (!found) {
       setSavingReviewer(false);
-      toast.error("No user found with this email. Ask them to register first.");
+      toast.error("Selected user was not found");
       return;
     }
 
     const userId = String(found?._id || found?.id);
     try {
-      await usersApi.addRole(userId, "reviewer");
-      toast.success("Reviewer role added");
+      const currentRoles = Array.isArray(found?.roles) ? found.roles : [];
+      if (!currentRoles.includes("reviewer")) {
+        await usersApi.addRole(userId, "reviewer");
+      }
+      await usersApi.setReviewerCategory(userId, revForm.reviewerCategory);
+
+      toast.success(`Assigned ${found?.fullName || "user"} as ${reviewerCategoryLabel(revForm.reviewerCategory)}`);
       setShowReviewerDialog(null);
       await loadData();
     } catch (err: any) {
-      toast.error(err?.message || "Failed to add reviewer role");
+      toast.error(err?.message || "Failed to assign reviewer role");
     } finally {
       setSavingReviewer(false);
     }
@@ -226,6 +281,27 @@ export default function AdminReviews() {
       await loadData();
     } catch (err: any) {
       toast.error(err?.message || "Remove failed");
+    }
+  }
+
+  async function handleAssignReviewer(r: Reviewer) {
+    try {
+      await usersApi.addRole(r.id, "reviewer");
+      await usersApi.setReviewerCategory(r.id, (r.reviewerCategory as ReviewerCategory) || "our_reviewer");
+      toast.success("Reviewer role assigned");
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to assign reviewer role");
+    }
+  }
+
+  async function handleUpdateReviewerCategory(r: Reviewer, reviewerCategory: ReviewerCategory) {
+    try {
+      await usersApi.setReviewerCategory(r.id, reviewerCategory);
+      toast.success(`${r.fullName} moved to ${reviewerCategoryLabel(reviewerCategory)}`);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update reviewer category");
     }
   }
 
@@ -340,6 +416,18 @@ export default function AdminReviews() {
     const q = reviewerSearch.toLowerCase();
     return !q || `${r.fullName} ${r.email} ${r.institution}`.toLowerCase().includes(q);
   });
+
+  const modalUsers = useMemo(() => {
+    const q = reviewerUserSearch.trim().toLowerCase();
+    const rows = [...allUsers]
+      .filter((u: any) => {
+        if (!q) return true;
+        const hay = `${u?.fullName || ""} ${u?.email || ""} ${(u?.institution || "")}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a: any, b: any) => String(a?.fullName || "").localeCompare(String(b?.fullName || "")));
+    return rows;
+  }, [allUsers, reviewerUserSearch]);
 
   return (
     <div className="space-y-4">
@@ -588,7 +676,7 @@ export default function AdminReviews() {
             <div className="relative flex-1 min-w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search reviewers..."
+                placeholder="Search sub-admins and reviewers..."
                 className="pl-10"
                 value={reviewerSearch}
                 onChange={(e) => setReviewerSearch(e.target.value)}
@@ -601,7 +689,7 @@ export default function AdminReviews() {
 
           <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
             {filteredReviewers.length === 0 ? (
-              <div className="py-20 text-center text-muted-foreground">No reviewers found</div>
+              <div className="py-20 text-center text-muted-foreground">No sub-admins or reviewers found</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -610,8 +698,9 @@ export default function AdminReviews() {
                       <th className="text-left p-4 font-medium text-muted-foreground">Reviewer</th>
                       <th className="text-left p-4 font-medium text-muted-foreground hidden md:table-cell">Email</th>
                       <th className="text-left p-4 font-medium text-muted-foreground hidden lg:table-cell">Institution</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Category</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Roles</th>
-                      <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
+                      <th className="text-right p-4 font-medium text-muted-foreground">Reviewer Role</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -620,6 +709,21 @@ export default function AdminReviews() {
                         <td className="p-4 font-semibold">{r.fullName}</td>
                         <td className="p-4 text-muted-foreground hidden md:table-cell">{r.email || "-"}</td>
                         <td className="p-4 text-muted-foreground hidden lg:table-cell">{r.institution || "-"}</td>
+                        <td className="p-4">
+                          {r.roles.includes("reviewer") ? (
+                            <select
+                              className="h-8 rounded-md border bg-background px-2 text-xs"
+                              value={(r.reviewerCategory as ReviewerCategory) || "our_reviewer"}
+                              onChange={(e) => handleUpdateReviewerCategory(r, e.target.value as ReviewerCategory)}
+                            >
+                              {REVIEWER_CATEGORY_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not reviewer yet</span>
+                          )}
+                        </td>
                         <td className="p-4">
                           <div className="flex flex-wrap gap-1">
                             {r.roles.map((role, idx) => (
@@ -630,14 +734,25 @@ export default function AdminReviews() {
                           </div>
                         </td>
                         <td className="p-4 text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/5"
-                            onClick={() => setDeleteConfirm(r)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {r.roles.includes("reviewer") ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/5"
+                              title="Remove reviewer role"
+                              onClick={() => setDeleteConfirm(r)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleAssignReviewer(r)}
+                            >
+                              Assign Reviewer
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -811,22 +926,60 @@ export default function AdminReviews() {
       </Dialog>
 
       <Dialog open={!!showReviewerDialog} onOpenChange={(o) => { if (!o) setShowReviewerDialog(null); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>Add Reviewer Role</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>User Email Address</Label>
+              <Label>Search User</Label>
               <Input
-                type="email"
-                value={revForm.email}
-                onChange={(e) => setRevForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="reviewer@example.com"
+                value={reviewerUserSearch}
+                onChange={(e) => setReviewerUserSearch(e.target.value)}
+                placeholder="Search by name, email, institution..."
               />
             </div>
+            <div className="space-y-2">
+              <Label>Select User</Label>
+              <select
+                className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                value={revForm.userId}
+                onChange={(e) => setRevForm((f) => ({ ...f, userId: e.target.value }))}
+              >
+                <option value="">Select any user</option>
+                {modalUsers.map((u: any) => {
+                  const id = String(u?._id || u?.id);
+                  const roles = Array.isArray(u?.roles) ? u.roles.join(", ") : "";
+                  return (
+                    <option key={id} value={id}>
+                      {u?.fullName || "Unnamed"} · {u?.email || "no-email"}{roles ? ` · [${roles}]` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Reviewer Group</Label>
+              <select
+                className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                value={revForm.reviewerCategory}
+                onChange={(e) => setRevForm((f) => ({ ...f, reviewerCategory: e.target.value as ReviewerCategory }))}
+              >
+                {REVIEWER_CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                User will be assigned reviewer role and appear in the selected public section.
+              </p>
+            </div>
+            {revForm.userId && (
+              <p className="text-xs text-muted-foreground">
+                Selected group: <strong>{reviewerCategoryLabel(revForm.reviewerCategory)}</strong>
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowReviewerDialog(null)}>Cancel</Button>
-            <Button onClick={handleSaveReviewer} disabled={savingReviewer}>{savingReviewer ? "Adding..." : "Add Reviewer"}</Button>
+            <Button onClick={handleSaveReviewer} disabled={savingReviewer}>{savingReviewer ? "Assigning..." : "Assign Reviewer"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1086,6 +1239,30 @@ export default function AdminReviews() {
                 )}
               </div>
 
+              {/* Payment: amount paid + transaction proof */}
+              {(viewPaper.paymentAmount > 0 || viewPaper.paymentProofUrl) && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+                    <FileText className="h-3 w-3" />Payment
+                  </p>
+                  <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                    <div className="flex items-center gap-3 flex-wrap text-sm">
+                      <span>Amount Paid: <strong>₹{Number(viewPaper.paymentAmount || 0).toFixed(2)}</strong></span>
+                      <Badge variant="outline" className="capitalize">{String(viewPaper.paymentStatus || "unpaid").replace(/_/g, " ")}</Badge>
+                    </div>
+                    {viewPaper.paymentProofUrl && (
+                      <a href={fullFileUrl(viewPaper.paymentProofUrl)!} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={fullFileUrl(viewPaper.paymentProofUrl)!}
+                          alt="Payment transaction proof"
+                          className="max-h-56 rounded-lg border object-contain hover:opacity-80 transition-opacity"
+                        />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Documents: manuscript + supporting/supplementary file */}
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
@@ -1119,8 +1296,21 @@ export default function AdminReviews() {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-wrap gap-2">
             <Button variant="outline" onClick={() => setViewPaper(null)}>Close</Button>
+            <Button variant="outline" onClick={() => openAssignWorkflow(viewPaper)}>
+              <GitBranch className="h-4 w-4 mr-2" />Assign
+            </Button>
+            {viewPaper && !["published", "rejected"].includes(viewPaper.status) && (
+              <>
+                <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => handleRejectPaper(viewPaper)}>
+                  <XCircle className="h-4 w-4 mr-2" />Reject
+                </Button>
+                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprovePaper(viewPaper)}>
+                  <CheckCircle className="h-4 w-4 mr-2" />Approve
+                </Button>
+              </>
+            )}
             <Button onClick={() => { setViewPaper(null); openEditPaper(viewPaper); }}>
               <Pencil className="h-4 w-4 mr-2" />Edit
             </Button>

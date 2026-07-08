@@ -17,16 +17,17 @@ export default function ReviewersPage() {
     async function fetchReviewers() {
       setLoading(true);
       try {
-        const [usersRes, featuredRes]: [any, any] = await Promise.all([
+        const [reviewersRes, featuredRes]: [any, any] = await Promise.all([
           usersApi.listPublicDirectory({ role: "reviewer", limit: "2000" }),
           featuredApi.list(),
         ]);
 
-        const users = Array.isArray(usersRes?.users)
-          ? usersRes.users
-          : Array.isArray(usersRes)
-          ? usersRes
+        const reviewerUsers = Array.isArray(reviewersRes?.users)
+          ? reviewersRes.users
+          : Array.isArray(reviewersRes)
+          ? reviewersRes
           : [];
+        const users = reviewerUsers;
 
         const featuredIdSet = new Set<string>(
           (Array.isArray(featuredRes?.items) ? featuredRes.items : Array.isArray(featuredRes) ? featuredRes : [])
@@ -44,6 +45,7 @@ export default function ReviewersPage() {
               bio: u?.bio || "",
               photo_url: u?.photoUrl || "",
               reviewer_category: u?.reviewerCategory || "",
+              roles: Array.isArray(u?.roles) ? u.roles : [],
               is_featured: featuredIdSet.has(id),
             };
           })
@@ -67,7 +69,7 @@ export default function ReviewersPage() {
 
   const chiefEditors = filtered.filter(r => r.reviewer_category === "chief_editor");
   const topReviewers = filtered.filter(r => r.reviewer_category === "top_reviewer");
-  const ourReviewers = filtered.filter(r => r.reviewer_category === "our_reviewer" || !r.reviewer_category);
+  const ourReviewers = filtered;
 
   function ReviewerCard({ reviewer }: { reviewer: any }) {
     return (

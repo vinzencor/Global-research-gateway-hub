@@ -147,20 +147,20 @@ export default function    AuthorsPage() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">No authors found.</div>
         ) : (
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="flex flex-wrap justify-center gap-6">
             {filtered.map(author => (
-              <div key={author.id} className="rounded-xl border bg-card p-5 card-shadow hover:border-primary/40 transition-colors text-center">
+              <div key={author.id} className="w-64 rounded-2xl border bg-card p-6 card-shadow hover:border-primary/40 transition-colors text-center">
                 {author.photo_url ? (
-                  <img src={author.photo_url} alt={author.full_name} className="h-20 w-20 rounded-full object-cover mx-auto mb-3" />
+                  <img src={author.photo_url} alt={author.full_name} className="h-28 w-28 rounded-full object-cover mx-auto mb-4" />
                 ) : (
-                  <div className="h-20 w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
+                  <div className="h-28 w-28 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
                     {author.full_name.charAt(0)}
                   </div>
                 )}
-                <h3 className="font-semibold text-sm">{author.full_name}</h3>
-                {author.organization && <p className="text-xs text-muted-foreground">{author.organization}</p>}
+                <h3 className="font-semibold text-base">{author.full_name}</h3>
+                {author.organization && <p className="text-sm text-muted-foreground mt-1">{author.organization}</p>}
                 {author.is_featured && (
-                  <Badge className="mt-2 text-xs bg-warning/10 text-warning border-warning/20">Featured</Badge>
+                  <Badge className="mt-3 text-xs bg-warning/10 text-warning border-warning/20">Featured</Badge>
                 )}
               </div>
             ))}
@@ -178,19 +178,19 @@ export default function    AuthorsPage() {
             {authors.filter(a => a.is_featured).length === 0 ? (
               <p className="text-muted-foreground text-sm">No featured authors at the moment.</p>
             ) : (
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+              <div className="flex flex-wrap justify-center gap-6">
                 {authors.filter(a => a.is_featured).map(author => (
-                  <div key={`f-${author.id}`} className="rounded-xl border bg-card p-5 card-shadow hover:border-primary/40 transition-colors text-center">
+                  <div key={`f-${author.id}`} className="w-64 rounded-2xl border bg-card p-6 card-shadow hover:border-primary/40 transition-colors text-center">
                     {author.photo_url ? (
-                      <img src={author.photo_url} alt={author.full_name} className="h-20 w-20 rounded-full object-cover mx-auto mb-3" />
+                      <img src={author.photo_url} alt={author.full_name} className="h-28 w-28 rounded-full object-cover mx-auto mb-4" />
                     ) : (
-                      <div className="h-20 w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
+                      <div className="h-28 w-28 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4 text-3xl font-bold">
                         {author.full_name.charAt(0)}
                       </div>
                     )}
-                    <h3 className="font-semibold text-sm">{author.full_name}</h3>
-                    {author.organization && <p className="text-xs text-muted-foreground">{author.organization}</p>}
-                    <Badge className="mt-2 text-xs bg-warning/10 text-warning border-warning/20">Featured</Badge>
+                    <h3 className="font-semibold text-base">{author.full_name}</h3>
+                    {author.organization && <p className="text-sm text-muted-foreground mt-1">{author.organization}</p>}
+                    <Badge className="mt-3 text-xs bg-warning/10 text-warning border-warning/20">Featured</Badge>
                   </div>
                 ))}
               </div>

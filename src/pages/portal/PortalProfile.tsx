@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +16,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { featuredApi, usersApi, supportApi } from "@/lib/api";
+import { usersApi, supportApi, roleRequestApi } from "@/lib/api";
 import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { toast } from "sonner";
+
+const REQUESTABLE_ROLES = [
+  { value: "author", label: "Author" },
+  { value: "reviewer", label: "Reviewer" },
+  { value: "subscriber", label: "Subscriber" },
+];
 
 export default function PortalProfile() {
   const { user, refreshUser } = useAuth();
@@ -25,15 +32,16 @@ export default function PortalProfile() {
   const [fullName, setFullName] = useState("");
   const [institution, setInstitution] = useState("");
   const [bio, setBio] = useState("");
-  const [requestNote, setRequestNote] = useState("");
-  const [requestStatus, setRequestStatus] = useState<string | null>(null);
-  const [requesting, setRequesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showEmailChange, setShowEmailChange] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailChangeReason, setEmailChangeReason] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [submittingEmailChange, setSubmittingEmailChange] = useState(false);
+  const [myRoleRequests, setMyRoleRequests] = useState<any[]>([]);
+  const [requestedRole, setRequestedRole] = useState("");
+  const [roleRequestNote, setRoleRequestNote] = useState("");
+  const [submittingRoleRequest, setSubmittingRoleRequest] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,15 +52,33 @@ export default function PortalProfile() {
 
   useEffect(() => {
     if (!user) return;
-    featuredApi.getMyRequests().then((data: any) => {
-      const rows = Array.isArray(data) ? data : data?.items || [];
-      const latest = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
-      setRequestStatus(latest?.status || null);
-      setRequestNote(latest?.note || "");
-    }).catch(() => {
-      setRequestStatus(null);
-    });
+    roleRequestApi.getMyRequests().then((data: any) => {
+      setMyRoleRequests(Array.isArray(data) ? data : data?.items || []);
+    }).catch(() => setMyRoleRequests([]));
   }, [user]);
+
+  const availableRoles = REQUESTABLE_ROLES.filter(r => !user?.roles?.includes(r.value as any));
+  const pendingRoleRequest = myRoleRequests.find(r => r.status === "pending");
+
+  async function handleRoleRequestSubmit() {
+    if (!requestedRole) {
+      toast.error("Please choose a role to request.");
+      return;
+    }
+    setSubmittingRoleRequest(true);
+    try {
+      await roleRequestApi.create(requestedRole, roleRequestNote.trim() || undefined);
+      toast.success("Role request submitted for admin review.");
+      setRequestedRole("");
+      setRoleRequestNote("");
+      const data: any = await roleRequestApi.getMyRequests();
+      setMyRoleRequests(Array.isArray(data) ? data : data?.items || []);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to submit role request.");
+    } finally {
+      setSubmittingRoleRequest(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -95,21 +121,6 @@ export default function PortalProfile() {
     } finally {
       setSubmittingEmailChange(false);
     }
-  }
-
-  async function handleFeaturedRequest() {
-    if (!user) return;
-    setRequesting(true);
-    try {
-      await featuredApi.submitRequest(requestNote || undefined);
-    } catch (err: any) {
-      setRequesting(false);
-      toast.error("Failed to submit featured request: " + (err?.message || "Unknown error"));
-      return;
-    }
-    setRequesting(false);
-    setRequestStatus("pending");
-    toast.success("Featured user request submitted for admin review");
   }
 
   return (
@@ -176,30 +187,53 @@ export default function PortalProfile() {
           </form>
         </div>
 
-        <div className="lg:col-span-2 rounded-xl border bg-card p-6 card-shadow">
-          <h3 className="font-heading font-bold mb-3">Featured User Request</h3>
-          <p className="text-sm text-muted-foreground mb-3">Submit a request to be listed in Featured Users. Admin approval is required.</p>
-          <div className="space-y-3">
+        </div>
+
+        {/* Request an Additional Role */}
+        <div className="rounded-xl border bg-card p-6 card-shadow">
+          <h3 className="font-heading font-bold mb-1">Request an Additional Role</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Request access to another part of the platform. An admin will review and approve it before it's added to your account.
+          </p>
+          {pendingRoleRequest ? (
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className={requestStatus === "approved" ? "bg-success/10 text-success border-success/20" : requestStatus === "rejected" ? "bg-destructive/10 text-destructive border-destructive/20" : requestStatus === "pending" ? "bg-warning/10 text-warning border-warning/20" : ""}>
-                {requestStatus || "not_requested"}
+              <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 capitalize">
+                {pendingRoleRequest.requestedRole} request pending
               </Badge>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="featuredRequestNote">Request Note (optional)</Label>
-              <Textarea
-                id="featuredRequestNote"
-                value={requestNote}
-                onChange={e => setRequestNote(e.target.value)}
-                placeholder="Tell admins why your profile should be featured..."
-                rows={3}
-              />
+          ) : availableRoles.length === 0 ? (
+            <p className="text-sm text-muted-foreground">You already have every requestable role.</p>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+              <div className="space-y-2 w-full sm:w-56">
+                <Label htmlFor="requestedRole">Role</Label>
+                <Select value={requestedRole} onValueChange={setRequestedRole}>
+                  <SelectTrigger id="requestedRole"><SelectValue placeholder="Choose a role" /></SelectTrigger>
+                  <SelectContent>
+                    {availableRoles.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 flex-1 w-full">
+                <Label htmlFor="roleRequestNote">Note (optional)</Label>
+                <Input id="roleRequestNote" value={roleRequestNote} onChange={e => setRoleRequestNote(e.target.value)} placeholder="Why do you need this role?" />
+              </div>
+              <Button onClick={handleRoleRequestSubmit} disabled={submittingRoleRequest}>
+                {submittingRoleRequest ? "Submitting..." : "Submit Request"}
+              </Button>
             </div>
-            <Button onClick={handleFeaturedRequest} disabled={requesting || requestStatus === "pending"}>
-              {requesting ? "Submitting..." : requestStatus === "pending" ? "Request Pending" : "Request Featured Listing"}
-            </Button>
-          </div>
-        </div>
+          )}
+          {myRoleRequests.filter(r => r.status !== "pending").length > 0 && (
+            <div className="mt-4 pt-4 border-t space-y-2">
+              {myRoleRequests.filter(r => r.status !== "pending").slice(0, 3).map((r) => (
+                <div key={r._id} className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline" className={`capitalize ${r.status === "approved" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}`}>
+                    {r.requestedRole}: {r.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

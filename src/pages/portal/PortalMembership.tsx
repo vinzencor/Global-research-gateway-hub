@@ -10,6 +10,7 @@ import { db } from "@/lib/legacyDb";
 import { featuredApi, membershipApi } from "@/lib/api";
 import { getPortalNavItemsForRoles } from "@/lib/portalNav";
 import { ensureUserRole, reconcileMembershipStatuses, removeUserRoles } from "@/lib/membership";
+import { downloadInvoicePdf } from "@/lib/invoicePdf";
 import { toast } from "sonner";
 
 export default function PortalMembership() {
@@ -29,9 +30,9 @@ export default function PortalMembership() {
   const [ppvContent, setPpvContent] = useState<any>(null);
   const [cancelling, setCancelling] = useState(false);
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
-  const [requestFeatured, setRequestFeatured] = useState(false);
   const [featuredRequestStatus, setFeaturedRequestStatus] = useState<string | null>(null);
   const [featuredRequesting, setFeaturedRequesting] = useState(false);
+  const [featuredCancelling, setFeaturedCancelling] = useState(false);
   const approvedStatuses = ["active", "renewal_due", "approved"];
   const pendingStatuses = ["pending_verification", "pending"];
   const maxPlanPrice = plans.length > 0 ? Math.max(...plans.map((p) => Number(p.price || 0))) : 0;
@@ -108,8 +109,13 @@ export default function PortalMembership() {
         created_at: inv?.createdAt || inv?.created_at,
         status: inv?.status,
         amount: Number(inv?.amount || 0),
-        currency: inv?.currency || "USD",
+        currency: inv?.currency || "INR",
         membership_id: inv?.membership?._id || inv?.membershipId || inv?.membership_id || null,
+        description: inv?.journal?.title
+          ? `Journal Publication Fee — ${inv.journal.title}`
+          : inv?.membership?.plan?.name
+            ? `${inv.membership.plan.name} Membership`
+            : "Membership Payment",
       }));
       setInvoices(invoiceRows);
 
@@ -193,6 +199,20 @@ export default function PortalMembership() {
     toast.success("Featured user request submitted for admin approval");
   }
 
+  async function handleCancelFeaturedRequest() {
+    if (!user) return;
+    setFeaturedCancelling(true);
+    try {
+      await featuredApi.cancelMyRequest();
+      setFeaturedRequestStatus(null);
+      toast.success("Featured user request cancelled");
+    } catch (err: any) {
+      toast.error("Failed to cancel featured request: " + (err?.message || "Unknown error"));
+    } finally {
+      setFeaturedCancelling(false);
+    }
+  }
+
   async function handlePurchase(plan: any) {
     if (!user) return;
     if (pendingMembership) {
@@ -255,6 +275,23 @@ export default function PortalMembership() {
       toast.error("Failed to cancel membership: " + (err?.message || "Unknown error"));
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleDownloadInvoice(inv: any) {
+    try {
+      await downloadInvoicePdf({
+        invoiceId: inv.id.slice(-8).toUpperCase(),
+        date: new Date(inv.created_at).toLocaleDateString(),
+        billToName: user?.fullName || user?.email || "",
+        billToEmail: user?.email || "",
+        description: inv.description,
+        amount: inv.amount,
+        currency: inv.currency,
+        status: inv.status,
+      });
+    } catch {
+      toast.error("Failed to generate invoice PDF.");
     }
   }
 
@@ -376,16 +413,28 @@ export default function PortalMembership() {
                 Featured request: {featuredRequestStatus || "not requested"}
               </Badge>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRequestFeaturedUser}
-              disabled={featuredRequesting || featuredRequestStatus === "pending"}
-              className="flex items-center gap-1"
-            >
-              <Star className="h-3 w-3" />
-              {featuredRequesting ? "Submitting..." : featuredRequestStatus === "pending" ? "Request Pending" : "Request Featured User"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestFeaturedUser}
+                disabled={featuredRequesting || featuredRequestStatus === "pending"}
+                className="flex items-center gap-1"
+              >
+                <Star className="h-3 w-3" />
+                {featuredRequesting ? "Submitting..." : featuredRequestStatus === "pending" ? "Request Pending" : "Request Featured User"}
+              </Button>
+              {featuredRequestStatus === "pending" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelFeaturedRequest}
+                  disabled={featuredCancelling}
+                >
+                  {featuredCancelling ? "Cancelling..." : "Cancel Request"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -421,14 +470,6 @@ export default function PortalMembership() {
             />
             {paymentFile && <p className="text-xs text-muted-foreground">Selected: {paymentFile.name}</p>}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={requestFeatured}
-              onChange={(e) => setRequestFeatured(e.target.checked)}
-            />
-            Request to be shown in Featured Users after admin approval
-          </label>
         </div>
 
         {/* Plans */}
@@ -440,7 +481,10 @@ export default function PortalMembership() {
           {pendingMembership && !currentMembership && (
             <p className="text-sm text-muted-foreground mb-4">Your latest membership request is under verification. You can submit a new request after admin review.</p>
           )}
-          <div className="grid md:grid-cols-3 gap-4">
+          <div
+            className="grid gap-4"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}
+          >
             {plans.map((plan) => {
               const isCurrent = currentMembership?.plan_id === plan.id;
               const currentPrice = Number(currentMembership?.membership_plans?.price || 0);
@@ -486,15 +530,29 @@ export default function PortalMembership() {
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-muted/50">
                   <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Description</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Amount</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
+                  <th className="text-right p-4 font-medium text-muted-foreground">Invoice</th>
                 </tr></thead>
                 <tbody>
                   {invoices.map((inv) => (
                     <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-4">{new Date(inv.created_at).toLocaleDateString()}</td>
+                      <td className="p-4 text-muted-foreground">{inv.description}</td>
                       <td className="p-4 font-medium">₹{inv.amount} {inv.currency}</td>
                       <td className="p-4"><Badge variant="outline" className={inv.status === "paid" ? "bg-success/10 text-success border-success/20" : ""}>{inv.status}</Badge></td>
+                      <td className="p-4 text-right">
+                        {inv.status === "paid" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadInvoice(inv)}
+                          >
+                            Download
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

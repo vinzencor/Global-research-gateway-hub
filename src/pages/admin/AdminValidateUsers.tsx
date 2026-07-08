@@ -286,7 +286,7 @@ export default function AdminValidateUsers() {
                         {r.request_featured ? "Requested" : "No"}
                       </Badge>
                     </td>
-                    <td className="p-4 font-medium">{r.membership_plans?.price != null ? `$${Number(r.membership_plans.price).toFixed(2)}` : "-"}</td>
+                    <td className="p-4 font-medium">{r.membership_plans?.price != null ? `₹${Number(r.membership_plans.price).toFixed(2)}` : "-"}</td>
                     <td className="p-4 text-muted-foreground">{new Date(r.created_at).toLocaleString()}</td>
                     <td className="p-4 text-center">
                       <Button variant="outline" size="sm" className="gap-2" onClick={() => setSelected(r)}>
@@ -344,7 +344,7 @@ export default function AdminValidateUsers() {
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-muted-foreground">Amount</p>
-                  <p className="font-medium">{selected.membership_plans?.price != null ? `$${Number(selected.membership_plans.price).toFixed(2)}` : "-"}</p>
+                  <p className="font-medium">{selected.membership_plans?.price != null ? `₹${Number(selected.membership_plans.price).toFixed(2)}` : "-"}</p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-muted-foreground">Featured Request</p>
