@@ -18,10 +18,12 @@ const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   submitted: "bg-blue-500/10 text-blue-600 border-blue-200",
   in_review: "bg-warning/10 text-warning border-warning/20",
+  changes_requested_awaiting_admin: "bg-warning/10 text-warning border-warning/20",
   changes_requested: "bg-orange-500/10 text-orange-600 border-orange-200",
   accepted: "bg-success/10 text-success border-success/20",
   published: "bg-green-600/10 text-green-700 border-green-200",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
+  rejected_pending_reassignment: "bg-amber-500/10 text-amber-700 border-amber-200",
   withdrawn: "bg-gray-500/10 text-gray-600 border-gray-200",
 };
 
@@ -29,10 +31,12 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   submitted: "Submitted - Awaiting Review",
   in_review: "Under Review",
+  changes_requested_awaiting_admin: "Under Review",
   changes_requested: "Changes Requested",
   accepted: "Accepted",
   published: "Published",
   rejected: "Rejected",
+  rejected_pending_reassignment: "Under Re-Evaluation",
   withdrawn: "Withdrawn",
 };
 
@@ -86,7 +90,7 @@ export default function AuthorDashboard() {
 
   const stats = [
     { label: "Total Submissions", value: submissions.length },
-    { label: "Under Review", value: submissions.filter(s => ["submitted", "in_review"].includes(s.status)).length },
+    { label: "Under Review", value: submissions.filter(s => ["submitted", "in_review", "changes_requested_awaiting_admin"].includes(s.status)).length },
     { label: "Published", value: submissions.filter(s => s.status === "published").length },
     { label: "Needs Revision", value: submissions.filter(s => s.status === "changes_requested").length },
   ];

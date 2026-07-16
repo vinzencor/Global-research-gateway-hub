@@ -13,7 +13,6 @@ import {
   FileText,
   Sparkles,
   Zap,
-  Shield,
   TrendingUp,
   ChevronLeft,
   ChevronRight,
@@ -253,16 +252,6 @@ export default function Index() {
                       <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
                         <Zap className="h-6 w-6" />
                       </div>
-                      <div className="flex -space-x-3">
-                        {[1, 2, 3, 4].map(i => (
-                          <div key={i} className="h-10 w-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center overflow-hidden">
-                            <img src={`https://i.pravatar.cc/150?u=${i}`} alt="user" />
-                          </div>
-                        ))}
-                        <div className="h-10 w-10 rounded-full border-2 border-background bg-primary text-[10px] font-bold text-white flex items-center justify-center">
-                          +50k
-                        </div>
-                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -271,17 +260,10 @@ export default function Index() {
                       <p className="text-muted-foreground text-sm">Real-time peer review metrics and researcher impact scores across 12,000+ publications.</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-2xl bg-secondary/50 border border-border/50">
-                        <TrendingUp className="h-5 w-5 text-primary mb-2" />
-                        <div className="text-xl font-bold">94%</div>
-                        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Growth</div>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-secondary/50 border border-border/50">
-                        <Shield className="h-5 w-5 text-emerald-500 mb-2" />
-                        <div className="text-xl font-bold">Zero</div>
-                        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Fraud Rate</div>
-                      </div>
+                    <div className="p-4 rounded-2xl bg-secondary/50 border border-border/50 max-w-[calc(50%-0.5rem)]">
+                      <TrendingUp className="h-5 w-5 text-primary mb-2" />
+                      <div className="text-xl font-bold">94%</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Growth</div>
                     </div>
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { BarChart3, CheckCircle, RotateCcw, Clock, Eye, FileText, Download, User, Calendar, Building, XCircle, AlertCircle, History, LogOut, ShieldCheck, Paperclip } from "lucide-react";
+import { BarChart3, CheckCircle, RotateCcw, Clock, Eye, FileText, Download, User, Calendar, Building, XCircle, AlertCircle, History, LogOut, ShieldCheck, Paperclip, GitBranch } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000";
 const fullFileUrl = (url?: string) => (url ? (url.startsWith("http") ? url : `${API_BASE}${url}`) : null);
@@ -15,16 +15,21 @@ const LOG_ACTION_META: Record<string, { label: string; color: string; icon: JSX.
   changes_requested: { label: "Changes Requested", color: "bg-orange-500", icon: <AlertCircle className="h-3 w-3 text-white" /> },
   rejected: { label: "Rejected", color: "bg-destructive", icon: <XCircle className="h-3 w-3 text-white" /> },
   resubmitted: { label: "Resubmitted", color: "bg-blue-500", icon: <FileText className="h-3 w-3 text-white" /> },
+  reassigned: { label: "Reassigned", color: "bg-indigo-500", icon: <GitBranch className="h-3 w-3 text-white" /> },
+  changes_review_approved: { label: "Change Request Approved", color: "bg-green-600", icon: <CheckCircle className="h-3 w-3 text-white" /> },
+  changes_review_declined: { label: "Change Request Declined", color: "bg-orange-500", icon: <XCircle className="h-3 w-3 text-white" /> },
 };
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   submitted: "bg-blue-500/10 text-blue-600 border-blue-200",
   in_review: "bg-warning/10 text-warning border-warning/20",
+  changes_requested_awaiting_admin: "bg-red-500/10 text-red-700 border-red-200",
   changes_requested: "bg-orange-500/10 text-orange-600 border-orange-200",
   accepted: "bg-success/10 text-success border-success/20",
   published: "bg-green-600/10 text-green-700 border-green-200",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
+  rejected_pending_reassignment: "bg-amber-500/10 text-amber-700 border-amber-200",
   withdrawn: "bg-gray-500/10 text-gray-600 border-gray-200",
 };
 
@@ -94,15 +99,32 @@ export default function AdminJournalPipeline() {
     }
   }
 
+  async function decideChangeRequest(item: any, decision: "approve" | "decline") {
+    const id = item._id || item.id;
+    if (decision === "decline" && !window.confirm("Decline this change request? The paper goes back to the same reviewer instead of the author.")) return;
+    try {
+      const form = new FormData();
+      form.append("changeRequestDecision", decision);
+      await journalApi.update(id, form);
+      toast.success(decision === "approve" ? "Change request approved and sent to the author." : "Declined — sent back to the same reviewer.");
+      setShowView(false);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to record decision");
+    }
+  }
+
   const filtered = journals.filter(j => filter === "all" || j.status === filter || (!j.status && filter === "draft"));
   const stats = {
     submitted: journals.filter(j => j.status === "submitted").length,
     in_review: journals.filter(j => j.status === "in_review").length,
+    changes_requested_awaiting_admin: journals.filter(j => j.status === "changes_requested_awaiting_admin").length,
     changes_requested: journals.filter(j => j.status === "changes_requested").length,
     accepted: journals.filter(j => j.status === "accepted").length,
     published: journals.filter(j => j.status === "published").length,
     withdrawn: journals.filter(j => j.status === "withdrawn").length,
     rejected: journals.filter(j => j.status === "rejected").length,
+    rejected_pending_reassignment: journals.filter(j => j.status === "rejected_pending_reassignment").length,
   };
 
   if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" /></div>;
@@ -111,16 +133,33 @@ export default function AdminJournalPipeline() {
     <div className="space-y-6">
       <div className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" /><h2 className="font-heading text-xl font-bold">Paper Pipeline</h2></div>
 
+      {/* Action Required alert — reviewer change requests awaiting admin decision */}
+      {stats.changes_requested_awaiting_admin > 0 && (
+        <div className="rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/20 p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700 dark:text-red-400">
+              Action Required: {stats.changes_requested_awaiting_admin} change request{stats.changes_requested_awaiting_admin > 1 ? "s" : ""} awaiting your review
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400/80 mt-0.5">
+              A reviewer requested changes. Approve to forward it to the author, or decline to send it back to the same reviewer.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Analytics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-8 gap-3">
         {[
           { label: "Submitted", value: stats.submitted, icon: <Clock className="h-4 w-4 text-blue-500" /> },
           { label: "In Review", value: stats.in_review, icon: <RotateCcw className="h-4 w-4 text-warning" /> },
+          { label: "Needs Admin Review", value: stats.changes_requested_awaiting_admin, icon: <AlertCircle className="h-4 w-4 text-red-600" /> },
           { label: "Changes Req.", value: stats.changes_requested, icon: <RotateCcw className="h-4 w-4 text-orange-500" /> },
           { label: "Accepted", value: stats.accepted, icon: <CheckCircle className="h-4 w-4 text-success" /> },
           { label: "Published", value: stats.published, icon: <CheckCircle className="h-4 w-4 text-green-700" /> },
           { label: "Withdrawn", value: stats.withdrawn, icon: <RotateCcw className="h-4 w-4 text-gray-500" /> },
           { label: "Rejected", value: stats.rejected, icon: <RotateCcw className="h-4 w-4 text-red-500" /> },
+          { label: "Needs Reassignment", value: stats.rejected_pending_reassignment, icon: <AlertCircle className="h-4 w-4 text-amber-500" /> },
         ].map(s => (
           <div key={s.label} className="rounded-xl border bg-card p-4 flex items-center gap-3">
             {s.icon}
@@ -131,8 +170,8 @@ export default function AdminJournalPipeline() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
-        {["all", "submitted", "in_review", "changes_requested", "accepted", "published", "rejected", "withdrawn"].map(f => (
-          <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize text-xs">{f.replace("_", " ")}</Button>
+        {["all", "submitted", "in_review", "changes_requested_awaiting_admin", "changes_requested", "accepted", "published", "rejected", "rejected_pending_reassignment", "withdrawn"].map(f => (
+          <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="capitalize text-xs">{f.replace(/_/g, " ")}</Button>
         ))}
       </div>
 
@@ -168,7 +207,7 @@ export default function AdminJournalPipeline() {
                 >
                   <td className="p-4 font-medium max-w-[200px]"><p className="truncate hover:text-primary transition-colors">{j.title}</p></td>
                   <td className="p-4 hidden md:table-cell text-muted-foreground">{j.institution || "-"}</td>
-                  <td className="p-4"><Badge variant="outline" className={STATUS_COLORS[ws]}>{ws.replace("_", " ")}</Badge></td>
+                  <td className="p-4"><Badge variant="outline" className={STATUS_COLORS[ws]}>{ws.replace(/_/g, " ")}</Badge></td>
                   <td className="p-4">
                     {totalStages > 0 ? (
                       <div className="space-y-1.5 min-w-[120px]">
@@ -439,8 +478,18 @@ export default function AdminJournalPipeline() {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-wrap gap-2">
             <Button variant="outline" onClick={() => setShowView(false)}>Close</Button>
+            {viewItem?.status === "changes_requested_awaiting_admin" && (
+              <>
+                <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => decideChangeRequest(viewItem, "decline")}>
+                  <XCircle className="h-4 w-4 mr-2" />Decline (back to reviewer)
+                </Button>
+                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => decideChangeRequest(viewItem, "approve")}>
+                  <CheckCircle className="h-4 w-4 mr-2" />Approve (send to author)
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

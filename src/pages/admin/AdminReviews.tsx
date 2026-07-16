@@ -19,6 +19,9 @@ const LOG_ACTION_META: Record<string, { label: string; color: string; icon: JSX.
   changes_requested: { label: "Changes Requested", color: "bg-orange-500", icon: <AlertCircle className="h-3 w-3 text-white" /> },
   rejected: { label: "Rejected", color: "bg-destructive", icon: <XCircle className="h-3 w-3 text-white" /> },
   resubmitted: { label: "Resubmitted", color: "bg-blue-500", icon: <FileText className="h-3 w-3 text-white" /> },
+  reassigned: { label: "Reassigned", color: "bg-indigo-500", icon: <GitBranch className="h-3 w-3 text-white" /> },
+  changes_review_approved: { label: "Change Request Approved", color: "bg-green-600", icon: <CheckCircle className="h-3 w-3 text-white" /> },
+  changes_review_declined: { label: "Change Request Declined", color: "bg-orange-500", icon: <XCircle className="h-3 w-3 text-white" /> },
 };
 
 type Reviewer = {
@@ -48,10 +51,12 @@ const reviewerCategoryLabel = (value?: string) => {
 const STATUS_COLORS: Record<string, string> = {
   submitted: "bg-blue-500/10 text-blue-600 border-blue-200",
   in_review: "bg-warning/10 text-warning border-warning/20",
+  changes_requested_awaiting_admin: "bg-red-500/10 text-red-700 border-red-200",
   changes_requested: "bg-orange-500/10 text-orange-600 border-orange-200",
   accepted: "bg-success/10 text-success border-success/20",
   published: "bg-green-600/10 text-green-700 border-green-200",
   rejected: "bg-destructive/10 text-destructive border-destructive/20",
+  rejected_pending_reassignment: "bg-amber-500/10 text-amber-700 border-amber-200",
 };
 
 const redactAuthor = (name: string) => {
@@ -145,7 +150,7 @@ export default function AdminReviews() {
 
       const allJournals = journalsResult?.items || journalsResult || [];
       setAllPapers(allJournals);
-      const reviewQueue = allJournals.filter((j: any) => ["submitted", "in_review", "changes_requested", "accepted"].includes(j.status));
+      const reviewQueue = allJournals.filter((j: any) => ["submitted", "in_review", "changes_requested_awaiting_admin", "changes_requested", "accepted", "rejected_pending_reassignment"].includes(j.status));
       setQueue(reviewQueue);
 
       const userRows = usersResult?.users || [];
@@ -190,18 +195,37 @@ export default function AdminReviews() {
   }
 
   async function handleRejectPaper(paper: any) {
-    const reason = window.prompt("Reason for rejection (shown to the author):", "");
+    const isFinalGate = paper.status === "accepted";
+    const promptText = isFinalGate
+      ? "Reason for rejection (sent back to the author to edit and resubmit):"
+      : "Reason for rejection (shown to the author):";
+    const reason = window.prompt(promptText, "");
     if (reason === null) return;
     try {
       const formData = new FormData();
       formData.append("status", "rejected");
       if (reason.trim()) formData.append("reviewerComment", reason.trim());
       await journalApi.update(paper._id || paper.id, formData);
-      toast.success("Paper rejected.");
+      toast.success(isFinalGate ? "Paper sent back to the author for revision." : "Paper rejected.");
       setViewPaper(null);
       await loadData();
     } catch (err: any) {
       toast.error(err?.message || "Failed to reject paper");
+    }
+  }
+
+  async function decideChangeRequest(paper: any, decision: "approve" | "decline") {
+    const id = paper._id || paper.id;
+    if (decision === "decline" && !window.confirm("Decline this change request? The paper goes back to the same reviewer instead of the author.")) return;
+    try {
+      const formData = new FormData();
+      formData.append("changeRequestDecision", decision);
+      await journalApi.update(id, formData);
+      toast.success(decision === "approve" ? "Change request approved and sent to the author." : "Declined — sent back to the same reviewer.");
+      setViewPaper(null);
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to record decision");
     }
   }
 
@@ -464,12 +488,14 @@ export default function AdminReviews() {
         </TabsList>
 
         <TabsContent value="queue" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             {[
               { label: "Submitted", count: queue.filter((q) => q.status === "submitted").length, icon: <FileText className="h-4 w-4 text-blue-500" /> },
               { label: "In Review", count: queue.filter((q) => q.status === "in_review").length, icon: <Clock className="h-4 w-4 text-warning" /> },
+              { label: "Needs Admin Review", count: queue.filter((q) => q.status === "changes_requested_awaiting_admin").length, icon: <AlertCircle className="h-4 w-4 text-red-600" /> },
               { label: "Changes Req.", count: queue.filter((q) => q.status === "changes_requested").length, icon: <RotateCcw className="h-4 w-4 text-orange-500" /> },
               { label: "Accepted", count: queue.filter((q) => q.status === "accepted").length, icon: <CheckCircle className="h-4 w-4 text-success" /> },
+              { label: "Needs Reassignment", count: queue.filter((q) => q.status === "rejected_pending_reassignment").length, icon: <AlertCircle className="h-4 w-4 text-amber-500" /> },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border bg-card p-4 shadow-sm flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-muted/50">{s.icon}</div>
@@ -514,7 +540,7 @@ export default function AdminReviews() {
                         </td>
                         <td className="p-4">
                           <Badge variant="outline" className={STATUS_COLORS[item.status] || ""}>
-                            {String(item.status || "").replace("_", " ")}
+                            {String(item.status || "").replace(/_/g, " ")}
                           </Badge>
                         </td>
                         <td className="p-4 text-xs">
@@ -1301,15 +1327,26 @@ export default function AdminReviews() {
             <Button variant="outline" onClick={() => openAssignWorkflow(viewPaper)}>
               <GitBranch className="h-4 w-4 mr-2" />Assign
             </Button>
-            {viewPaper && !["published", "rejected"].includes(viewPaper.status) && (
+            {viewPaper?.status === "changes_requested_awaiting_admin" ? (
               <>
-                <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => handleRejectPaper(viewPaper)}>
-                  <XCircle className="h-4 w-4 mr-2" />Reject
+                <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => decideChangeRequest(viewPaper, "decline")}>
+                  <XCircle className="h-4 w-4 mr-2" />Decline (back to reviewer)
                 </Button>
-                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprovePaper(viewPaper)}>
-                  <CheckCircle className="h-4 w-4 mr-2" />Approve
+                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => decideChangeRequest(viewPaper, "approve")}>
+                  <CheckCircle className="h-4 w-4 mr-2" />Approve (send to author)
                 </Button>
               </>
+            ) : (
+              viewPaper && !["published", "rejected"].includes(viewPaper.status) && (
+                <>
+                  <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => handleRejectPaper(viewPaper)}>
+                    <XCircle className="h-4 w-4 mr-2" />Reject
+                  </Button>
+                  <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprovePaper(viewPaper)}>
+                    <CheckCircle className="h-4 w-4 mr-2" />Approve
+                  </Button>
+                </>
+              )
             )}
             <Button onClick={() => { setViewPaper(null); openEditPaper(viewPaper); }}>
               <Pencil className="h-4 w-4 mr-2" />Edit

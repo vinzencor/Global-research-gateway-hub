@@ -62,9 +62,9 @@ export default function SubAdminReview() {
       if (action === "approved") {
         toast.success("Approved and moved to next stage!");
       } else if (action === "changes_requested") {
-        toast.success("Changes requested - sent back to author.");
+        toast.success("Changes requested — sent to Super Admin for review.");
       } else {
-        toast.success("Journal rejected.");
+        toast.success("Journal rejected — sent back to Super Admin for reassignment.");
       }
       setAssignments(prev => prev.filter(a => (a._id || a.id) !== id));
     } catch (err: any) {
