@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { db } from "@/lib/legacyDb";
+import { authApi } from "@/lib/api";
 import { toast } from "sonner";
 import { getSubAdminNavItemsForRoles } from "@/lib/portalNav";
 import { KeyRound, User } from "lucide-react";
@@ -30,28 +30,17 @@ export default function SubAdminSettings() {
     }
 
     setSaving(true);
-    // Re-authenticate with current password first
-    const { error: signInError } = await db.auth.signInWithPassword({
-      email: user?.email || "",
-      password: currentPassword,
-    });
-    if (signInError) {
-      toast.error("Current password is incorrect.");
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      toast.success("Password changed successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update password.");
+    } finally {
       setSaving(false);
-      return;
     }
-
-    // Update to new password
-    const { error } = await db.auth.updateUser({ password: newPassword });
-    setSaving(false);
-    if (error) {
-      toast.error("Failed to update password: " + error.message);
-      return;
-    }
-    toast.success("Password changed successfully!");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
   }
 
   return (
