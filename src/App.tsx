@@ -24,6 +24,7 @@ import StandardsPage from "./pages/public/StandardsPage";
 import SupportPage from "./pages/public/SupportPage";
 import AccountRecoveryPage from "./pages/public/AccountRecoveryPage";
 import PolicyPage from "./pages/public/PolicyPage";
+import Blog from "./pages/Blog";
 
 // Portal pages
 import PortalDashboard from "./pages/portal/PortalDashboard";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/publications/:slug" element={<PublicationDetail />} />
             <Route path="/journals/:slug" element={<JournalDetail />} />
             <Route path="/library" element={<DigitalLibraryPublic />} />
+            <Route path="/blog" element={<Blog />} />
 
             {/* Auth routes - redirect if already logged in */}
             <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />

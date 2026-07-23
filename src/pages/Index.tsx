@@ -25,10 +25,7 @@ import {
 } from "lucide-react";
 import heroBg from "@/assets/hero_bg.png";
 import { HappeningAcross } from "./HappeningAcross";
-import { Section1 } from "./Section1";
 import { ChairmanVoice } from "./ChairmanVoice";
-import { Separator } from "./Separator";
-import { Section2 } from "./Section2";
 import { contentApi, journalApi } from "@/lib/api";
 import MembershipShowcase from "@/components/MembershipShowcase";
 

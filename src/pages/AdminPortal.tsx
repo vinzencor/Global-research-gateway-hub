@@ -25,6 +25,7 @@ import AdminWithdrawals from "@/pages/admin/AdminWithdrawals";
 import AdminPaymentReports from "@/pages/admin/AdminPaymentReports";
 import AdminSupportTickets from "@/pages/admin/AdminSupportTickets";
 import { Megaphone } from "lucide-react";
+import { isModuleAllowed } from "@/lib/portalNav";
 
 type AdminNavItem = { label: string; to: string; icon: JSX.Element; moduleKey?: string };
 
@@ -98,7 +99,7 @@ export default function AdminPortal() {
   function canAccess(moduleKey?: string) {
     if (!moduleKey) return true;
     if (user?.roles.includes("super_admin")) return true;
-    return user?.moduleAccess?.[moduleKey] !== false;
+    return isModuleAllowed(moduleKey, user?.moduleAccess || {});
   }
 
   const filteredNavItems = navItems.filter((n) => canAccess(n.moduleKey));
@@ -109,7 +110,7 @@ export default function AdminPortal() {
         <Shield className="h-6 w-6 text-destructive" />
       </div>
       <div>
-        <h3 className="font-heading font-bold mb-1">Access Restricted</h3>
+        <h3 className="font-heading font-bold mb-1">Access Denied</h3>
         <p className="text-sm text-muted-foreground">Your role does not have permission for this admin module.</p>
       </div>
     </div>
